@@ -645,10 +645,9 @@ const COLUMNS = [
   {id:'contacter', label:'Lead à contacter'},
   {id:'r1', label:'R1 à faire'},
   {id:'r2', label:'R2 à faire'},
-  {id:'r3', label:'R3 à faire'},
   {id:'apayer', label:'À payer'},
   {id:'paye', label:'Payé'},
-  {id:'cpf', label:'CPF (Nour)', special:true},
+  {id:'cpf', label:'CPF (Nour)'},
   {id:'perdu', label:'Prospect perdu'},
 ];
 const COL_LABEL = Object.fromEntries(COLUMNS.map(c=>[c.id,c.label]));
@@ -691,12 +690,12 @@ const SEED = [
       {type:'note', when:'il y a 40 min', title:'Lead reçu', text:'Vient de la pub Insta « Workshop closing ».'},
     ]},
   // ---- R3
-  {id:'thomas', prenom:'Thomas', nom:'Girard', tel:'07 62 41 07 88', email:'t.girard@protonmail.com', source:'webinaire', heat:'chaud', noShow:false, column:'r3', owner:'Léo', nextAction:'R3 → envoyer lien', cpf:3100, metier:'Manager retail', budget:'≈ 2 500 €', veut:'Sortir du salariat, lancer son activité de closer',
+  {id:'thomas', prenom:'Thomas', nom:'Girard', tel:'07 62 41 07 88', email:'t.girard@protonmail.com', source:'webinaire', heat:'chaud', noShow:false, column:'r2', owner:'Léo', nextAction:'R3 → envoyer lien', cpf:3100, metier:'Manager retail', budget:'≈ 2 500 €', veut:'Sortir du salariat, lancer son activité de closer',
     timeline:[
       {type:'recap', when:'aujourd’hui 10:05', title:'R1 — diagnostic (51 min)', text:'Chaud. Devoirs faits (profil présenté). Reste une objection budget → R3.', granola:{contexte:'Manager retail, 8 ans, veut son indépendance.', pain:'Plafond de verre salarial, veut piloter ses revenus.', angle:'Lever l’objection budget, closer le reste à charge.'}},
       {type:'appel', when:'il y a 3 jours', title:'R1 — diagnostic', text:'Manque créé. Devoirs donnés.'},
     ]},
-  {id:'awa', prenom:'Awa', nom:'Diallo', tel:'06 09 73 18 42', email:'awa.diallo@gmail.com', source:'pub insta', heat:'tiede', noShow:true, column:'r3', owner:'Léo', nextAction:'No-show R3 → rappeler', cpf:2700, metier:'Chargée de clientèle', budget:'≈ 1 400 €', veut:'Compléter ses revenus avec du closing à mi-temps',
+  {id:'awa', prenom:'Awa', nom:'Diallo', tel:'06 09 73 18 42', email:'awa.diallo@gmail.com', source:'pub insta', heat:'tiede', noShow:true, column:'r2', owner:'Léo', nextAction:'No-show R3 → rappeler', cpf:2700, metier:'Chargée de clientèle', budget:'≈ 1 400 €', veut:'Compléter ses revenus avec du closing à mi-temps',
     timeline:[
       {type:'noshow', when:'hier 15:30', title:'No-show R3', text:'Absente au R3. SMS de reprog envoyé automatiquement.'},
       {type:'recap', when:'il y a 4 jours', title:'R1 — diagnostic', text:'Intéressée mais hésite (conjoint à convaincre). Mini-devoir donné.'},
