@@ -542,6 +542,37 @@ input,textarea{font-family:inherit; color:inherit}
 .ag-tx span{font-size:12px; color:var(--t3)}
 .ag-day{padding:11px 18px; background:var(--surface-2); font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--t3); border-bottom:1px solid var(--b1)}
 
+/* ----- agenda vue semaine (type Google Calendar) ----- */
+.cal{border:1px solid var(--b1); border-radius:var(--r-panel); overflow:hidden; background:var(--surface); max-width:1040px; box-shadow:var(--sh-card)}
+.cal-head{display:grid; grid-template-columns:60px repeat(5,1fr); border-bottom:1px solid var(--b1); position:sticky; top:0; z-index:2; background:var(--surface)}
+.cal-corner{border-right:1px solid var(--b1)}
+.cal-dh{padding:9px 8px 8px; text-align:center; border-right:1px solid var(--b1); display:flex; flex-direction:column; align-items:center; gap:2px}
+.cal-dh:last-child{border-right:none}
+.cal-dh .dname{font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.12em; color:var(--t3)}
+.cal-dh .dnum{font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; color:var(--t1); width:30px; height:30px; display:grid; place-items:center; border-radius:99px}
+.cal-dh.today .dname{color:var(--accent)}
+.cal-dh.today .dnum{background:var(--accent); color:var(--on-accent)}
+.cal-grid{display:grid; grid-template-columns:60px repeat(5,1fr); max-height:620px; overflow-y:auto; position:relative}
+.cal-gutter{border-right:1px solid var(--b1)}
+.cal-hr{position:relative; border-bottom:1px solid var(--b1)}
+.cal-hl{position:absolute; top:-7px; right:7px; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--t3)}
+.cal-hr:first-child .cal-hl{top:4px}
+.cal-col{position:relative; border-right:1px solid var(--b1)}
+.cal-col:last-child{border-right:none}
+.cal-cell{border-bottom:1px solid var(--b1)}
+.cal-ev{position:absolute; left:4px; right:4px; border-radius:8px; padding:5px 8px; text-align:left; overflow:hidden; cursor:pointer; display:flex; flex-direction:column; gap:1px; transition:transform var(--speed), box-shadow var(--speed); border-left:3px solid var(--accent); background:var(--accent-tint); z-index:1}
+.cal-ev:hover{transform:translateY(-1px); box-shadow:var(--sh-lift); z-index:3}
+.cal-ev b{font-size:12px; font-weight:700; color:var(--t1); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.cal-ev-meta{font-size:10px; color:var(--t2)}
+.cal-ev-kind{font-size:10px; color:var(--t3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.cal-ev.k-r1{border-left-color:var(--accent); background:var(--accent-tint)}
+.cal-ev.k-r2{border-left-color:var(--warm); background:rgba(255,155,64,.14)}
+.cal-ev.k-r3{border-left-color:var(--warm); background:rgba(255,155,64,.14)}
+.cal-ev.k-close{border-left-color:var(--ok); background:var(--ok-tint)}
+.cal-ev.k-cpf{border-left-color:var(--accent); background:var(--accent-tint-2)}
+.cal-now{position:absolute; left:0; right:0; height:0; border-top:2px solid var(--accent); z-index:4; pointer-events:none}
+.cal-now span{position:absolute; left:-5px; top:-5px; width:9px; height:9px; border-radius:99px; background:var(--accent)}
+
 /* admission */
 .adm-list{display:flex; flex-direction:column; gap:14px; max-width:980px}
 .adm-card{background:var(--surface); border:1px solid var(--b1); border-radius:var(--r-panel); overflow:hidden; transition:opacity var(--speed)}
@@ -1273,32 +1304,80 @@ function Recherche({leads, onOpen}){
 }
 
 /* ============================================================= AGENDA */
+/* ============================================================= AGENDA (vue semaine) */
+const CAL_DAYS = [
+  {d:'LUN', n:2, today:true},
+  {d:'MAR', n:3},
+  {d:'MER', n:4},
+  {d:'JEU', n:5},
+  {d:'VEN', n:6},
+];
+const CAL_H0 = 8, CAL_H1 = 20, CAL_PXH = 56; // 08:00 -> 20:00, 56px/heure
+const CAL_HOURS = Array.from({length:CAL_H1-CAL_H0}, (_,i)=>CAL_H0+i);
+const toMin = (t)=>{ const [h,m]=t.split(':').map(Number); return h*60+m; };
+const CAL_EVENTS = [
+  {day:0, start:'09:00', end:'10:00', lead:'karim',  title:'R1 — Karim Benali',   kind:'r1'},
+  {day:0, start:'14:00', end:'15:00', lead:'mehdi',  title:'R2 — Mehdi Ouattara', kind:'r2'},
+  {day:0, start:'16:30', end:'17:00', lead:'etienne',title:'Admission CPF',       kind:'cpf'},
+  {day:1, start:'10:00', end:'11:00', lead:'manon',  title:'R1 — Manon Lopez',    kind:'r1'},
+  {day:1, start:'11:30', end:'12:30', lead:'sophie', title:'R1 — Sophie Marchand',kind:'r1'},
+  {day:2, start:'15:00', end:'16:00', lead:'thomas', title:'R3 — Thomas Girard',  kind:'r3'},
+  {day:3, start:'09:30', end:'10:30', lead:'ines',   title:'R2 — Inès Lefèvre',   kind:'r2'},
+  {day:3, start:'16:00', end:'17:00', lead:'lucas',  title:'Close — Lucas Perret',kind:'close'},
+  {day:4, start:'11:00', end:'12:00', lead:'awa',    title:'R3 — Awa Diallo',     kind:'r3'},
+];
+const KIND_LABEL = {r1:'Diagnostic R1', r2:'Transformation R2', r3:'Closing R3', close:'Encaissement', cpf:'Admission CPF'};
+
 function Agenda({leads, onOpen}){
-  const today = [
-    {time:'11:00', past:true, lead:'mehdi', title:'R2 — Mehdi Ouattara', sub:'Transformation · 7500 à amorcer'},
-    {time:'14:30', past:false, lead:'karim', title:'R1 — Karim Benali', sub:'Diagnostic · reconversion'},
-    {time:'17:00', past:false, lead:'mehdi', title:'R2 calé — Mehdi Ouattara', sub:'Créneau confirmé'},
-  ];
-  const tomorrow = [
-    {time:'10:00', past:false, lead:'manon', title:'R1 — Manon Lopez', sub:'Chaude · ex-banque'},
-    {time:'16:00', past:false, lead:'thomas', title:'Close — Thomas Girard', sub:'Envoi lien 2900 + 7500'},
-  ];
-  const Row = (e)=> (
-    <div className="ag-row" onClick={()=>e.lead && onOpen(e.lead)} style={{cursor:e.lead?'pointer':'default'}}>
-      <span className={`ag-time ${e.past?'past':''}`}>{e.time}</span>
-      <div className="ag-tx"><b>{e.title}</b><span>{e.sub}</span></div>
-      {e.past?<span className="tag tag-ok">Fait</span>:<span className="tag tag-wait">À venir</span>}
-    </div>
-  );
+  const NOW_DAY = 0, NOW_MIN = toMin('13:10'); // indicateur "maintenant" (lundi)
   return (
     <>
-      <div className="screen-head"><div className="screen-title"><h1>Agenda</h1><p>Tes RDV closing — R1 / R2 / R3 + closes</p></div></div>
+      <div className="screen-head">
+        <div className="screen-title"><h1>Agenda</h1><p>Semaine du 2 au 6 juin · tes RDV closing</p></div>
+        <div className="head-tools">
+          <div className="seg"><button className="on">Semaine</button></div>
+        </div>
+      </div>
       <div className="fiche">
-        <div className="agenda">
-          <div className="ag-day">Aujourd’hui · lundi 1 juin</div>
-          {today.map((e,i)=><Row key={i} {...e}/>)}
-          <div className="ag-day">Demain · mardi 2 juin</div>
-          {tomorrow.map((e,i)=><Row key={i} {...e}/>)}
+        <div className="cal">
+          <div className="cal-head">
+            <div className="cal-corner"></div>
+            {CAL_DAYS.map((d,i)=>(
+              <div className={`cal-dh ${d.today?'today':''}`} key={i}>
+                <span className="dname">{d.d}</span>
+                <span className="dnum">{d.n}</span>
+              </div>
+            ))}
+          </div>
+          <div className="cal-grid">
+            <div className="cal-gutter">
+              {CAL_HOURS.map(h=>(
+                <div className="cal-hr" key={h} style={{height:CAL_PXH}}>
+                  <span className="cal-hl">{String(h).padStart(2,'0')}:00</span>
+                </div>
+              ))}
+            </div>
+            {CAL_DAYS.map((d,di)=>(
+              <div className="cal-col" key={di}>
+                {CAL_HOURS.map(h=><div className="cal-cell" key={h} style={{height:CAL_PXH}}></div>)}
+                {di===NOW_DAY && (
+                  <div className="cal-now" style={{top:((NOW_MIN-CAL_H0*60)/60)*CAL_PXH}}><span></span></div>
+                )}
+                {CAL_EVENTS.filter(e=>e.day===di).map((e,j)=>{
+                  const top=((toMin(e.start)-CAL_H0*60)/60)*CAL_PXH;
+                  const h=Math.max(28,((toMin(e.end)-toMin(e.start))/60)*CAL_PXH);
+                  return (
+                    <button className={`cal-ev k-${e.kind}`} key={j} style={{top:top, height:h-4}}
+                      onClick={()=>e.lead && onOpen(e.lead)}>
+                      <b>{e.title}</b>
+                      <span className="cal-ev-meta mono">{e.start}–{e.end}</span>
+                      <span className="cal-ev-kind">{KIND_LABEL[e.kind]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </>
