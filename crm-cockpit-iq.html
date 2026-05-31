@@ -1,0 +1,1617 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cockpit · CRM Closing IQ Project</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+/* ============================== TOKENS ============================== */
+:root{
+  --page:#f0ece4; --surface:#fffdf9; --surface-2:#f9f4ec; --surface-3:#f0eae0;
+  --b1:#e7dfd2; --b2:#d9cdbb; --b3:#c2b49f;
+  --t1:#2a2418; --t2:#6e6453; --t3:#9c9180; --t4:#c2b8a8;
+  --accent:#c25a37; --accent-h:#ad4d2d; --on-accent:#fff;
+  --accent-tint:rgba(194,90,55,.10); --accent-tint-2:rgba(194,90,55,.16);
+  --hot:#c25a37; --warm:#cf8a4a; --cold:#9c9180;
+  --danger:#b34a3a; --danger-tint:rgba(179,74,58,.12);
+  --ok:#5f7d4f; --ok-tint:rgba(95,125,79,.14);
+  --r-card:10px; --r-panel:14px; --r-pill:999px;
+  --sh-card:0 1px 2px rgba(40,30,12,.05), 0 1px 3px rgba(40,30,12,.04);
+  --sh-pop:0 12px 40px rgba(40,28,10,.16), 0 2px 8px rgba(40,28,10,.08);
+  --sh-lift:0 8px 24px rgba(40,28,10,.14);
+  --rail:188px;
+  --pad:14px;
+  --speed:.18s;
+}
+[data-theme="dark"]{
+  --page:#15110b; --surface:#1e1810; --surface-2:#241d13; --surface-3:#2e2619;
+  --b1:#2c2417; --b2:#3b3122; --b3:#544733;
+  --t1:#f4efe6; --t2:#bdb09b; --t3:#8a7e6a; --t4:#615847;
+  --accent:#db6f4b; --accent-h:#e5825f; --on-accent:#1a130c;
+  --accent-tint:rgba(219,111,75,.14); --accent-tint-2:rgba(219,111,75,.22);
+  --hot:#db6f4b; --warm:#d49a5e; --cold:#8a7e6a;
+  --danger:#d3725f; --danger-tint:rgba(211,114,95,.16);
+  --ok:#8aa873; --ok-tint:rgba(138,168,115,.16);
+  --sh-card:0 1px 2px rgba(0,0,0,.35), 0 1px 3px rgba(0,0,0,.25);
+  --sh-pop:0 16px 48px rgba(0,0,0,.55), 0 2px 10px rgba(0,0,0,.4);
+  --sh-lift:0 10px 28px rgba(0,0,0,.5);
+}
+[data-density="compact"]{ --pad:10px; }
+[data-density="cozy"]{ --pad:18px; }
+
+*{box-sizing:border-box; margin:0; padding:0}
+html,body{height:100%}
+body{
+  font-family:'Hanken Grotesk',system-ui,sans-serif;
+  background:var(--page); color:var(--t1);
+  font-size:14.5px; line-height:1.45; -webkit-font-smoothing:antialiased;
+  letter-spacing:-.006em; overflow:hidden;
+}
+#root{height:100vh}
+.mono{font-family:'JetBrains Mono',monospace; font-feature-settings:"tnum" 1; letter-spacing:-.01em}
+h1,h2,h3,h4{letter-spacing:-.022em; line-height:1.12; font-weight:800}
+button{font-family:inherit; cursor:pointer; border:none; background:none; color:inherit}
+button:disabled{cursor:not-allowed}
+input,textarea{font-family:inherit; color:inherit}
+::selection{background:var(--accent-tint-2)}
+:focus-visible{outline:2.5px solid var(--accent); outline-offset:2px; border-radius:6px}
+::-webkit-scrollbar{height:11px; width:11px}
+::-webkit-scrollbar-thumb{background:var(--b2); border-radius:99px; border:3px solid transparent; background-clip:content-box}
+::-webkit-scrollbar-thumb:hover{background:var(--b3); background-clip:content-box}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ============================== APP SHELL ============================== */
+.app{display:grid; grid-template-columns:var(--rail) 1fr; height:100vh; overflow:hidden}
+
+/* ----- nav rail ----- */
+.rail{
+  background:var(--surface); border-right:1px solid var(--b1);
+  display:flex; flex-direction:column; padding:16px 12px; gap:3px; min-width:0;
+}
+.logo{display:flex; align-items:center; gap:10px; padding:6px 8px 18px}
+.logo-mark{
+  width:30px; height:30px; border-radius:8px; background:var(--accent); color:var(--on-accent);
+  display:grid; place-items:center; font-weight:800; font-size:16px; flex:none;
+  box-shadow:0 2px 6px rgba(194,90,55,.35);
+}
+.logo-txt{font-weight:800; font-size:14px; letter-spacing:-.03em}
+.logo-txt span{display:block; font-size:10.5px; font-weight:500; color:var(--t3); letter-spacing:.02em}
+.nav-item{
+  display:flex; align-items:center; gap:11px; padding:9px 11px; border-radius:9px;
+  color:var(--t2); font-weight:600; font-size:14px; width:100%; text-align:left;
+  position:relative; transition:background var(--speed), color var(--speed);
+}
+.nav-item svg{width:18px; height:18px; flex:none; stroke-width:1.8}
+.nav-item:hover{background:var(--surface-2); color:var(--t1)}
+.nav-item.active{background:var(--accent-tint); color:var(--accent)}
+.nav-item.active::before{
+  content:''; position:absolute; left:-12px; top:8px; bottom:8px; width:3px;
+  background:var(--accent); border-radius:0 3px 3px 0;
+}
+.nav-badge{margin-left:auto; font-size:11px; font-weight:700; background:var(--accent); color:var(--on-accent);
+  border-radius:99px; min-width:19px; height:19px; padding:0 6px; display:grid; place-items:center}
+.rail-spacer{flex:1}
+.rail-tools{display:flex; gap:6px; padding:0 4px 8px}
+.icon-btn{
+  width:34px; height:34px; border-radius:9px; display:grid; place-items:center; color:var(--t2);
+  border:1px solid transparent; transition:all var(--speed);
+}
+.icon-btn:hover{background:var(--surface-2); color:var(--t1); border-color:var(--b1)}
+.icon-btn svg{width:17px; height:17px; stroke-width:1.8}
+.profile{
+  display:flex; align-items:center; gap:10px; padding:8px; border-radius:10px; border:1px solid var(--b1);
+  background:var(--surface-2); width:100%; text-align:left; transition:all var(--speed);
+}
+.profile:hover{border-color:var(--b2)}
+.profile-meta{min-width:0}
+.profile-meta b{font-size:13px; display:block; font-weight:700}
+.profile-meta span{font-size:10.5px; color:var(--t3); text-transform:uppercase; letter-spacing:.08em; font-weight:600}
+
+/* ----- avatar ----- */
+.avatar{
+  border-radius:9px; display:grid; place-items:center; font-weight:700; flex:none;
+  font-size:12px; letter-spacing:-.02em; color:var(--accent); background:var(--accent-tint);
+  border:1px solid var(--accent-tint-2);
+}
+.avatar.sz-sm{width:30px; height:30px; font-size:11px; border-radius:8px}
+.avatar.sz-md{width:38px; height:38px}
+.avatar.sz-lg{width:46px; height:46px; font-size:15px; border-radius:11px}
+.avatar.muted{color:var(--t2); background:var(--surface-3); border-color:var(--b1)}
+
+/* ----- work area ----- */
+.work{min-width:0; min-height:0; display:flex; flex-direction:column; overflow:hidden; position:relative}
+.screen-head{padding:20px 26px 14px; display:flex; align-items:flex-start; gap:18px; flex-wrap:wrap}
+.screen-title h1{font-size:23px}
+.screen-title p{color:var(--t3); font-size:13px; margin-top:3px; font-weight:500}
+.head-tools{margin-left:auto; display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+
+/* ----- inputs ----- */
+.search{
+  display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--b1);
+  border-radius:9px; padding:8px 12px; min-width:230px; transition:border var(--speed), box-shadow var(--speed);
+}
+.search:focus-within{border-color:var(--b3); box-shadow:0 0 0 3px var(--accent-tint)}
+.search svg{width:16px; height:16px; color:var(--t3); flex:none; stroke-width:1.9}
+.search input{border:none; background:none; outline:none; width:100%; font-size:13.5px}
+.search input::placeholder{color:var(--t4)}
+
+.seg{display:inline-flex; background:var(--surface-2); border:1px solid var(--b1); border-radius:9px; padding:3px; gap:2px}
+.seg button{display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:7px; font-size:12.5px; font-weight:600; color:var(--t2); transition:all var(--speed)}
+.seg button svg{width:14px; height:14px; stroke-width:2}
+.seg button.on{background:var(--surface); color:var(--t1); box-shadow:var(--sh-card)}
+
+.btn{display:inline-flex; align-items:center; gap:8px; padding:9px 15px; border-radius:9px; font-weight:700; font-size:13.5px; transition:all var(--speed); border:1px solid transparent}
+.btn svg{width:16px; height:16px; stroke-width:2}
+.btn-accent{background:var(--accent); color:var(--on-accent); box-shadow:0 2px 8px rgba(194,90,55,.3)}
+.btn-accent:hover{background:var(--accent-h)}
+.btn-ghost{background:var(--surface); border-color:var(--b1); color:var(--t1)}
+.btn-ghost:hover{border-color:var(--b3); background:var(--surface-2)}
+.btn-soft{background:var(--surface-2); color:var(--t1); border-color:var(--b1)}
+.btn-soft:hover{background:var(--surface-3)}
+.btn .dot{width:7px; height:7px; border-radius:99px; background:currentColor}
+.pulse-dot{position:relative}
+.pulse-dot::after{content:''; position:absolute; inset:-4px; border-radius:99px; border:1.5px solid currentColor; opacity:.6; animation:ring 1.6s ease-out infinite}
+@keyframes ring{0%{transform:scale(.6); opacity:.7}100%{transform:scale(1.9); opacity:0}}
+
+.hint{display:inline-flex; align-items:center; gap:7px; font-size:11.5px; color:var(--t3); font-weight:500; padding:5px 11px; background:var(--surface-2); border:1px dashed var(--b2); border-radius:99px}
+.hint svg{width:13px; height:13px; stroke-width:1.8}
+
+/* ----- meta / mono labels ----- */
+.eyebrow{font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.13em; text-transform:uppercase; color:var(--t3)}
+.src{font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--t3)}
+
+/* ----- heat gauge ----- */
+.heat{display:inline-flex; align-items:flex-end; gap:2px; height:13px}
+.heat i{width:3.5px; border-radius:2px; background:var(--b2)}
+.heat i:nth-child(1){height:5px} .heat i:nth-child(2){height:9px} .heat i:nth-child(3){height:13px}
+.heat.chaud i{background:var(--hot)}
+.heat.tiede i:nth-child(1),.heat.tiede i:nth-child(2){background:var(--warm)}
+.heat.froid i:nth-child(1){background:var(--cold)}
+
+/* ----- badges ----- */
+.tag{font-family:'JetBrains Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; padding:3px 7px; border-radius:6px; display:inline-flex; align-items:center; gap:4px}
+.tag-noshow{background:var(--danger-tint); color:var(--danger)}
+.tag-ok{background:var(--ok-tint); color:var(--ok)}
+.tag-prefilled{background:var(--surface-3); color:var(--t2); border:1px solid var(--b1)}
+.tag-wait{background:var(--accent-tint); color:var(--accent)}
+
+/* ============================== KANBAN ============================== */
+.board-wrap{flex:1; min-height:0; overflow-x:auto; overflow-y:hidden; padding:4px 26px 24px}
+.board{display:flex; gap:16px; height:100%; min-height:0; width:max-content}
+.col{
+  width:282px; flex:none; display:flex; flex-direction:column; min-height:0;
+  background:var(--surface-2); border:1px solid var(--b1); border-radius:var(--r-panel);
+  transition:background var(--speed), border-color var(--speed), box-shadow var(--speed);
+}
+.col.special{background:var(--accent-tint); border-color:var(--accent-tint-2)}
+.col.drag-over{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-tint); background:var(--accent-tint)}
+.col-head{display:flex; align-items:center; gap:8px; padding:13px 14px 10px}
+.col-dot{width:8px; height:8px; border-radius:99px; background:var(--b3)}
+.col.special .col-dot{background:var(--accent)}
+.col-head h3{font-size:13px; font-weight:700; letter-spacing:-.01em}
+.col-count{font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; color:var(--t3); background:var(--surface); border:1px solid var(--b1); border-radius:6px; padding:1px 7px}
+.col-add{margin-left:auto; width:26px; height:26px; border-radius:7px; display:grid; place-items:center; color:var(--t3)}
+.col-add:hover{background:var(--surface); color:var(--t1)}
+.col-add svg{width:15px; height:15px; stroke-width:2}
+.col-body{flex:1; min-height:0; overflow-y:auto; padding:4px 10px 12px; display:flex; flex-direction:column; gap:9px}
+.col-empty{margin:6px 4px; padding:18px 12px; border:1px dashed var(--b2); border-radius:10px; text-align:center; color:var(--t4); font-size:12px; font-weight:500}
+
+.card{
+  background:var(--surface); border:1px solid var(--b1); border-radius:var(--r-card);
+  padding:11px 12px; cursor:pointer; transition:transform var(--speed), box-shadow var(--speed), border-color var(--speed);
+  box-shadow:var(--sh-card); position:relative;
+}
+.card:hover{border-color:var(--b3); box-shadow:var(--sh-lift); transform:translateY(-1px)}
+.card:active{cursor:grabbing}
+.card.dragging{opacity:.35; transform:scale(.98)}
+.card.drop-before::before,.card.drop-after::after{content:''; position:absolute; left:0; right:0; height:3px; background:var(--accent); border-radius:3px; box-shadow:0 0 0 3px var(--accent-tint)}
+.card.drop-before::before{top:-6px}
+.card.drop-after::after{bottom:-6px}
+.card-top{display:flex; gap:10px; align-items:flex-start}
+.card-id{min-width:0; flex:1}
+.card-name{font-weight:700; font-size:14px; letter-spacing:-.02em; display:flex; align-items:center; gap:6px; flex-wrap:wrap}
+.card-sub{display:flex; align-items:center; gap:7px; margin-top:3px}
+.card-action{margin-top:10px; display:flex; align-items:center; gap:7px; font-size:12px; color:var(--t2); background:var(--surface-2); border-radius:8px; padding:6px 9px; font-weight:600}
+.card-action .live{width:6px; height:6px; border-radius:99px; background:var(--accent); flex:none}
+.card-action .live.idle{background:var(--b3)}
+.card-action.money{color:var(--accent)}
+.card-action.paid{color:var(--ok)}
+.card-action .amt{font-family:'JetBrains Mono',monospace; font-weight:700}
+
+/* ============================== FICHE ============================== */
+.fiche{flex:1; min-height:0; overflow-y:auto; padding:0 26px 30px}
+.fiche-head{display:flex; align-items:center; gap:16px; padding:18px 0 16px; flex-wrap:wrap; border-bottom:1px solid var(--b1); margin-bottom:18px}
+.back{display:inline-flex; align-items:center; gap:6px; color:var(--t2); font-weight:600; font-size:13px; padding:6px 10px; border-radius:8px}
+.back:hover{background:var(--surface-2); color:var(--t1)}
+.back svg{width:15px; height:15px; stroke-width:2}
+.fiche-id h1{font-size:22px; display:flex; align-items:center; gap:9px}
+.fiche-contacts{display:flex; align-items:center; gap:14px; margin-top:6px; flex-wrap:wrap}
+.contact{display:inline-flex; align-items:center; gap:7px; font-size:13px; color:var(--t2); font-weight:500}
+.contact svg{width:14px; height:14px; stroke-width:1.9; color:var(--t3)}
+.contact.phone{cursor:pointer; color:var(--t1)}
+.contact.phone:hover{color:var(--accent)}
+.contact.phone:hover svg{color:var(--accent)}
+.contact .mono{color:var(--t1); font-weight:500}
+.status-pill{margin-left:auto; display:inline-flex; align-items:center; gap:7px; padding:7px 13px; border-radius:99px; background:var(--surface-2); border:1px solid var(--b1); font-weight:700; font-size:12.5px}
+.status-pill .sdot{width:8px; height:8px; border-radius:99px}
+
+.fiche-grid{display:grid; grid-template-columns:1fr 1.15fr .9fr; gap:16px; align-items:start}
+@media(max-width:1180px){.fiche-grid{grid-template-columns:1fr 1fr}}
+.panel{background:var(--surface); border:1px solid var(--b1); border-radius:var(--r-panel); overflow:hidden}
+.panel-head{display:flex; align-items:center; justify-content:space-between; padding:13px 16px; border-bottom:1px solid var(--b1)}
+.panel-head .eyebrow{font-size:10.5px}
+.panel-body{padding:6px 16px 16px}
+
+.field{padding:13px 0; border-bottom:1px solid var(--b1)}
+.field:last-child{border-bottom:none}
+.field .eyebrow{display:block; margin-bottom:5px}
+.field .val{font-size:15px; font-weight:600}
+.field .val.big{font-size:21px; font-weight:800; letter-spacing:-.03em}
+.field .val.mono{font-family:'JetBrains Mono',monospace}
+.field .val .unit{font-size:13px; color:var(--t3); font-weight:600; margin-left:5px}
+
+/* timeline */
+.tl{position:relative; padding-left:6px}
+.tl-item{position:relative; padding:0 0 18px 26px}
+.tl-item:last-child{padding-bottom:4px}
+.tl-item::before{content:''; position:absolute; left:7px; top:18px; bottom:-2px; width:1.5px; background:var(--b1)}
+.tl-item:last-child::before{display:none}
+.tl-dot{position:absolute; left:0; top:1px; width:16px; height:16px; border-radius:99px; background:var(--surface); border:2px solid var(--b3); display:grid; place-items:center}
+.tl-dot svg{width:9px; height:9px; stroke-width:2.4; color:var(--t3)}
+.tl-dot.accent{border-color:var(--accent)} .tl-dot.accent svg{color:var(--accent)}
+.tl-dot.ok{border-color:var(--ok)} .tl-dot.ok svg{color:var(--ok)}
+.tl-dot.danger{border-color:var(--danger)} .tl-dot.danger svg{color:var(--danger)}
+.tl-row{display:flex; align-items:baseline; gap:8px; justify-content:space-between}
+.tl-title{font-weight:700; font-size:13.5px}
+.tl-when{font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--t3); flex:none}
+.tl-text{font-size:13px; color:var(--t2); margin-top:3px; line-height:1.5}
+.tl-granola{margin-top:8px; background:var(--surface-2); border:1px solid var(--b1); border-radius:9px; padding:10px 11px}
+.tl-granola .g-head{display:flex; align-items:center; gap:7px; margin-bottom:6px}
+.tl-granola .g-head .eyebrow{color:var(--accent)}
+.tl-granola .g-line{font-size:12.5px; color:var(--t2); display:flex; gap:7px; padding:2px 0}
+.tl-granola .g-line b{color:var(--t1); font-weight:600}
+
+/* actions column */
+.actions{display:flex; flex-direction:column; gap:9px}
+.act{
+  display:flex; align-items:center; gap:12px; padding:13px 14px; border-radius:11px;
+  border:1px solid var(--b1); background:var(--surface-2); text-align:left; width:100%;
+  transition:all var(--speed); position:relative;
+}
+.act:hover{border-color:var(--b3); background:var(--surface-3)}
+.act-ic{width:34px; height:34px; border-radius:9px; display:grid; place-items:center; background:var(--surface); border:1px solid var(--b1); flex:none}
+.act-ic svg{width:17px; height:17px; stroke-width:1.9; color:var(--t2)}
+.act-tx b{display:block; font-weight:700; font-size:14px}
+.act-tx span{font-size:11.5px; color:var(--t3); font-weight:500}
+.act .chev{margin-left:auto; color:var(--t3)}
+.act .chev svg{width:16px; height:16px; stroke-width:2}
+.act.primary{background:var(--accent); border-color:var(--accent); box-shadow:0 4px 14px rgba(194,90,55,.32)}
+.act.primary .act-ic{background:rgba(255,255,255,.16); border-color:transparent}
+.act.primary .act-ic svg{color:var(--on-accent)}
+.act.primary .act-tx b{color:var(--on-accent)}
+.act.primary .act-tx span{color:rgba(255,255,255,.78)}
+.act.primary:hover{background:var(--accent-h)}
+
+/* ============================== OVERLAYS ============================== */
+.backdrop{position:fixed; inset:0; background:rgba(30,20,8,.42); backdrop-filter:blur(2px); z-index:80; animation:fade .2s ease}
+[data-theme="dark"] .backdrop{background:rgba(0,0,0,.6)}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes pop{from{opacity:0; transform:translateY(8px) scale(.985)}to{opacity:1; transform:none}}
+@keyframes slideR{from{transform:translateX(24px); opacity:0}to{transform:none; opacity:1}}
+
+/* dropdown (offre menu) */
+.menu{
+  position:absolute; z-index:70; background:var(--surface); border:1px solid var(--b2); border-radius:var(--r-panel);
+  box-shadow:var(--sh-pop); padding:8px; min-width:268px; animation:pop .16s ease;
+}
+.menu-h{padding:6px 8px 8px}
+.menu-item{display:flex; align-items:center; justify-content:space-between; padding:10px 11px; border-radius:9px; width:100%; transition:background var(--speed)}
+.menu-item:hover{background:var(--surface-2)}
+.menu-item .amt{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:15px}
+.menu-item .tg{font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--t3); font-weight:500}
+.menu-sep{height:1px; background:var(--b1); margin:6px 4px}
+.menu-custom{display:flex; align-items:center; gap:8px; padding:10px 11px; border-radius:9px; color:var(--t2); font-weight:600; font-size:13px; width:100%}
+.menu-custom:hover{background:var(--surface-2); color:var(--t1)}
+.menu-custom svg{width:15px; height:15px; stroke-width:2}
+
+/* payment modal */
+.modal{position:fixed; z-index:90; left:50%; top:50%; transform:translate(-50%,-50%);
+  width:480px; max-width:calc(100vw - 40px); background:var(--surface); border:1px solid var(--b2);
+  border-radius:18px; box-shadow:var(--sh-pop); padding:26px 26px 22px; animation:pop .2s ease}
+.modal .m-eye{margin-bottom:10px}
+.modal .m-amt{font-family:'JetBrains Mono',monospace; font-size:44px; font-weight:700; letter-spacing:-.04em; line-height:1}
+.modal .m-for{color:var(--t3); font-size:13.5px; margin-top:6px; font-weight:500}
+.amt-input{font-family:'JetBrains Mono',monospace; font-size:40px; font-weight:700; letter-spacing:-.04em; width:200px; border:none; border-bottom:2px solid var(--b2); background:none; outline:none; padding:0 0 4px}
+.amt-input:focus{border-color:var(--accent)}
+
+.chan{display:flex; align-items:center; gap:12px; padding:13px 14px; border:1px solid var(--b1); border-radius:11px; background:var(--surface-2); margin-top:10px}
+.chan.main{border-color:var(--b3); background:var(--surface)}
+.chan.soon{opacity:.6}
+.chan-ic{width:36px; height:36px; border-radius:9px; background:var(--surface); border:1px solid var(--b1); display:grid; place-items:center; flex:none}
+.chan-ic svg{width:18px; height:18px; stroke-width:1.9; color:var(--t2)}
+.chan-tx{min-width:0; flex:1}
+.chan-tx b{display:flex; align-items:center; gap:8px; font-weight:700; font-size:14px}
+.chan-tx span{font-size:12px; color:var(--t3); display:block}
+.chan-tx .mono{color:var(--t2)}
+.soon-pill{font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; background:var(--surface-3); color:var(--t3); padding:2px 7px; border-radius:99px; border:1px solid var(--b1)}
+.chan-main-pill{font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; background:var(--accent-tint); color:var(--accent); padding:2px 7px; border-radius:99px}
+
+.mail-prev{margin-top:14px; border:1px solid var(--b1); border-radius:11px; overflow:hidden}
+.mail-prev .mp-bar{display:flex; align-items:center; gap:7px; padding:9px 12px; background:var(--surface-2); border-bottom:1px solid var(--b1)}
+.mail-prev .mp-bar .eyebrow{font-size:9.5px}
+.mail-prev .mp-body{padding:12px 14px; font-size:12.5px; color:var(--t2); line-height:1.6; max-height:172px; overflow:auto; white-space:pre-line}
+.mail-prev .mp-subj{font-weight:700; color:var(--t1); font-size:13px; margin-bottom:8px}
+.mail-prev .mp-link{color:var(--accent); font-family:'JetBrains Mono',monospace; font-size:11.5px; word-break:break-all}
+.modal-note{margin-top:14px; font-size:11.5px; color:var(--t3); text-align:center; font-weight:500}
+.modal-foot{display:flex; gap:10px; margin-top:14px}
+.modal-foot .btn{flex:1; justify-content:center; padding:12px}
+.x-btn{position:absolute; top:14px; right:14px; width:30px; height:30px; border-radius:8px; display:grid; place-items:center; color:var(--t3)}
+.x-btn:hover{background:var(--surface-2); color:var(--t1)}
+.x-btn svg{width:16px; height:16px; stroke-width:2}
+
+/* email copiable + tel dans la fiche */
+.contact.copy{cursor:pointer; color:var(--t1); background:var(--surface-2); border:1px solid var(--b1); padding:6px 11px; border-radius:8px; transition:all var(--speed)}
+.contact.copy:hover{border-color:var(--accent); color:var(--accent)}
+.contact.copy:hover svg{color:var(--accent)}
+.contact.copy .copy-ic{width:13px; height:13px; color:var(--t3); margin-left:2px}
+.contact.copy.copied{border-color:var(--ok); color:var(--ok)}
+.contact.copy.copied svg{color:var(--ok)}
+
+/* modale large + scrollable */
+.modal.wide{width:720px; padding:0; max-height:calc(100vh - 60px); display:flex; flex-direction:column}
+.modal .m-scroll{overflow-y:auto; padding:24px 26px}
+.modal .m-fixhead{padding:22px 26px 14px; border-bottom:1px solid var(--b1)}
+.modal .m-fixfoot{padding:14px 26px; border-top:1px solid var(--b1); display:flex; gap:10px; background:var(--surface); border-radius:0 0 18px 18px}
+.modal .m-fixfoot .btn{flex:1; justify-content:center; padding:12px}
+
+/* sélection d'offre paiement */
+.pay-offers{display:flex; flex-direction:column; gap:10px}
+.pay-offer{display:flex; align-items:center; gap:14px; padding:15px 16px; border:1.5px solid var(--b1); border-radius:12px; background:var(--surface-2); text-align:left; width:100%; transition:all var(--speed)}
+.pay-offer:hover{border-color:var(--b3); background:var(--surface-3)}
+.pay-offer.sel{border-color:var(--accent); background:var(--accent-tint)}
+.pay-offer .po-amt{font-family:'JetBrains Mono',monospace; font-size:24px; font-weight:700; letter-spacing:-.03em; flex:none; min-width:96px}
+.pay-offer .po-tx b{display:block; font-weight:700; font-size:14px}
+.pay-offer .po-tx span{font-size:12px; color:var(--t3)}
+.pay-offer .po-check{margin-left:auto; width:22px; height:22px; border-radius:99px; border:2px solid var(--b3); display:grid; place-items:center; flex:none}
+.pay-offer.sel .po-check{background:var(--accent); border-color:var(--accent)}
+.pay-offer .po-check svg{width:13px; height:13px; stroke-width:3; color:var(--on-accent); opacity:0}
+.pay-offer.sel .po-check svg{opacity:1}
+
+/* champs éditables mail */
+.edit-field{margin-top:14px}
+.edit-field .eyebrow{display:block; margin-bottom:6px}
+.edit-input{width:100%; border:1px solid var(--b1); border-radius:9px; background:var(--surface-2); padding:10px 12px; font-size:13.5px; font-weight:600; outline:none; transition:border var(--speed)}
+.edit-input:focus{border-color:var(--accent); background:var(--surface)}
+.edit-body{width:100%; min-height:170px; border:1px solid var(--b1); border-radius:9px; background:var(--surface-2); padding:11px 13px; font-size:13px; line-height:1.6; resize:vertical; outline:none; transition:border var(--speed)}
+.edit-body:focus{border-color:var(--accent); background:var(--surface)}
+.link-tag{display:inline-flex; align-items:center; gap:7px; margin-top:10px; padding:8px 12px; border:1px dashed var(--b2); border-radius:9px; background:var(--surface-2)}
+.link-tag .mono{color:var(--accent); font-size:12px; word-break:break-all}
+
+/* sélecteur de créneaux (agenda) */
+.slot-intro{font-size:13px; color:var(--t2); margin-bottom:16px; line-height:1.5}
+.slot-intro b{color:var(--t1)}
+.slot-week{display:grid; grid-template-columns:repeat(5,1fr); gap:10px}
+.slot-day{min-width:0}
+.slot-day h5{font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--t2); text-align:center; padding-bottom:9px; border-bottom:1px solid var(--b1); margin-bottom:9px}
+.slot-day h5 span{display:block; font-weight:500; font-size:10px; color:var(--t3); margin-top:2px}
+.slot-col{display:flex; flex-direction:column; gap:6px}
+.slot{font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600; padding:8px 4px; border:1px solid var(--b1); border-radius:8px; background:var(--surface); color:var(--t1); transition:all var(--speed); text-align:center}
+.slot:hover:not(.busy):not(.sel){border-color:var(--accent); color:var(--accent)}
+.slot.busy{color:var(--t4); background:var(--surface-3); cursor:not-allowed; text-decoration:line-through; opacity:.6}
+.slot.sel{background:var(--accent); border-color:var(--accent); color:var(--on-accent); box-shadow:0 2px 8px rgba(194,90,55,.3)}
+.slot-noon{font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:var(--t4); text-align:center; padding:5px 0 2px}
+.slot-sel-bar{margin-top:16px; padding:13px 15px; border:1px solid var(--accent-tint-2); border-radius:11px; background:var(--accent-tint); display:flex; align-items:center; gap:10px}
+.slot-sel-bar .ssb-ic{width:30px; height:30px; border-radius:8px; background:var(--surface); display:grid; place-items:center; flex:none}
+.slot-sel-bar .ssb-ic svg{width:16px; height:16px; color:var(--accent)}
+.slot-sel-bar b{font-weight:700; font-size:14px; color:var(--accent)}
+.slot-sel-bar span{font-size:12px; color:var(--t2); display:block}
+
+/* explainer Granola */
+.granola-explain{margin-top:16px; border:1px solid var(--b1); border-radius:11px; background:var(--surface-2); padding:13px 14px}
+.granola-explain .ge-head{display:flex; align-items:center; gap:8px; margin-bottom:8px}
+.granola-explain .ge-head b{font-weight:700; font-size:13px}
+.granola-explain .ge-head svg{width:15px; height:15px; color:var(--accent)}
+.granola-explain ol{margin:0; padding-left:18px}
+.granola-explain li{font-size:12.5px; color:var(--t2); line-height:1.55; padding:2px 0}
+.granola-explain li b{color:var(--t1); font-weight:600}
+.info-box{margin-top:14px; border:1px solid var(--b1); border-radius:11px; background:var(--surface-2); padding:12px 14px; font-size:12.5px; color:var(--t2); line-height:1.55}
+.info-box b{color:var(--t1)}
+.info-box .ib-head{display:flex; align-items:center; gap:7px; font-weight:700; color:var(--t1); margin-bottom:6px; font-size:13px}
+.info-box .ib-head svg{width:14px; height:14px; color:var(--accent)}
+
+/* side panels (rappeler / call / settings) */
+.side{
+  position:fixed; top:0; right:0; bottom:0; width:430px; max-width:calc(100vw - 60px); z-index:85;
+  background:var(--surface); border-left:1px solid var(--b2); box-shadow:var(--sh-pop);
+  display:flex; flex-direction:column; animation:slideR .22s cubic-bezier(.2,.8,.2,1);
+}
+.side-head{display:flex; align-items:center; gap:11px; padding:16px 18px; border-bottom:1px solid var(--b1)}
+.side-head h3{font-size:16px; flex:1}
+.side-body{flex:1; min-height:0; overflow-y:auto; padding:14px 18px}
+.side-foot{padding:14px 18px; border-top:1px solid var(--b1); display:flex; gap:10px}
+
+/* à rappeler rows */
+.rap-row{display:flex; align-items:center; gap:12px; padding:12px; border:1px solid var(--b1); border-radius:11px; margin-bottom:9px; background:var(--surface-2); transition:border var(--speed)}
+.rap-row:hover{border-color:var(--b3)}
+.rap-tx{min-width:0; flex:1}
+.rap-tx b{font-weight:700; font-size:13.5px; display:flex; align-items:center; gap:6px}
+.rap-tx span{font-size:11.5px; color:var(--t3); display:flex; align-items:center; gap:6px; margin-top:2px}
+.rap-prio{font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; width:20px; text-align:center; color:var(--t4)}
+
+/* call panel */
+.call-status{display:flex; align-items:center; gap:9px; flex:1}
+.rec{display:inline-flex; align-items:center; gap:6px; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; letter-spacing:.06em; color:var(--accent)}
+.rec .rdot{width:8px; height:8px; border-radius:99px; background:var(--accent); animation:blink 1.3s ease-in-out infinite}
+@keyframes blink{50%{opacity:.25}}
+.call-timer{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:15px}
+.brief{background:var(--surface-2); border:1px solid var(--b1); border-radius:11px; padding:13px 14px; margin-bottom:16px}
+.brief .b-line{display:flex; gap:10px; font-size:13px; padding:4px 0; color:var(--t2); line-height:1.5}
+.brief .b-line .n{font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--accent); flex:none}
+.brief .b-line b{color:var(--t1); font-weight:600}
+.check{display:flex; align-items:center; gap:11px; padding:11px 13px; border:1px solid var(--b1); border-radius:10px; margin-bottom:8px; cursor:pointer; transition:all var(--speed); background:var(--surface)}
+.check:hover{border-color:var(--b3)}
+.check.done{background:var(--surface-2); border-color:var(--b1)}
+.cbox{width:19px; height:19px; border-radius:6px; border:2px solid var(--b3); display:grid; place-items:center; flex:none; transition:all var(--speed)}
+.cbox svg{width:12px; height:12px; stroke-width:3; color:var(--on-accent); opacity:0}
+.check.done .cbox{background:var(--accent); border-color:var(--accent)}
+.check.done .cbox svg{opacity:1}
+.check-tx{font-size:13px; font-weight:600; transition:color var(--speed)}
+.check.done .check-tx{color:var(--t3); text-decoration:line-through}
+.granola-live{display:flex; align-items:center; gap:11px; padding:11px 13px; border:1px solid var(--accent-tint-2); border-radius:10px; background:var(--accent-tint); margin-bottom:8px}
+.granola-live .check-tx{color:var(--accent)}
+.wave{display:inline-flex; align-items:center; gap:2px; margin-left:auto; height:18px}
+.wave i{width:2.5px; background:var(--accent); border-radius:2px; animation:wv 1s ease-in-out infinite}
+.wave i:nth-child(1){animation-delay:0s} .wave i:nth-child(2){animation-delay:.15s}
+.wave i:nth-child(3){animation-delay:.3s} .wave i:nth-child(4){animation-delay:.45s} .wave i:nth-child(5){animation-delay:.2s}
+@keyframes wv{0%,100%{height:5px}50%{height:16px}}
+.notes-area{width:100%; min-height:96px; border:1px solid var(--b1); border-radius:10px; background:var(--surface-2); padding:11px 12px; font-size:13px; resize:vertical; outline:none; transition:border var(--speed)}
+.notes-area:focus{border-color:var(--accent); background:var(--surface)}
+.offer-chip{margin-top:14px; border:1px dashed var(--b2); border-radius:10px; padding:12px; text-align:center; background:repeating-linear-gradient(135deg,transparent,transparent 8px,var(--surface-2) 8px,var(--surface-2) 16px)}
+.offer-chip .eyebrow{display:block; margin-bottom:4px}
+.offer-chip b{font-family:'JetBrains Mono',monospace; font-size:16px}
+
+/* settings */
+.set-row{display:flex; align-items:center; justify-content:space-between; padding:14px 0; border-bottom:1px solid var(--b1)}
+.set-row:last-child{border-bottom:none}
+.set-row .lab b{display:block; font-weight:700; font-size:13.5px}
+.set-row .lab span{font-size:11.5px; color:var(--t3)}
+.swatches{display:flex; gap:8px}
+.swatch{width:30px; height:30px; border-radius:8px; border:2px solid var(--b2); cursor:pointer; position:relative}
+.swatch.on{border-color:var(--accent)}
+.swatch.on::after{content:''; position:absolute; inset:0; border-radius:6px; box-shadow:0 0 0 2px var(--surface) inset}
+
+/* incoming lead notification */
+.incoming-wrap{position:fixed; top:18px; left:calc(var(--rail) + 50%); transform:translateX(-50%); z-index:95; width:540px; max-width:calc(100vw - var(--rail) - 40px)}
+.incoming{
+  background:var(--surface); border:1px solid var(--accent); border-radius:14px; box-shadow:var(--sh-pop);
+  padding:14px 16px; display:flex; align-items:center; gap:14px; position:relative; overflow:hidden;
+  animation:dropIn .4s cubic-bezier(.2,.9,.2,1);
+}
+@keyframes dropIn{from{transform:translateY(-24px); opacity:0}to{transform:none; opacity:1}}
+.incoming::before{content:''; position:absolute; inset:0; border-radius:14px; box-shadow:0 0 0 0 var(--accent); animation:halo 1.8s ease-out infinite; pointer-events:none}
+@keyframes halo{0%{box-shadow:0 0 0 0 rgba(194,90,55,.4)}100%{box-shadow:0 0 0 14px rgba(194,90,55,0)}}
+.incoming .av{position:relative; z-index:1}
+.incoming-tx{flex:1; min-width:0; z-index:1}
+.incoming-tx .eyebrow{display:flex; align-items:center; gap:7px; color:var(--accent)}
+.incoming-tx .sonner{width:6px; height:6px; border-radius:99px; background:var(--accent); animation:blink 1s infinite}
+.incoming-tx h4{font-size:16px; margin-top:3px}
+.incoming-tx .sub{display:flex; align-items:center; gap:9px; margin-top:3px; font-size:12px; color:var(--t2)}
+.incoming-take{z-index:1}
+.incoming-dismiss{z-index:1; flex:none; width:30px; height:30px; border-radius:8px; display:grid; place-items:center; color:var(--t3); background:var(--surface-2); border:1px solid var(--b1); transition:all var(--speed)}
+.incoming-dismiss:hover{color:var(--t1); background:var(--surface-3); border-color:var(--b2)}
+.incoming-dismiss svg{width:15px; height:15px; stroke-width:2}
+
+/* toasts */
+.toasts{position:fixed; bottom:20px; right:20px; z-index:120; display:flex; flex-direction:column; gap:10px; align-items:flex-end}
+.toast{display:flex; align-items:center; gap:11px; background:var(--surface); border:1px solid var(--b2); border-radius:11px; box-shadow:var(--sh-pop); padding:12px 15px; min-width:260px; max-width:360px; animation:pop .22s ease}
+.toast .t-ic{width:30px; height:30px; border-radius:8px; display:grid; place-items:center; flex:none}
+.toast .t-ic svg{width:16px; height:16px; stroke-width:2}
+.toast.ok .t-ic{background:var(--ok-tint); color:var(--ok)}
+.toast.accent .t-ic{background:var(--accent-tint); color:var(--accent)}
+.toast.info .t-ic{background:var(--surface-3); color:var(--t2)}
+.toast .t-tx b{display:block; font-weight:700; font-size:13.5px}
+.toast .t-tx span{font-size:12px; color:var(--t3)}
+
+/* recherche */
+.search-grid{display:flex; flex-direction:column; gap:8px; max-width:780px}
+.search-row{display:flex; align-items:center; gap:14px; padding:12px 16px; background:var(--surface); border:1px solid var(--b1); border-radius:11px; cursor:pointer; transition:all var(--speed)}
+.search-row:hover{border-color:var(--b3); box-shadow:var(--sh-card)}
+.search-row .sr-tx{flex:1; min-width:0}
+.search-row .sr-tx b{font-weight:700}
+.search-row .sr-tx span{font-size:12px; color:var(--t3); display:flex; gap:8px; align-items:center; margin-top:2px}
+.stage-chip{font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; padding:4px 9px; border-radius:7px; background:var(--surface-2); border:1px solid var(--b1); color:var(--t2)}
+
+/* agenda */
+.agenda{display:flex; flex-direction:column; gap:0; max-width:720px; border:1px solid var(--b1); border-radius:var(--r-panel); overflow:hidden; background:var(--surface)}
+.ag-row{display:flex; gap:16px; padding:14px 18px; border-bottom:1px solid var(--b1); align-items:center}
+.ag-row:last-child{border-bottom:none}
+.ag-time{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:14px; width:56px; flex:none; color:var(--accent)}
+.ag-time.past{color:var(--t4)}
+.ag-tx{flex:1}
+.ag-tx b{font-weight:700; font-size:14px}
+.ag-tx span{font-size:12px; color:var(--t3)}
+.ag-day{padding:11px 18px; background:var(--surface-2); font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--t3); border-bottom:1px solid var(--b1)}
+
+/* admission */
+.adm-list{display:flex; flex-direction:column; gap:14px; max-width:980px}
+.adm-card{background:var(--surface); border:1px solid var(--b1); border-radius:var(--r-panel); overflow:hidden; transition:opacity var(--speed)}
+.adm-card.secured{opacity:.62}
+.adm-top{display:flex; align-items:center; gap:14px; padding:16px 18px}
+.adm-top .a-tx{flex:1; min-width:0}
+.adm-top .a-tx b{font-weight:800; font-size:16px; display:flex; align-items:center; gap:8px}
+.adm-top .a-tx span{font-size:12.5px; color:var(--t3)}
+.adm-grid{display:grid; grid-template-columns:repeat(4,1fr); border-top:1px solid var(--b1)}
+.adm-cell{padding:12px 16px; border-right:1px solid var(--b1)}
+.adm-cell:last-child{border-right:none}
+.adm-cell .eyebrow{display:block; margin-bottom:4px}
+.adm-cell .v{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:14px}
+.adm-cell .v.txt{font-family:'Hanken Grotesk',sans-serif; font-weight:600}
+.adm-cell .v.secured{color:var(--ok)}
+.btn-validate{background:var(--accent); color:var(--on-accent); padding:9px 18px; border-radius:9px; font-weight:700; font-size:13.5px; display:inline-flex; align-items:center; gap:8px; box-shadow:0 2px 8px rgba(194,90,55,.3)}
+.btn-validate:hover{background:var(--accent-h)}
+.btn-validate svg{width:16px; height:16px; stroke-width:2.2}
+.btn-secured{background:var(--ok-tint); color:var(--ok); padding:9px 18px; border-radius:9px; font-weight:700; font-size:13.5px; display:inline-flex; align-items:center; gap:8px}
+.btn-secured svg{width:16px; height:16px; stroke-width:2.2}
+.count-pill{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:13px; background:var(--t1); color:var(--page); padding:7px 14px; border-radius:99px}
+
+.empty-screen{display:grid; place-items:center; flex:1; color:var(--t3); text-align:center; gap:10px}
+.empty-screen svg{width:34px; height:34px; stroke-width:1.5; color:var(--t4)}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+/* ============================================================= ICONS */
+const I = {
+  leads:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><rect x="3" y="4" width="5" height="16" rx="1.4"/><rect x="10" y="4" width="5" height="11" rx="1.4"/><rect x="17" y="4" width="4" height="14" rx="1.4"/></svg>,
+  admission:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="M8 3h6l4 4v12a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V4.5A1.5 1.5 0 0 1 7.5 3z"/><path d="M14 3v4h4"/><path d="m9.5 14 1.7 1.7L15 12"/></svg>,
+  search:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>,
+  agenda:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg>,
+  phone:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="M6.5 4h3l1.3 4-2 1.4a12 12 0 0 0 5.8 5.8l1.4-2 4 1.3v3a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 4.5 6.2 2 2 0 0 1 6.5 4z"/></svg>,
+  calPlus:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4M12 13v5M9.5 15.5h5"/></svg>,
+  euro:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="M16.5 6.5A6 6 0 1 0 16.5 17M4 10.5h8M4 14h7"/></svg>,
+  mail:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>,
+  arrowR:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="M5 12h14M13 6l6 6-6 6"/></svg>,
+  send:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="m21 4-9.5 9.5M21 4l-6.5 17-3.5-7.5L3.5 10 21 4z"/></svg>,
+  check:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="m5 12.5 4.5 4.5L19 7"/></svg>,
+  x:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="M6 6l12 12M18 6 6 18"/></svg>,
+  chev:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="m9 6 6 6-6 6"/></svg>,
+  plus:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="M12 5v14M5 12h14"/></svg>,
+  back:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="M15 6l-6 6 6 6"/></svg>,
+  sun:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>,
+  moon:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg>,
+  gear:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3.9a7 7 0 0 0-2-1.2L16.2 2h-4l-.4 2.4a7 7 0 0 0-2 1.2l-2.3-.9-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-.9a7 7 0 0 0 2 1.2l.4 2.4h4l.4-2.4a7 7 0 0 0 2-1.2l2.3.9 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z"/></svg>,
+  bell:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="M18 8a6 6 0 1 0-12 0c0 6-2.5 7-2.5 7h17S18 14 18 8zM10 20a2 2 0 0 0 4 0"/></svg>,
+  user:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><circle cx="12" cy="8" r="4"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>,
+  users:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 5a3.5 3.5 0 0 1 0 6.8M21.5 20a6.5 6.5 0 0 0-4-6"/></svg>,
+  note:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="M5 4h14v16H5zM8.5 9h7M8.5 12.5h7M8.5 16h4"/></svg>,
+  noshow:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="M6.5 4h3l1.3 4-2 1.4a12 12 0 0 0 5.8 5.8l1.4-2 4 1.3v3a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 4.5 6.2 2 2 0 0 1 6.5 4z"/><path d="M3 3l18 18" stroke-width="2.2"/></svg>,
+  sms:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="M4 5h16v11H8l-4 4z"/><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01"/></svg>,
+  doc:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="M8 3h6l4 4v12a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V4.5A1.5 1.5 0 0 1 7.5 3z"/><path d="M14 3v4h4"/></svg>,
+  spark:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/></svg>,
+  copy:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>,
+  clock:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>,
+};
+
+/* ============================================================= HELPERS */
+const eur = (n)=> new Intl.NumberFormat('fr-FR').format(n).replace(/ /g,' ') + ' €';
+const initials = (l)=> (l.prenom[0]+l.nom[0]).toUpperCase();
+const srcLabel = {webinaire:'Webinaire','pub insta':'Pub Insta','référé':'Référé',brochure:'Brochure',MFF:'MFF'};
+
+const COLUMNS = [
+  {id:'contacter', label:'Lead à contacter'},
+  {id:'r1', label:'R1 à faire'},
+  {id:'r2', label:'R2 à faire'},
+  {id:'r3', label:'R3 à faire'},
+  {id:'apayer', label:'À payer'},
+  {id:'paye', label:'Payé'},
+  {id:'cpf', label:'CPF (Nour)', special:true},
+  {id:'perdu', label:'Prospect perdu'},
+];
+const COL_LABEL = Object.fromEntries(COLUMNS.map(c=>[c.id,c.label]));
+
+const OFFERS = [
+  {id:'1400', amount:1400, tag:'Non chômeur (France Travail)'},
+  {id:'1250', amount:1250, tag:'Chômeur (France Travail)'},
+];
+
+const CHECKLIST = [
+  'Confirmer le montant CPF disponible',
+  'Valider l’objectif & l’échéance',
+  'Présenter l’offre adaptée',
+  'Traiter l’objection principale',
+  'Caler la prochaine date (R2 / paiement)',
+];
+
+/* ----------- seed data (réaliste FR — formation closing/vente, CPF) ----------- */
+const SEED = [
+  // ---- NOUVEAU
+  {id:'karim', prenom:'Karim', nom:'Benali', tel:'06 21 44 88 02', email:'k.benali@gmail.com', source:'webinaire', heat:'chaud', noShow:true, column:'contacter', owner:'Léo', nextAction:'Rappeler — jamais joint', live:true, cpf:4820, metier:'Agent immobilier', budget:'≈ 1 500 €', veut:'Reconversion — formation closing / vente',
+    timeline:[{type:'note', when:'il y a 12 min', title:'Lead reçu', text:'Inscrit via webinaire « Vivre du closing ». A laissé son numéro. No-show sur le 1er créneau.'}]},
+  {id:'manon', prenom:'Manon', nom:'Lopez', tel:'06 77 03 51 19', email:'manon.lopez@gmail.com', source:'webinaire', heat:'chaud', noShow:true, column:'contacter', owner:'Léo', nextAction:'À rappeler — chaud', live:true, cpf:5600, metier:'Conseillère bancaire', budget:'≈ 2 000 €', veut:'Quitter la banque, vivre du closing en remote',
+    timeline:[{type:'note', when:'il y a 1 h', title:'Lead reçu', text:'Très active pendant le webi (questions chat). No-show sur le R1 — à relancer vite.'}]},
+  // ---- R1 FAIT
+  {id:'mehdi', prenom:'Mehdi', nom:'Ouattara', tel:'07 81 26 44 70', email:'m.ouattara@gmail.com', source:'webinaire', heat:'chaud', noShow:false, column:'r1', owner:'Léo', nextAction:'Caler R2 — 17h', cpf:3400, metier:'Commercial terrain', budget:'≈ 1 800 €', veut:'Passer en closing high-ticket, doubler ses revenus',
+    timeline:[
+      {type:'recap', when:'aujourd’hui 11:20', title:'R1 — diagnostic (42 min)', text:'Très motivé. Stagne depuis 14 mois sur du B2C. Veut du high-ticket.', granola:{contexte:'Commercial terrain depuis 5 ans, plafonne à 2 200€/mois.', pain:'Aucune progression de revenu malgré le volume d’appels.', angle:'Le closing high-ticket : même effort, panier × 4.'}},
+      {type:'appel', when:'aujourd’hui 11:18', title:'Appel sortant', text:'Joint au 2e essai. R1 fait dans la foulée.'},
+    ]},
+  {id:'ines', prenom:'Inès', nom:'Lefèvre', tel:'06 14 89 22 56', email:'ines.lefevre@gmail.com', source:'référé', heat:'tiede', noShow:false, column:'r1', owner:'Léo', nextAction:'Relancer mail R1', cpf:1900, metier:'Graphiste freelance', budget:'≈ 1 000 €', veut:'Ajouter une corde sales pour vendre ses propres offres',
+    timeline:[
+      {type:'mail', when:'hier 18:02', title:'Email post-R1 envoyé', text:'Brochure + dates + devoirs. Pas encore ouvert.'},
+      {type:'recap', when:'hier 16:30', title:'R1 — diagnostic (38 min)', text:'Référée par une ancienne élève. Éveil moyen, à reframer en R2.', granola:{contexte:'Graphiste freelance, galère à vendre ses prestas.', pain:'Excellente technique, zéro process de vente.', angle:'Le closing pour vendre SES offres, pas celles des autres.'}},
+    ]},
+  // ---- LEAD CONTACTÉ
+  {id:'sophie', prenom:'Sophie', nom:'Marchand', tel:'07 58 12 90 34', email:'sophie.marchand@outlook.fr', source:'pub insta', heat:'tiede', noShow:false, column:'contacter', owner:'Léo', nextAction:'Joint — caler R1', cpf:2150, metier:'Assistante commerciale', budget:'≈ 1 200 €', veut:'Monter en compétence sales / devenir closeuse',
+    timeline:[
+      {type:'appel', when:'il y a 20 min', title:'1er appel — joint', text:'Intéressée, R1 à caler cette semaine.'},
+      {type:'note', when:'il y a 40 min', title:'Lead reçu', text:'Vient de la pub Insta « Workshop closing ».'},
+    ]},
+  // ---- R3
+  {id:'thomas', prenom:'Thomas', nom:'Girard', tel:'07 62 41 07 88', email:'t.girard@protonmail.com', source:'webinaire', heat:'chaud', noShow:false, column:'r3', owner:'Léo', nextAction:'R3 → envoyer lien', cpf:3100, metier:'Manager retail', budget:'≈ 2 500 €', veut:'Sortir du salariat, lancer son activité de closer',
+    timeline:[
+      {type:'recap', when:'aujourd’hui 10:05', title:'R1 — diagnostic (51 min)', text:'Chaud. Devoirs faits (profil présenté). Reste une objection budget → R3.', granola:{contexte:'Manager retail, 8 ans, veut son indépendance.', pain:'Plafond de verre salarial, veut piloter ses revenus.', angle:'Lever l’objection budget, closer le reste à charge.'}},
+      {type:'appel', when:'il y a 3 jours', title:'R1 — diagnostic', text:'Manque créé. Devoirs donnés.'},
+    ]},
+  {id:'awa', prenom:'Awa', nom:'Diallo', tel:'06 09 73 18 42', email:'awa.diallo@gmail.com', source:'pub insta', heat:'tiede', noShow:true, column:'r3', owner:'Léo', nextAction:'No-show R3 → rappeler', cpf:2700, metier:'Chargée de clientèle', budget:'≈ 1 400 €', veut:'Compléter ses revenus avec du closing à mi-temps',
+    timeline:[
+      {type:'noshow', when:'hier 15:30', title:'No-show R3', text:'Absente au R3. SMS de reprog envoyé automatiquement.'},
+      {type:'recap', when:'il y a 4 jours', title:'R1 — diagnostic', text:'Intéressée mais hésite (conjoint à convaincre). Mini-devoir donné.'},
+    ]},
+  // ---- À PAYER
+  {id:'lucas', prenom:'Lucas', nom:'Perret', tel:'07 44 60 93 21', email:'lucas.perret@gmail.com', source:'référé', heat:'chaud', noShow:false, column:'apayer', owner:'Léo', nextAction:'1 400 € envoyé — relance J+1', offer:1400,
+    cpf:1500, metier:'Demandeur d’emploi', budget:'reste à charge 1 400 €', veut:'Reconversion totale vers le closing',
+    timeline:[
+      {type:'paiement', when:'aujourd’hui 09:40', title:'Lien Stripe envoyé — 1 400 €', text:'Reste à charge (CPF 1 500 €). En attente de paiement.'},
+      {type:'recap', when:'hier', title:'R2 — close amorcé', text:'OK pour démarrer. Carte plafonnée → relance J+1 prévue.'},
+    ]},
+  {id:'nadia', prenom:'Nadia', nom:'Cherif', tel:'06 31 55 27 09', email:'nadia.cherif@gmail.com', source:'webinaire', heat:'chaud', noShow:false, column:'apayer', owner:'Léo', nextAction:'3× — 1re échéance à venir', offer:3000,
+    cpf:0, metier:'Indépendante', budget:'3 × 1 000 €', veut:'Structurer sa vente, scaler son activité',
+    timeline:[
+      {type:'paiement', when:'hier 17:12', title:'Lien Stripe envoyé — 3 × 1 000 €', text:'Sans CPF, paiement échelonné. 1re échéance en cours.'},
+    ]},
+  // ---- PAYÉ
+  {id:'julien', prenom:'Julien', nom:'Mercier', tel:'07 70 02 64 31', email:'j.mercier@gmail.com', source:'webinaire', heat:'chaud', noShow:false, column:'paye', owner:'Léo', nextAction:'2 900 € payé', offer:2900, paid:true,
+    cpf:0, metier:'Cadre commercial', budget:'2 900 € one-shot', veut:'Devenir closer senior, viser le 7500',
+    timeline:[
+      {type:'paiement', when:'aujourd’hui 08:55', title:'Paiement reçu — 2 900 €', text:'Stripe encaissé. Onboarding amorcé. À passer admission si CPF.', paid:true},
+    ]},
+  {id:'fatou', prenom:'Fatou', nom:'Sow', tel:'06 88 49 15 73', email:'fatou.sow@gmail.com', source:'pub insta', heat:'chaud', noShow:false, column:'paye', owner:'Léo', nextAction:'7 500 € payé', offer:7500, paid:true,
+    cpf:1500, metier:'Coach sportif', budget:'7 500 € (upsell)', veut:'Transformation complète + missions B2B agence',
+    timeline:[
+      {type:'paiement', when:'hier 19:30', title:'Paiement reçu — 7 500 €', text:'Upsell closé. Reste à charge à confirmer admission.', paid:true},
+    ]},
+  // ---- CPF (Nour) — dossiers transmis à l'admission
+  {id:'etienne', prenom:'Étienne', nom:'Roux', tel:'07 12 38 90 65', email:'e.roux@gmail.com', source:'webinaire', heat:'chaud', noShow:false, column:'cpf', owner:'Léo', nextAction:'Transmis admission', admMontant:2900, formation:'Closing / Vente', admStatus:'pending',
+    cpf:5000, metier:'Technicien', budget:'2 900 € payé', veut:'Reconversion vers la vente B2B',
+    timeline:[{type:'paiement', when:'il y a 2 jours', title:'Reste à charge payé — 2 900 €', text:'Transmis à Nour pour dossier CPF.', paid:true}]},
+  {id:'camille', prenom:'Camille', nom:'Faure', tel:'06 50 71 24 88', email:'c.faure@gmail.com', source:'référé', heat:'chaud', noShow:false, column:'cpf', owner:'Léo', nextAction:'Transmis admission', admMontant:1250, formation:'Closing / Vente', admStatus:'pending',
+    cpf:4200, metier:'Graphiste', budget:'1 250 € payé', veut:'Vendre ses prestations créatives',
+    timeline:[{type:'paiement', when:'il y a 2 jours', title:'Reste à charge payé — 1 250 €', text:'Transmis à Nour pour dossier CPF.', paid:true}]},
+  {id:'yacine', prenom:'Yacine', nom:'Hamdaoui', tel:'07 29 64 80 17', email:'y.hamdaoui@gmail.com', source:'webinaire', heat:'chaud', noShow:false, column:'cpf', owner:'Léo', nextAction:'Transmis admission', admMontant:7500, formation:'Closing / Vente', admStatus:'pending', fullCpf:true,
+    cpf:7500, metier:'Manutentionnaire', budget:'7 500 € — full CPF', veut:'Reconversion complète financée à 100% CPF',
+    timeline:[{type:'paiement', when:'il y a 1 jour', title:'Dossier full CPF — 7 500 €', text:'100% financé CPF. Transmis admission.', paid:true}]},
+  // ---- DORMANT
+  {id:'romain', prenom:'Romain', nom:'Dubois', tel:'06 02 47 88 90', email:'romain.dubois@gmail.com', source:'brochure', heat:'froid', noShow:false, column:'perdu', owner:'Léo', nextAction:'A refusé le R2', cpf:800, metier:'Étudiant', budget:'—', veut:'Curieux, pas prêt financièrement',
+    timeline:[{type:'note', when:'il y a 6 jours', title:'Prospect perdu', text:'A refusé de caler un R2. Re-pitcher sur l’édition suivante.'}]},
+];
+
+const INCOMING_POOL = [
+  {prenom:'Sarah', nom:'Nguyen', tel:'07 61 09 22 84', email:'sarah.nguyen@gmail.com', source:'webinaire', heat:'chaud', cpf:4100, metier:'Chef de projet', budget:'≈ 1 700 €', veut:'Reconversion closing / vente'},
+  {prenom:'Yanis', nom:'Berkane', tel:'06 48 30 71 25', email:'yanis.berkane@gmail.com', source:'pub insta', heat:'chaud', cpf:3300, metier:'Livreur', budget:'≈ 1 500 €', veut:'Sortir du salariat précaire'},
+  {prenom:'Léna', nom:'Caron', tel:'07 90 14 62 38', email:'lena.caron@gmail.com', source:'webinaire', heat:'tiede', cpf:2800, metier:'Esthéticienne', budget:'≈ 1 200 €', veut:'Vendre ses prestations en ligne'},
+];
+
+/* ============================================================= TIMELINE ICON MAP */
+const tlIcon = {appel:I.phone, mail:I.mail, sms:I.sms, note:I.note, noshow:I.noshow, recap:I.spark, paiement:I.euro};
+const tlTone = {paiement:'ok', noshow:'danger', recap:'accent', appel:'accent'};
+
+/* ============================================================= SMALL COMPONENTS */
+function Avatar({lead, size='sz-md', muted}){
+  return <div className={`avatar ${size} ${muted?'muted':''}`}>{initials(lead)}</div>;
+}
+function Heat({level}){
+  return <span className={`heat ${level}`} title={`Chaleur : ${level}`}><i></i><i></i><i></i></span>;
+}
+function Src({source}){ return <span className="src">{srcLabel[source]||source}</span>; }
+function CopyField({value, icon}){
+  const [done,setDone]=useState(false);
+  const copy=()=>{ try{ navigator.clipboard.writeText(value); }catch(e){} setDone(true); setTimeout(()=>setDone(false),1400); };
+  return (
+    <span className={`contact copy ${done?'copied':''}`} onClick={copy} tabIndex={0} role="button"
+      onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault(); copy();}}}
+      title="Cliquer pour copier l’email">
+      {icon({})}<span className="mono">{value}</span>{done?<I.check className="copy-ic"/>:<I.copy className="copy-ic"/>}
+    </span>
+  );
+}
+
+/* ============================================================= LEAD CARD */
+function LeadCard({lead, onOpen, onDragStart, onDragEnd, dragging, onCardDragOver, dropPos}){
+  const col = lead.column;
+  let actionEl;
+  if(col==='apayer'){
+    actionEl = <div className="card-action money"><span className="amt">{eur(lead.offer)}</span> envoyé — en attente</div>;
+  } else if(col==='paye'){
+    actionEl = <div className="card-action paid"><I.check style={{width:13,height:13,strokeWidth:2.4}}/><span className="amt">{eur(lead.offer)}</span> payé</div>;
+  } else if(col==='cpf'){
+    actionEl = <div className="card-action"><span className="live idle"></span>{lead.admStatus==='secured'?'Dossier sécurisé':'Dossier CPF — admission'}</div>;
+  } else {
+    actionEl = <div className="card-action"><span className={`live ${lead.live?'':'idle'}`}></span>{lead.nextAction}</div>;
+  }
+  return (
+    <div className={`card ${dragging?'dragging':''} ${dropPos?('drop-'+dropPos):''}`} draggable
+         onDragStart={onDragStart} onDragEnd={onDragEnd}
+         onDragOver={e=>{ e.preventDefault(); e.stopPropagation();
+           const r=e.currentTarget.getBoundingClientRect();
+           onCardDragOver(lead.id, (e.clientY-r.top)<r.height/2?'before':'after', col); }}
+         onClick={onOpen} tabIndex={0} role="button"
+         onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault(); onOpen();}}}>
+      <div className="card-top">
+        <Avatar lead={lead} size="sz-sm"/>
+        <div className="card-id">
+          <div className="card-name">{lead.prenom} {lead.nom}
+            {lead.noShow && <span className="tag tag-noshow">No-show</span>}
+          </div>
+          <div className="card-sub"><Src source={lead.source}/><Heat level={lead.heat}/></div>
+        </div>
+      </div>
+      {actionEl}
+    </div>
+  );
+}
+
+/* ============================================================= KANBAN BOARD */
+function Board({leads, search, setSearch, onOpenLead, onReorder, onRappeler, rappelerCount}){
+  const [dragId, setDragId] = useState(null);
+  const [overCol, setOverCol] = useState(null);
+  const [over, setOver] = useState(null); // {cardId, pos}
+
+  const visible = useMemo(()=> leads.filter(l=>{
+    if(l.owner!=='Léo') return false; // closer : uniquement SES leads
+    if(search.trim()){
+      const q=search.toLowerCase();
+      if(!(`${l.prenom} ${l.nom} ${l.metier} ${l.email}`.toLowerCase().includes(q))) return false;
+    }
+    return true;
+  }),[leads,search]);
+
+  const handleCardDragOver=(cardId,pos,colId)=>{ setOver({cardId,pos}); if(overCol!==colId) setOverCol(colId); };
+
+  const dropOn=(e,colId)=>{
+    e.preventDefault();
+    if(dragId){
+      let beforeId=null;
+      if(over && over.cardId && over.cardId!==dragId){
+        const colItems = visible.filter(l=>l.column===colId && l.id!==dragId);
+        const idx = colItems.findIndex(l=>l.id===over.cardId);
+        if(idx!==-1) beforeId = over.pos==='before' ? over.cardId : (colItems[idx+1]?colItems[idx+1].id:null);
+      }
+      onReorder(dragId, colId, beforeId);
+    }
+    setDragId(null); setOverCol(null); setOver(null);
+  };
+
+  return (
+    <>
+      <div className="screen-head">
+        <div className="screen-title">
+          <h1>Mes leads</h1>
+          <p>Vue filtrée sur vos leads · Léo Martin</p>
+        </div>
+        <div className="head-tools">
+          <div className="search">
+            <I.search/><input placeholder="Rechercher un lead…" value={search} onChange={e=>setSearch(e.target.value)}/>
+          </div>
+          <button className="btn btn-accent" onClick={onRappeler}>
+            <span className="dot pulse-dot"></span>À rappeler maintenant <span className="mono" style={{marginLeft:2}}>{rappelerCount}</span>
+          </button>
+        </div>
+      </div>
+      <div style={{padding:'0 26px 8px'}}>
+        <span className="hint"><I.leads/>Glissez une carte pour changer de colonne ou la réordonner</span>
+      </div>
+      <div className="board-wrap">
+        <div className="board">
+          {COLUMNS.map(c=>{
+            const items = visible.filter(l=>l.column===c.id);
+            return (
+              <div key={c.id}
+                className={`col ${c.special?'special':''} ${overCol===c.id?'drag-over':''}`}
+                onDragOver={e=>{e.preventDefault(); if(overCol!==c.id) setOverCol(c.id); setOver(null);}}
+                onDragLeave={e=>{ if(e.currentTarget===e.target){ setOverCol(null); setOver(null); } }}
+                onDrop={e=>dropOn(e,c.id)}>
+                <div className="col-head">
+                  <span className="col-dot"></span>
+                  <h3>{c.label}</h3>
+                  <span className="col-count">{items.length}</span>
+                  <button className="col-add" title="Ajouter" aria-label="Ajouter une carte"><I.plus/></button>
+                </div>
+                <div className="col-body">
+                  {items.length===0 && <div className="col-empty">—</div>}
+                  {items.map(l=>(
+                    <LeadCard key={l.id} lead={l} dragging={dragId===l.id}
+                      dropPos={dragId && over && over.cardId===l.id && over.cardId!==dragId ? over.pos : null}
+                      onCardDragOver={handleCardDragOver}
+                      onOpen={()=>onOpenLead(l.id)}
+                      onDragStart={()=>setDragId(l.id)}
+                      onDragEnd={()=>{setDragId(null); setOverCol(null); setOver(null);}}/>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ============================================================= FICHE LEAD */
+function Fiche({lead, onBack, onCall, onPay, onAction}){
+  const statusColor = {contacter:'var(--accent)', r1:'var(--warm)', r2:'var(--warm)', r3:'var(--warm)', apayer:'var(--accent)', paye:'var(--ok)', cpf:'var(--accent)', perdu:'var(--t4)'}[lead.column];
+
+  return (
+    <div className="fiche">
+      <div className="fiche-head">
+        <button className="back" onClick={onBack}><I.back/>Mes leads</button>
+        <div className="fiche-id">
+          <h1>{lead.prenom} {lead.nom} <Heat level={lead.heat}/></h1>
+          <div className="fiche-contacts">
+            <span className="contact copy phone" onClick={onCall} title="Cliquer pour appeler"><I.phone/><span className="mono">{lead.tel}</span></span>
+            <CopyField value={lead.email} icon={I.mail}/>
+            <span className="contact"><Src source={lead.source}/></span>
+          </div>
+        </div>
+        <div className="status-pill"><span className="sdot" style={{background:statusColor}}></span>{COL_LABEL[lead.column]}</div>
+      </div>
+
+      <div className="fiche-grid">
+        {/* SITUATION */}
+        <div className="panel">
+          <div className="panel-head"><span className="eyebrow">Situation</span></div>
+          <div className="panel-body">
+            <div className="field">
+              <span className="eyebrow">CPF disponible</span>
+              <div className="val big mono" style={{color:lead.cpf?'var(--accent)':'var(--t3)'}}>{lead.cpf?eur(lead.cpf):'Aucun'}{lead.fullCpf && <span className="unit">full CPF</span>}</div>
+            </div>
+            <div className="field"><span className="eyebrow">Métier actuel</span><div className="val">{lead.metier}</div></div>
+            <div className="field"><span className="eyebrow">Budget</span><div className="val">{lead.budget}</div></div>
+            <div className="field"><span className="eyebrow">Ce qu’il veut</span><div className="val" style={{fontWeight:600,fontSize:14}}>{lead.veut}</div></div>
+          </div>
+        </div>
+
+        {/* HISTORIQUE */}
+        <div className="panel">
+          <div className="panel-head">
+            <span className="eyebrow">Historique · {lead.timeline.length} événement{lead.timeline.length>1?'s':''}</span>
+            <button className="btn btn-soft" style={{padding:'6px 11px',fontSize:12.5}} onClick={()=>onAction('note')}><I.plus style={{width:14,height:14}}/>Note</button>
+          </div>
+          <div className="panel-body">
+            <div className="tl">
+              {lead.timeline.map((ev,i)=>(
+                <div className="tl-item" key={i}>
+                  <span className={`tl-dot ${tlTone[ev.type]||''} ${ev.paid?'ok':''}`}>{(tlIcon[ev.type]||I.note)({})}</span>
+                  <div className="tl-row"><span className="tl-title">{ev.title}</span><span className="tl-when">{ev.when}</span></div>
+                  {ev.text && <div className="tl-text">{ev.text}</div>}
+                  {ev.granola && (
+                    <div className="tl-granola">
+                      <div className="g-head"><I.spark style={{width:13,height:13,strokeWidth:2,color:'var(--accent)'}}/><span className="eyebrow">Recap Granola</span></div>
+                      <div className="g-line"><b>Contexte —</b> {ev.granola.contexte}</div>
+                      <div className="g-line"><b>Pain point —</b> {ev.granola.pain}</div>
+                      <div className="g-line"><b>Angle —</b> {ev.granola.angle}</div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ACTIONS */}
+        <div className="panel">
+          <div className="panel-head"><span className="eyebrow">Actions</span></div>
+          <div className="panel-body">
+            <div className="actions">
+              <button className="act primary" onClick={onCall}>
+                <span className="act-ic"><I.phone/></span>
+                <span className="act-tx"><b>Appeler</b><span className="mono">{lead.tel}</span></span>
+              </button>
+              <button className="act" onClick={()=>onAction('rdv')}>
+                <span className="act-ic"><I.calPlus/></span>
+                <span className="act-tx"><b>Caler un RDV</b><span>choisir un créneau (1 h)</span></span>
+                <span className="chev"><I.chev/></span>
+              </button>
+              <button className="act" onClick={onPay}>
+                <span className="act-ic"><I.euro/></span>
+                <span className="act-tx"><b>Envoyer lien paiement</b><span className="mono">1 400 · 1 250</span></span>
+                <span className="chev"><I.chev/></span>
+              </button>
+              <button className="act" onClick={()=>onAction('mail')}>
+                <span className="act-ic"><I.mail/></span>
+                <span className="act-tx"><b>Email post-R1</b><span>modèle pré-rempli</span></span>
+              </button>
+              <button className="act" onClick={()=>onAction('cpf')}>
+                <span className="act-ic"><I.doc/></span>
+                <span className="act-tx"><b>Passer à Nour (CPF)</b><span>caler le RDV admission</span></span>
+                <span className="chev"><I.chev/></span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================= CALL PANEL */
+function CallPanel({lead, onHangup, onPay}){
+  const [sec,setSec]=useState(0);
+  const [checks,setChecks]=useState(()=>CHECKLIST.map(()=>false));
+  const [notes,setNotes]=useState('');
+  useEffect(()=>{ const t=setInterval(()=>setSec(s=>s+1),1000); return ()=>clearInterval(t); },[]);
+  const mm=String(Math.floor(sec/60)).padStart(2,'0'), ss=String(sec%60).padStart(2,'0');
+  return (
+    <div className="side" onClick={e=>e.stopPropagation()}>
+      <div className="side-head">
+        <span className="call-status">
+          <span className="rec"><span className="rdot"></span>EN APPEL</span>
+          <span className="call-timer">{mm}:{ss}</span>
+        </span>
+        <h3 style={{flex:'none',fontSize:15}}>{lead.prenom} {lead.nom}</h3>
+        <button className="x-btn" style={{position:'static'}} onClick={()=>onHangup(notes,checks)}><I.x/></button>
+      </div>
+      <div className="side-body">
+        <div className="brief">
+          <div className="b-line"><span className="n">1</span><span>Ouvrir sur sa stagnation : <b>« {lead.metier} — où ça t’a mené jusqu’ici ? »</b> Créer le manque.</span></div>
+          <div className="b-line"><span className="n">2</span><span>Qualifier le financement : statut + solde CPF réel <b>(CPF + complément)</b>, jamais « 2900 » sec.</span></div>
+          <div className="b-line"><span className="n">3</span><span>Verrouiller la prochaine étape : <b>caler le RDV avant de raccrocher.</b></span></div>
+        </div>
+        <span className="eyebrow" style={{display:'block',marginBottom:9}}>Avant de raccrocher</span>
+        {CHECKLIST.map((c,i)=>(
+          <div key={i} className={`check ${checks[i]?'done':''}`} role="button" tabIndex={0}
+            onClick={()=>setChecks(a=>a.map((v,j)=>j===i?!v:v))}
+            onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault(); setChecks(a=>a.map((v,j)=>j===i?!v:v));}}}>
+            <span className="cbox"><I.check/></span><span className="check-tx">{c}</span>
+          </div>
+        ))}
+        <div className="granola-live">
+          <span className="rdot" style={{width:8,height:8,borderRadius:99,background:'var(--accent)',animation:'blink 1.3s infinite'}}></span>
+          <span className="check-tx">Granola enregistre cet appel</span>
+          <span className="wave"><i></i><i></i><i></i><i></i><i></i></span>
+        </div>
+        <span className="eyebrow" style={{display:'block',margin:'16px 0 8px'}}>Notes libres (optionnel)</span>
+        <textarea className="notes-area" placeholder="Tape ce qui se dit pendant l’appel…" value={notes} onChange={e=>setNotes(e.target.value)}/>
+        <div className="offer-chip">
+          <span className="eyebrow">Offre adaptée</span>
+          <b>{lead.cpf>=1500?'reste à charge ≈ 1 400 €':lead.budget}</b>
+        </div>
+        <div className="granola-explain">
+          <div className="ge-head"><I.spark/><b>Le recap se génère tout seul</b></div>
+          <ol>
+            <li><b>Avant l’appel</b> : ouvre Granola (appli Mac/Chrome), il détecte ton appel et se met en écoute — le point rouge ci-dessus confirme.</li>
+            <li><b>Pendant</b> : tu ne touches à rien, Granola transcrit en direct. Tes notes ci-dessus s’ajoutent au recap.</li>
+            <li><b>Quand tu raccroches</b> : Granola génère le résumé en ~30 s et <b>remplit la fiche automatiquement</b> (contexte, pain point, angle). Aucun bouton à cliquer.</li>
+          </ol>
+        </div>
+      </div>
+      <div className="side-foot">
+        <button className="btn btn-ghost" style={{flex:'none'}} onClick={()=>onPay()}><I.euro/>Lien paiement</button>
+        <button className="btn btn-accent" style={{flex:1,justifyContent:'center'}} onClick={()=>onHangup(notes,checks)}>
+          <I.phone/>Raccrocher · le recap se remplit
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================= SLOT PICKER (agenda) */
+const SLOT_WEEK = [
+  {d:'Lun', n:'2 juin'}, {d:'Mar', n:'3 juin'}, {d:'Mer', n:'4 juin'},
+  {d:'Jeu', n:'5 juin'}, {d:'Ven', n:'6 juin'},
+];
+const RDV_TIMES = ['09:00','10:00','11:00','14:00','15:00','16:00','17:00'];
+const CPF_TIMES = ['09:00','09:30','10:00','10:30','11:00','11:30','14:00','14:30'];
+// Léo n'a que 2 matinées dispo/semaine (mardi + jeudi) ; quelques aprèm pris.
+const slotBusy = (di,t)=>{
+  const morning = parseInt(t,10) < 12;
+  if(morning) return ![1,3].includes(di);
+  const taken = {0:['15:00','14:00'],1:['16:00','17:00'],2:['14:00','15:00','14:30'],3:['17:00'],4:['14:00','16:00']};
+  return (taken[di]||[]).includes(t);
+};
+
+function SlotPicker({lead, mode, onClose, onConfirm}){
+  const [sel,setSel]=useState(null); // {di,t}
+  const cpf = mode==='cpf';
+  const times = cpf?CPF_TIMES:RDV_TIMES;
+  const dur = cpf?'30 min':'1 h';
+  const selLabel = sel ? `${SLOT_WEEK[sel.di].d} ${SLOT_WEEK[sel.di].n} · ${sel.t}` : null;
+  return (
+    <>
+      <div className="backdrop" onClick={onClose}></div>
+      <div className="modal wide" onClick={e=>e.stopPropagation()}>
+        <button className="x-btn" onClick={onClose}><I.x/></button>
+        <div className="m-fixhead">
+          <span className="eyebrow m-eye">{cpf?'RDV admission CPF · agenda de Nour':'Caler un RDV · ton agenda'}</span>
+          <div style={{fontSize:20,fontWeight:800,letterSpacing:'-.02em',marginTop:6}}>{cpf?'Rendez-vous admission':'Prochain rendez-vous'} · {lead.prenom} {lead.nom}</div>
+        </div>
+        <div className="m-scroll">
+          <p className="slot-intro">
+            {cpf
+              ? <>Choisis un créneau <b>de 30 min</b> dans l’agenda admission. À la validation : <b>un mail part à toi ET au prospect</b> (message de bienvenue + ce que vous allez faire pour le dossier CPF).</>
+              : <>Choisis un créneau <b>d’1 h</b> parmi tes disponibilités. Tu as <b>2 matinées libres cette semaine</b> (mardi, jeudi). À la validation, l’invitation part au prospect.</>}
+          </p>
+          <div className="slot-week">
+            {SLOT_WEEK.map((day,di)=>(
+              <div className="slot-day" key={di}>
+                <h5>{day.d}<span>{day.n}</span></h5>
+                <div className="slot-col">
+                  {times.map((t,ti)=>{
+                    const prevAfternoon = ti>0 && parseInt(times[ti-1],10)<12 && parseInt(t,10)>=12;
+                    const busy = slotBusy(di,t);
+                    const isSel = sel && sel.di===di && sel.t===t;
+                    return (
+                      <React.Fragment key={t}>
+                        {prevAfternoon && <div className="slot-noon">après-midi</div>}
+                        <button className={`slot ${busy?'busy':''} ${isSel?'sel':''}`} disabled={busy}
+                          onClick={()=>setSel({di,t})}>{t}</button>
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+          {sel && (
+            <div className="slot-sel-bar">
+              <span className="ssb-ic"><I.clock/></span>
+              <div><b>{selLabel}</b><span>{cpf?'RDV admission CPF · 30 min avec Nour':`Rendez-vous closing · ${dur}`}</span></div>
+            </div>
+          )}
+        </div>
+        <div className="m-fixfoot">
+          <button className="btn btn-ghost" onClick={onClose}>Annuler</button>
+          <button className="btn btn-accent" disabled={!sel} onClick={()=>onConfirm(selLabel)}>
+            <I.check/>{cpf?'Confirmer & envoyer les mails':'Confirmer le créneau'}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ============================================================= RAPPELER PANEL */
+function RappelerPanel({leads, onClose, onCall, onOpen}){
+  const prio = useMemo(()=>{
+    return leads
+      .filter(l=>l.owner==='Léo' && ['contacter','r1','r2','r3','apayer'].includes(l.column) && (l.heat==='chaud'||l.noShow))
+      .sort((a,b)=> (b.noShow?2:0)+(b.heat==='chaud'?1:0) - ((a.noShow?2:0)+(a.heat==='chaud'?1:0)) );
+  },[leads]);
+  return (
+    <div className="side" onClick={e=>e.stopPropagation()}>
+      <div className="side-head">
+        <span className="dot pulse-dot" style={{width:9,height:9,borderRadius:99,background:'var(--accent)',color:'var(--accent)'}}></span>
+        <h3>À rappeler maintenant</h3>
+        <span className="col-count mono">{prio.length}</span>
+        <button className="x-btn" style={{position:'static'}} onClick={onClose}><I.x/></button>
+      </div>
+      <div className="side-body">
+        <p style={{fontSize:12.5,color:'var(--t3)',marginBottom:14}}>File priorisée : no-show et leads chauds d’abord. Appel direct depuis la ligne.</p>
+        {prio.length===0 && <div className="col-empty">Rien à rappeler. 🎯</div>}
+        {prio.map((l,i)=>(
+          <div className="rap-row" key={l.id}>
+            <span className="rap-prio">{i+1}</span>
+            <Avatar lead={l} size="sz-sm"/>
+            <div className="rap-tx" onClick={()=>onOpen(l.id)} style={{cursor:'pointer'}}>
+              <b>{l.prenom} {l.nom}{l.noShow && <span className="tag tag-noshow">No-show</span>}</b>
+              <span><Src source={l.source}/> · {l.nextAction}</span>
+            </div>
+            <button className="btn btn-accent" style={{padding:'8px 13px'}} onClick={()=>onCall(l.id)}><I.phone/>Appeler</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================= PAYMENT MODAL */
+function PaymentModal({lead, onClose, onSend}){
+  const [offer,setOffer]=useState(null);
+  const amount = offer?offer.amount:0;
+  const link = offer?`pay.iq-project.ai/${lead.id}-${amount}`:'';
+  const defSubject = 'Ton accès — Bootcamp Closing / Vente · IQ Project';
+  const defBody = (o)=>
+`Bonjour ${lead.prenom},
+
+Ravi de notre échange. Comme convenu, voici ton lien sécurisé pour valider ta place à l'édition du 15 juin (8 sessions / 2 semaines, hybride — 136 rue d'Aboukir, Paris 2e + distanciel).
+
+Montant : ${eur(o.amount)} — reste à charge ${o.tag.includes('Non')?'(salarié / activité)':'(demandeur d\'emploi)'}.
+Le solde est pris en charge par ton CPF, géré de A à Z par notre équipe admission.
+
+À très vite,
+Léo Martin — IQ Project`;
+  const [subject,setSubject]=useState(defSubject);
+  const [body,setBody]=useState('');
+
+  const pick=(o)=>{ setOffer(o); setSubject(defSubject); setBody(defBody(o)); };
+
+  return (
+    <>
+      <div className="backdrop" onClick={onClose}></div>
+      <div className="modal wide" onClick={e=>e.stopPropagation()}>
+        <button className="x-btn" onClick={onClose}><I.x/></button>
+        <div className="m-fixhead">
+          <span className="eyebrow m-eye">Lien de paiement · reste à charge CPF</span>
+          <div className="m-amt" style={{fontSize:offer?40:26,color:offer?'var(--t1)':'var(--t3)'}}>{offer?eur(amount):'Choisis l’offre'}</div>
+          <div className="m-for">pour {lead.prenom} {lead.nom}</div>
+        </div>
+        <div className="m-scroll">
+          <span className="eyebrow" style={{display:'block',marginBottom:10}}>Les 2 liens de paiement possibles</span>
+          <div className="pay-offers">
+            {OFFERS.map(o=>(
+              <button key={o.id} className={`pay-offer ${offer&&offer.id===o.id?'sel':''}`} onClick={()=>pick(o)}>
+                <span className="po-amt">{eur(o.amount)}</span>
+                <span className="po-tx"><b>{o.tag}</b><span>reste à charge · le CPF couvre le reste</span></span>
+                <span className="po-check"><I.check/></span>
+              </button>
+            ))}
+          </div>
+
+          {offer && <>
+            <div className="chan main" style={{marginTop:18}}>
+              <span className="chan-ic"><I.mail/></span>
+              <div className="chan-tx"><b>Email <span className="chan-main-pill">Canal principal</span></b><span className="mono">{lead.email}</span></div>
+            </div>
+            <div className="chan soon">
+              <span className="chan-ic"><I.sms/></span>
+              <div className="chan-tx"><b>SMS <span className="soon-pill">Bientôt</span></b><span className="mono">{lead.tel}</span></div>
+            </div>
+
+            <div className="edit-field">
+              <span className="eyebrow">Objet (modifiable)</span>
+              <input className="edit-input" value={subject} onChange={e=>setSubject(e.target.value)}/>
+            </div>
+            <div className="edit-field">
+              <span className="eyebrow">Corps du mail (modifiable)</span>
+              <textarea className="edit-body" value={body} onChange={e=>setBody(e.target.value)}/>
+            </div>
+            <div className="link-tag"><I.euro style={{width:14,height:14,color:'var(--accent)'}}/><span className="mono">{link}</span></div>
+            <p className="modal-note">Le lien de paiement est ajouté automatiquement au mail. Au paiement, la carte passe en « Payé » + notification.</p>
+          </>}
+        </div>
+        <div className="m-fixfoot">
+          <button className="btn btn-ghost" onClick={onClose}>Annuler</button>
+          <button className="btn btn-accent" disabled={!offer} onClick={()=>onSend(amount,offer.tag)}><I.send/>{offer?`Envoyer par email · ${eur(amount)}`:'Choisis une offre'}</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ============================================================= ADMISSION */
+function Admission({leads, onValidate}){
+  const dossiers = leads.filter(l=>l.column==='cpf');
+  const toValidate = dossiers.filter(l=>l.admStatus!=='secured').length;
+  return (
+    <>
+      <div className="screen-head">
+        <div className="screen-title">
+          <h1>Admission · CPF</h1>
+          <p>Dossiers à traiter, déjà pré-remplis · espace de Nour</p>
+        </div>
+        <div className="head-tools"><span className="count-pill">{toValidate} à valider</span></div>
+      </div>
+      <div className="fiche">
+        <div className="adm-list">
+          {dossiers.length===0 && <div className="col-empty" style={{maxWidth:980}}>Aucun dossier transmis pour l’instant.</div>}
+          {dossiers.map(l=>{
+            const secured = l.admStatus==='secured';
+            return (
+              <div className={`adm-card ${secured?'secured':''}`} key={l.id}>
+                <div className="adm-top">
+                  <Avatar lead={l} size="sz-md" muted={secured}/>
+                  <div className="a-tx"><b>{l.prenom} {l.nom}</b><span>{l.metier} · transmis par le closer</span></div>
+                  <span className="tag tag-prefilled"><I.check style={{width:11,height:11,strokeWidth:2.4}}/> Pré-rempli</span>
+                  {secured
+                    ? <span className="btn-secured"><I.check/>Sécurisé</span>
+                    : <button className="btn-validate" onClick={()=>onValidate(l.id)}><I.check/>Valider</button>}
+                </div>
+                <div className="adm-grid">
+                  <div className="adm-cell"><span className="eyebrow">CPF</span><div className="v">{l.fullCpf?`${eur(l.cpf)} — full CPF`:`${eur(l.cpf)} dispo`}</div></div>
+                  <div className="adm-cell"><span className="eyebrow">Montant</span><div className="v">{eur(l.admMontant)} {l.fullCpf?'':'payé'}</div></div>
+                  <div className="adm-cell"><span className="eyebrow">Formation</span><div className="v txt">{l.formation}</div></div>
+                  <div className="adm-cell"><span className="eyebrow">Statut dossier</span><div className={`v txt ${secured?'secured':''}`}>{secured?'Vente sécurisée':'En attente validation'}</div></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ============================================================= RECHERCHE */
+function Recherche({leads, onOpen}){
+  const [q,setQ]=useState('');
+  const res = leads.filter(l=> !q.trim() || `${l.prenom} ${l.nom} ${l.metier} ${l.email} ${l.tel}`.toLowerCase().includes(q.toLowerCase()));
+  return (
+    <>
+      <div className="screen-head">
+        <div className="screen-title"><h1>Recherche</h1><p>Tous les leads, toutes colonnes</p></div>
+        <div className="head-tools">
+          <div className="search" style={{minWidth:320}}><I.search/><input autoFocus placeholder="Nom, métier, email, téléphone…" value={q} onChange={e=>setQ(e.target.value)}/></div>
+        </div>
+      </div>
+      <div className="fiche">
+        <div className="search-grid">
+          {res.length===0 && <div className="col-empty">Aucun résultat pour « {q} ».</div>}
+          {res.map(l=>(
+            <div className="search-row" key={l.id} onClick={()=>onOpen(l.id)}>
+              <Avatar lead={l} size="sz-sm"/>
+              <div className="sr-tx">
+                <b>{l.prenom} {l.nom}</b>
+                <span><Src source={l.source}/> · {l.metier} · <span className="mono">{l.tel}</span></span>
+              </div>
+              <Heat level={l.heat}/>
+              <span className="stage-chip">{COL_LABEL[l.column]}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ============================================================= AGENDA */
+function Agenda({leads, onOpen}){
+  const today = [
+    {time:'11:00', past:true, lead:'mehdi', title:'R2 — Mehdi Ouattara', sub:'Transformation · 7500 à amorcer'},
+    {time:'14:30', past:false, lead:'karim', title:'R1 — Karim Benali', sub:'Diagnostic · reconversion'},
+    {time:'17:00', past:false, lead:'mehdi', title:'R2 calé — Mehdi Ouattara', sub:'Créneau confirmé'},
+  ];
+  const tomorrow = [
+    {time:'10:00', past:false, lead:'manon', title:'R1 — Manon Lopez', sub:'Chaude · ex-banque'},
+    {time:'16:00', past:false, lead:'thomas', title:'Close — Thomas Girard', sub:'Envoi lien 2900 + 7500'},
+  ];
+  const Row = (e)=> (
+    <div className="ag-row" onClick={()=>e.lead && onOpen(e.lead)} style={{cursor:e.lead?'pointer':'default'}}>
+      <span className={`ag-time ${e.past?'past':''}`}>{e.time}</span>
+      <div className="ag-tx"><b>{e.title}</b><span>{e.sub}</span></div>
+      {e.past?<span className="tag tag-ok">Fait</span>:<span className="tag tag-wait">À venir</span>}
+    </div>
+  );
+  return (
+    <>
+      <div className="screen-head"><div className="screen-title"><h1>Agenda</h1><p>Tes RDV closing — R1 / R2 / R3 + closes</p></div></div>
+      <div className="fiche">
+        <div className="agenda">
+          <div className="ag-day">Aujourd’hui · lundi 1 juin</div>
+          {today.map((e,i)=><Row key={i} {...e}/>)}
+          <div className="ag-day">Demain · mardi 2 juin</div>
+          {tomorrow.map((e,i)=><Row key={i} {...e}/>)}
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ============================================================= SETTINGS */
+function Settings({theme,setTheme,density,setDensity,onSimulate,onReset,onClose}){
+  return (
+    <div className="side" onClick={e=>e.stopPropagation()}>
+      <div className="side-head"><I.gear style={{width:18,height:18,color:'var(--t2)'}}/><h3>Réglages</h3><button className="x-btn" style={{position:'static'}} onClick={onClose}><I.x/></button></div>
+      <div className="side-body">
+        <div className="set-row">
+          <div className="lab"><b>Thème</b><span>Terracotta clair (défaut) ou sombre</span></div>
+          <div className="seg">
+            <button className={theme==='light'?'on':''} onClick={()=>setTheme('light')}><I.sun/>Clair</button>
+            <button className={theme==='dark'?'on':''} onClick={()=>setTheme('dark')}><I.moon/>Sombre</button>
+          </div>
+        </div>
+        <div className="set-row">
+          <div className="lab"><b>Densité</b><span>Espacement des cartes</span></div>
+          <div className="seg">
+            <button className={density==='compact'?'on':''} onClick={()=>setDensity('compact')}>Compact</button>
+            <button className={density==='standard'?'on':''} onClick={()=>setDensity('standard')}>Standard</button>
+            <button className={density==='cozy'?'on':''} onClick={()=>setDensity('cozy')}>Aéré</button>
+          </div>
+        </div>
+        <div className="set-row">
+          <div className="lab"><b>Course au lead</b><span>Simuler un nouveau lead entrant</span></div>
+          <button className="btn btn-soft" onClick={onSimulate}><I.bell/>Simuler</button>
+        </div>
+        <div className="set-row">
+          <div className="lab"><b>Données</b><span>Réinitialiser le pipeline de démo</span></div>
+          <button className="btn btn-ghost" onClick={onReset}>Réinitialiser</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================= INCOMING */
+function Incoming({lead, onTake, onDismiss}){
+  return (
+    <div className="incoming-wrap">
+      <div className="incoming">
+        <button className="incoming-dismiss" onClick={onDismiss} title="Ignorer" aria-label="Ignorer ce lead"><I.x/></button>
+        <Avatar lead={lead} size="sz-md av"/>
+        <div className="incoming-tx">
+          <span className="eyebrow">Nouveau lead · Sonnerie <span className="sonner"></span></span>
+          <h4>{lead.prenom} {lead.nom}</h4>
+          <span className="sub"><Src source={lead.source}/> <Heat level={lead.heat}/> · <span className="mono">{eur(lead.cpf)}</span> dispo</span>
+        </div>
+        <button className="btn btn-accent incoming-take" onClick={onTake}>Je le prends</button>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================= TOASTS */
+function Toasts({toasts}){
+  return (
+    <div className="toasts">
+      {toasts.map(t=>(
+        <div className={`toast ${t.tone||'info'}`} key={t.id}>
+          <span className="t-ic">{(t.tone==='ok'?I.check:t.tone==='accent'?I.bell:I.spark)({})}</span>
+          <div className="t-tx"><b>{t.title}</b>{t.sub && <span>{t.sub}</span>}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ============================================================= SOUND */
+let audioCtx=null;
+function ping(){
+  try{
+    audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==='suspended') audioCtx.resume();
+    const now=audioCtx.currentTime;
+    [880,1175].forEach((f,i)=>{
+      const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+      o.type='sine'; o.frequency.value=f;
+      o.connect(g); g.connect(audioCtx.destination);
+      const t=now+i*0.13;
+      g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.16,t+0.02); g.gain.exponentialRampToValueAtTime(0.001,t+0.28);
+      o.start(t); o.stop(t+0.3);
+    });
+  }catch(e){}
+}
+
+/* ============================================================= APP */
+function persistedState(key,fallback){
+  try{ const v=localStorage.getItem(key); return v!==null?JSON.parse(v):fallback; }catch(e){ return fallback; }
+}
+
+function App(){
+  const [leads,setLeads]=useState(()=>persistedState('iqcrm_leads',SEED).filter(l=>l.owner==='Léo'));
+  const [screen,setScreen]=useState(()=>{ const s=persistedState('iqcrm_screen','leads'); return ['leads','fiche','agenda'].includes(s)?s:'leads'; });
+  const [selId,setSelId]=useState(()=>persistedState('iqcrm_sel',null));
+  const [theme,setTheme]=useState(()=>persistedState('iqcrm_theme','light'));
+  const [density,setDensity]=useState(()=>persistedState('iqcrm_density','standard'));
+  const [search,setSearch]=useState('');
+
+  const [callId,setCallId]=useState(null);
+  const [payTarget,setPayTarget]=useState(null); // {lead}
+  const [slotTarget,setSlotTarget]=useState(null); // {lead, mode}
+  const [showRappeler,setShowRappeler]=useState(false);
+  const [showSettings,setShowSettings]=useState(false);
+  const [incoming,setIncoming]=useState(null);
+  const [toasts,setToasts]=useState([]);
+  const incomingIdx=useRef(0);
+  const tid=useRef(0);
+
+  // persistence
+  useEffect(()=>localStorage.setItem('iqcrm_leads',JSON.stringify(leads)),[leads]);
+  useEffect(()=>localStorage.setItem('iqcrm_screen',JSON.stringify(screen)),[screen]);
+  useEffect(()=>localStorage.setItem('iqcrm_sel',JSON.stringify(selId)),[selId]);
+  useEffect(()=>{ localStorage.setItem('iqcrm_theme',JSON.stringify(theme)); document.documentElement.setAttribute('data-theme',theme); },[theme]);
+  useEffect(()=>{ localStorage.setItem('iqcrm_density',JSON.stringify(density)); document.documentElement.setAttribute('data-density',density); },[density]);
+
+  const toast=useCallback((title,sub,tone='info')=>{
+    const id=++tid.current;
+    setToasts(t=>[...t,{id,title,sub,tone}]);
+    setTimeout(()=>setToasts(t=>t.filter(x=>x.id!==id)),3800);
+  },[]);
+
+  const patch=useCallback((id,fn)=>setLeads(ls=>ls.map(l=>l.id===id?{...l,...(typeof fn==='function'?fn(l):fn)}:l)),[]);
+  const sel = leads.find(l=>l.id===selId);
+  const callLead = leads.find(l=>l.id===callId);
+
+  // incoming lead auto-trigger once on mount
+  useEffect(()=>{
+    const t=setTimeout(()=>{
+      if(!persistedState('iqcrm_sarahDone',false)){
+        setIncoming({...INCOMING_POOL[0]}); ping();
+      }
+    },4200);
+    return ()=>clearTimeout(t);
+  },[]);
+
+  // esc closes overlays
+  useEffect(()=>{
+    const h=(e)=>{ if(e.key==='Escape'){ setPayTarget(null); setSlotTarget(null); setShowRappeler(false); setShowSettings(false); setCallId(null); setIncoming(null); } };
+    window.addEventListener('keydown',h); return ()=>window.removeEventListener('keydown',h);
+  },[]);
+
+  /* ---------- actions ---------- */
+  const openLead=(id)=>{ setSelId(id); setScreen('fiche'); };
+
+  const reorderLead=(id,col,beforeId)=>{
+    const l=leads.find(x=>x.id===id); if(!l) return;
+    const changedCol = l.column!==col;
+    setLeads(ls=>{
+      const dragged=ls.find(x=>x.id===id); if(!dragged) return ls;
+      const moved={...dragged, column:col,
+        nextAction: changedCol ? (col==='perdu'?'Prospect perdu': col==='cpf'?'Transmis admission': col==='contacter'?'À contacter': col==='r1'?'R1 à faire': col==='r2'?'R2 à faire': col==='r3'?'R3 à faire': dragged.nextAction) : dragged.nextAction};
+      const rest=ls.filter(x=>x.id!==id);
+      let at;
+      if(beforeId && beforeId!==id){ at=rest.findIndex(x=>x.id===beforeId); if(at===-1) at=rest.length; }
+      else { let last=-1; rest.forEach((x,i)=>{ if(x.column===col) last=i; }); at = last===-1?rest.length:last+1; }
+      const out=[...rest]; out.splice(at,0,moved); return out;
+    });
+    if(changedCol) toast(`${l.prenom} → ${COL_LABEL[col]}`,'Carte déplacée','accent');
+  };
+
+  const startCall=(id)=>{ setSelId(id); setCallId(id); if(screen!=='fiche') setScreen('fiche'); toast('Appel lancé','Granola enregistre','accent'); };
+
+  // raccrocher → recap auto rempli (Granola). Reçoit le lead via callId capturé au moment de l'appel.
+  const hangup=(notes,checks)=>{
+    const id=callId; const l=leads.find(x=>x.id===id);
+    setCallId(null);
+    if(!l) return;
+    const done=(checks||[]).filter(Boolean).length;
+    patch(id,prev=>({
+      live:false,
+      nextAction: prev.column==='contacter'?'R1 à faire':prev.nextAction,
+      column: prev.column,
+      timeline:[{type:'recap', when:'à l’instant', title:`Appel terminé — recap Granola (${done}/${CHECKLIST.length})`, text: (notes&&notes.trim())? notes.trim() : 'Recap auto Granola : manque créé, prochaine étape calée.',
+        granola:{contexte:`${l.metier}. ${l.veut}.`, pain:'Stagnation verbalisée pendant l’appel.', angle:'Caler le RDV + confirmer le solde CPF avant le close.'}}, ...prev.timeline]
+    }));
+    toast('Appel terminé','Recap Granola ajouté à la fiche','ok');
+  };
+
+  const doAction=(type)=>{
+    if(!sel) return;
+    if(type==='note'){
+      const txt=window.prompt('Nouvelle note :'); if(!txt) return;
+      patch(sel.id,prev=>({timeline:[{type:'note',when:'à l’instant',title:'Note',text:txt},...prev.timeline]}));
+      toast('Note ajoutée',null,'info'); return;
+    }
+    if(type==='rdv'){ setSlotTarget({lead:sel, mode:'rdv'}); return; }
+    if(type==='cpf'){ setSlotTarget({lead:sel, mode:'cpf'}); return; }
+    if(type==='mail'){
+      patch(sel.id,prev=>({timeline:[{type:'mail',when:'à l’instant',title:'Email post-R1 envoyé',text:'Brochure + dates + devoirs (CCI tracking).'},...prev.timeline]}));
+      toast('Email post-R1 envoyé','Modèle pré-rempli · CCI tracking','ok'); return;
+    }
+  };
+
+  // confirmation d'un créneau (RDV closing ou RDV admission CPF)
+  const confirmSlot=(label)=>{
+    const {lead:l, mode}=slotTarget; setSlotTarget(null);
+    if(mode==='rdv'){
+      patch(l.id,prev=>({nextAction:`RDV ${label}`, column:prev.column==='contacter'?'r1':prev.column,
+        timeline:[{type:'appel',when:'à l’instant',title:`RDV calé — ${label}`,text:'Invitation envoyée au prospect (Google Agenda).'},...prev.timeline]}));
+      toast('RDV calé',`${label} · invitation envoyée`,'accent');
+    } else {
+      const montant = l.offer || l.admMontant || 1400;
+      patch(l.id,prev=>({column:'cpf', admStatus:'pending', admMontant:montant, formation:prev.formation||'Closing / Vente', nextAction:`RDV admission ${label}`,
+        timeline:[{type:'doc',when:'à l’instant',title:`RDV admission CPF calé — ${label}`,text:`Mail envoyé à toi + à ${l.prenom} (message de bienvenue + dossier CPF). Créneau 30 min avec Nour.`},...prev.timeline]}));
+      toast('RDV admission calé',`${label} · mails envoyés (toi + ${l.prenom})`,'ok');
+    }
+  };
+
+  // payment send → À payer, then auto Payé (id capturé, transition garantie)
+  const sendPayment=(amount,tag)=>{
+    const l=payTarget.lead; const id=l.id; setPayTarget(null);
+    patch(id,prev=>({column:'apayer', offer:amount, nextAction:`${eur(amount)} envoyé — en attente`,
+      timeline:[{type:'paiement',when:'à l’instant',title:`Lien Stripe envoyé — ${eur(amount)}`,text:`Email envoyé à ${l.email}. En attente de paiement.`},...prev.timeline]}));
+    toast(`Lien envoyé · ${eur(amount)}`,`Email parti à ${l.prenom}`,'accent');
+    setTimeout(()=>{
+      patch(id,prev=>({column:'paye', paid:true, offer:amount, nextAction:`${eur(amount)} payé`,
+        timeline:[{type:'paiement',when:'à l’instant',title:`Paiement reçu — ${eur(amount)}`,text:'Stripe encaissé. Carte passée en Payé automatiquement.',paid:true},...prev.timeline]}));
+      ping();
+      toast(`Paiement reçu · ${eur(amount)}`,`${l.prenom} ${l.nom} a payé`,'ok');
+    },6000);
+  };
+
+  const validateAdm=(id)=>{
+    patch(id,prev=>({admStatus:'secured', nextAction:'Vente sécurisée',
+      timeline:[{type:'doc',when:'à l’instant',title:'Dossier CPF validé',text:'CPF vérifié EDOF. Vente sécurisée.',paid:true},...prev.timeline]}));
+    const l=leads.find(x=>x.id===id);
+    toast('Dossier validé',`${l.prenom} ${l.nom} — Vente sécurisée`,'ok');
+  };
+
+  const takeIncoming=()=>{
+    const inc=incoming; if(!inc) return;
+    const id='lead'+Date.now();
+    const newLead={...inc, id, owner:'Léo', column:'contacter', noShow:false, live:true, nextAction:'1er appel à passer',
+      timeline:[{type:'note',when:'à l’instant',title:'Lead pris',text:`Tu es propriétaire de ce lead (course au lead remportée).`}]};
+    setLeads(ls=>[newLead,...ls]);
+    setIncoming(null);
+    localStorage.setItem('iqcrm_sarahDone',JSON.stringify(true));
+    toast(`Lead attribué · ${inc.prenom}`,'Atterri dans ta colonne Nouveau','ok');
+    setScreen('leads');
+  };
+
+  const simulate=()=>{
+    incomingIdx.current=(incomingIdx.current+1)%INCOMING_POOL.length;
+    setIncoming({...INCOMING_POOL[incomingIdx.current]}); ping(); setShowSettings(false);
+  };
+
+  const resetData=()=>{
+    setLeads(SEED); setSelId(null); setScreen('leads'); setShowSettings(false);
+    localStorage.removeItem('iqcrm_sarahDone');
+    toast('Données réinitialisées',null,'info');
+  };
+
+  const rappelerCount = useMemo(()=> leads.filter(l=>l.owner==='Léo' && ['contacter','r1','r2','r3','apayer'].includes(l.column) && (l.heat==='chaud'||l.noShow)).length,[leads]);
+  const admToValidate = useMemo(()=> leads.filter(l=>l.column==='cpf' && l.admStatus!=='secured').length,[leads]);
+
+  const navItems=[
+    {id:'leads', label:'Mes leads', icon:I.leads, badge:rappelerCount},
+    {id:'agenda', label:'Agenda', icon:I.agenda},
+  ];
+  const navActive = screen==='fiche'?'leads':screen;
+
+  return (
+    <div className="app">
+      {/* RAIL */}
+      <nav className="rail">
+        <div className="logo">
+          <div className="logo-mark">IQ</div>
+          <div className="logo-txt">Cockpit<span>IQ Project</span></div>
+        </div>
+        {navItems.map(n=>(
+          <button key={n.id} className={`nav-item ${navActive===n.id?'active':''}`} onClick={()=>{setScreen(n.id);}}>
+            {n.icon({})}<span>{n.label}</span>{n.badge?<span className="nav-badge">{n.badge}</span>:null}
+          </button>
+        ))}
+        <div className="rail-spacer"></div>
+        <div className="rail-tools">
+          <button className="icon-btn" title="Thème" onClick={()=>setTheme(t=>t==='light'?'dark':'light')}>{theme==='light'?I.moon({}):I.sun({})}</button>
+          <button className="icon-btn" title="Réglages" onClick={()=>setShowSettings(true)}>{I.gear({})}</button>
+        </div>
+        <button className="profile" onClick={()=>setShowSettings(true)}>
+          <div className="avatar sz-sm">LM</div>
+          <div className="profile-meta"><b>Léo Martin</b><span>Closer</span></div>
+        </button>
+      </nav>
+
+      {/* WORK */}
+      <main className="work">
+        {screen==='leads' && <Board leads={leads} search={search} setSearch={setSearch}
+            onOpenLead={openLead} onReorder={reorderLead} onRappeler={()=>setShowRappeler(true)} rappelerCount={rappelerCount}/>}
+        {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen('leads')} onCall={()=>startCall(sel.id)}
+            onPay={()=>setPayTarget({lead:sel})} onAction={doAction}/>}
+        {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen('leads')}>Retour au board</button></div>}
+        {screen==='agenda' && <Agenda leads={leads} onOpen={openLead}/>}
+      </main>
+
+      {/* OVERLAYS */}
+      {callLead && <div className="backdrop" onClick={()=>hangup('',[])}><CallPanel lead={callLead} onHangup={hangup} onPay={()=>setPayTarget({lead:callLead})}/></div>}
+      {showRappeler && <div className="backdrop" onClick={()=>setShowRappeler(false)}><RappelerPanel leads={leads} onClose={()=>setShowRappeler(false)} onCall={(id)=>{setShowRappeler(false); startCall(id);}} onOpen={(id)=>{setShowRappeler(false); openLead(id);}}/></div>}
+      {showSettings && <div className="backdrop" onClick={()=>setShowSettings(false)}><Settings theme={theme} setTheme={setTheme} density={density} setDensity={setDensity} onSimulate={simulate} onReset={resetData} onClose={()=>setShowSettings(false)}/></div>}
+      {payTarget && <PaymentModal lead={payTarget.lead} onClose={()=>setPayTarget(null)} onSend={sendPayment}/>}
+      {slotTarget && <SlotPicker lead={slotTarget.lead} mode={slotTarget.mode} onClose={()=>setSlotTarget(null)} onConfirm={confirmSlot}/>}
+      {incoming && <Incoming lead={incoming} onTake={takeIncoming} onDismiss={()=>{setIncoming(null); localStorage.setItem('iqcrm_sarahDone',JSON.stringify(true));}}/>}
+
+      <Toasts toasts={toasts}/>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
