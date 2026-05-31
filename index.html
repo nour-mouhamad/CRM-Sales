@@ -256,6 +256,9 @@ input,textarea{font-family:inherit; color:inherit}
 .field:last-child{border-bottom:none}
 .field .eyebrow{display:block; margin-bottom:5px}
 .field .val{font-size:15px; font-weight:600}
+.field .val-sub{font-size:12.5px; color:var(--t3); margin-top:3px; font-weight:500}
+.todo-line{display:flex; align-items:center; gap:9px; font-size:13px; color:var(--t2); padding:4px 0; font-weight:500}
+.todo-dot{width:13px; height:13px; border-radius:5px; border:1.5px solid var(--b3); flex:none}
 .field .val.big{font-size:21px; font-weight:800; letter-spacing:-.03em}
 .field .val.mono{font-family:'JetBrains Mono',monospace}
 .field .val .unit{font-size:13px; color:var(--t3); font-weight:600; margin-left:5px}
@@ -611,6 +614,7 @@ const I = {
   search:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>,
   agenda:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg>,
   phone:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="M6.5 4h3l1.3 4-2 1.4a12 12 0 0 0 5.8 5.8l1.4-2 4 1.3v3a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 4.5 6.2 2 2 0 0 1 6.5 4z"/></svg>,
+  video:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3z"/></svg>,
   calPlus:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4M12 13v5M9.5 15.5h5"/></svg>,
   euro:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="M16.5 6.5A6 6 0 1 0 16.5 17M4 10.5h8M4 14h7"/></svg>,
   mail:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>,
@@ -640,6 +644,15 @@ const I = {
 const eur = (n)=> new Intl.NumberFormat('fr-FR').format(n).replace(/ /g,' ') + ' €';
 const initials = (l)=> (l.prenom[0]+l.nom[0]).toUpperCase();
 const srcLabel = {webinaire:'Webinaire','pub insta':'Pub Insta','référé':'Référé',brochure:'Brochure',MFF:'MFF'};
+// Source d'un lead à contacter = opt-in sur le site (ou MFF). Conditionne l'angle d'ouverture.
+const SOURCE_INFO = {
+  webinaire: {label:'Webinaire', via:'Inscrit au webinaire Vibe Coding', angle:'Il a vu la promesse en live → ouvrir sur ce qu’il a retenu, créer le manque.'},
+  brochure:  {label:'Brochure téléchargée', via:'A opt-in pour télécharger la brochure', angle:'Intéressé mais tiède → diagnostiquer son projet avant de pitcher.'},
+  ressource: {label:'Ressource téléchargée', via:'A opt-in pour une ressource gratuite', angle:'Lead froid en découverte → qualifier l’intention, présenter IQ.'},
+  MFF: {label:'MFF — MaFormation', via:'Vient de MaFormation (MFF)', angle:'Forte intention, ne connaît pas IQ → présenter IQ d’ABORD, jamais le prix.'},
+  'pub insta': {label:'Pub Insta', via:'A opt-in via une pub Instagram', angle:'Lead froid social → qualifier l’intention, créer le manque.'},
+  'référé':   {label:'Référé', via:'Recommandé par un ancien élève', angle:'Confiance pré-établie → capitaliser sur la recommandation.'},
+};
 
 const COLUMNS = [
   {id:'contacter', label:'Lead à contacter'},
@@ -910,13 +923,32 @@ function Fiche({lead, onBack, onCall, onPay, onAction}){
         <div className="panel">
           <div className="panel-head"><span className="eyebrow">Situation</span></div>
           <div className="panel-body">
-            <div className="field">
-              <span className="eyebrow">CPF disponible</span>
-              <div className="val big mono" style={{color:lead.cpf?'var(--accent)':'var(--t3)'}}>{lead.cpf?eur(lead.cpf):'Aucun'}{lead.fullCpf && <span className="unit">full CPF</span>}</div>
-            </div>
-            <div className="field"><span className="eyebrow">Métier actuel</span><div className="val">{lead.metier}</div></div>
-            <div className="field"><span className="eyebrow">Budget</span><div className="val">{lead.budget}</div></div>
-            <div className="field"><span className="eyebrow">Ce qu’il veut</span><div className="val" style={{fontWeight:600,fontSize:14}}>{lead.veut}</div></div>
+            {lead.column==='contacter' ? (()=>{ const si=SOURCE_INFO[lead.source]||{label:lead.source,via:'Lead entrant',angle:'Qualifier l’intention.'}; return (<>
+              <div className="field">
+                <span className="eyebrow">Source du lead</span>
+                <div className="val" style={{fontWeight:700}}>{si.label}</div>
+                <div className="val-sub">{si.via}</div>
+              </div>
+              <div className="field">
+                <span className="eyebrow">Angle d’ouverture</span>
+                <div className="val" style={{fontWeight:600,fontSize:14}}>{si.angle}</div>
+              </div>
+              <div className="field">
+                <span className="eyebrow">À qualifier pendant l’appel</span>
+                <div className="todo-line"><span className="todo-dot"></span>Métier actuel</div>
+                <div className="todo-line"><span className="todo-dot"></span>Objectif / projet</div>
+                <div className="todo-line"><span className="todo-dot"></span>Statut + solde CPF</div>
+                <div className="todo-line"><span className="todo-dot"></span>Budget / reste à charge</div>
+              </div>
+            </>); })() : (<>
+              <div className="field"><span className="eyebrow">Métier actuel</span><div className="val">{lead.metier}</div></div>
+              <div className="field"><span className="eyebrow">Ce qu’il veut</span><div className="val" style={{fontWeight:600,fontSize:14}}>{lead.veut}</div></div>
+              <div className="field"><span className="eyebrow">Budget</span><div className="val">{lead.budget}</div></div>
+              <div className="field">
+                <span className="eyebrow">CPF disponible</span>
+                <div className="val mono" style={{color:'var(--t1)'}}>{lead.cpf?eur(lead.cpf):'Aucun'}{lead.fullCpf && <span className="unit">full CPF</span>}</div>
+              </div>
+            </>)}
           </div>
         </div>
 
@@ -952,9 +984,14 @@ function Fiche({lead, onBack, onCall, onPay, onAction}){
           <div className="panel-head"><span className="eyebrow">Actions</span></div>
           <div className="panel-body">
             <div className="actions">
-              <button className="act primary" onClick={onCall}>
+              <button className="act" onClick={onCall}>
                 <span className="act-ic"><I.phone/></span>
                 <span className="act-tx"><b>Appeler</b><span className="mono">{lead.tel}</span></span>
+              </button>
+              <button className="act" onClick={()=>onAction('meet')}>
+                <span className="act-ic"><I.video/></span>
+                <span className="act-tx"><b>Rejoindre le meet</b><span>ouvrir Google Meet</span></span>
+                <span className="chev"><I.chev/></span>
               </button>
               <button className="act" onClick={()=>onAction('rdv')}>
                 <span className="act-ic"><I.calPlus/></span>
@@ -1567,6 +1604,7 @@ function App(){
       patch(sel.id,prev=>({timeline:[{type:'note',when:'à l’instant',title:'Note',text:txt},...prev.timeline]}));
       toast('Note ajoutée',null,'info'); return;
     }
+    if(type==='meet'){ window.open('https://meet.google.com/new','_blank'); toast('Google Meet ouvert',null,'accent'); return; }
     if(type==='rdv'){ setSlotTarget({lead:sel, mode:'rdv'}); return; }
     if(type==='cpf'){ setSlotTarget({lead:sel, mode:'cpf'}); return; }
     if(type==='mail'){
