@@ -543,7 +543,7 @@ input,textarea{font-family:inherit; color:inherit}
 .ag-day{padding:11px 18px; background:var(--surface-2); font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--t3); border-bottom:1px solid var(--b1)}
 
 /* ----- agenda vue semaine (type Google Calendar) ----- */
-.cal{border:1px solid var(--b1); border-radius:var(--r-panel); overflow:hidden; background:var(--surface); max-width:1040px; box-shadow:var(--sh-card)}
+.cal{border:1px solid var(--b1); border-radius:var(--r-panel); overflow-y:auto; overflow-x:hidden; max-height:660px; background:var(--surface); max-width:1040px; box-shadow:var(--sh-card)}
 .cal-head{display:grid; grid-template-columns:60px repeat(5,1fr); border-bottom:1px solid var(--b1); position:sticky; top:0; z-index:2; background:var(--surface)}
 .cal-corner{border-right:1px solid var(--b1)}
 .cal-dh{padding:9px 8px 8px; text-align:center; border-right:1px solid var(--b1); display:flex; flex-direction:column; align-items:center; gap:2px}
@@ -552,7 +552,7 @@ input,textarea{font-family:inherit; color:inherit}
 .cal-dh .dnum{font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; color:var(--t1); width:30px; height:30px; display:grid; place-items:center; border-radius:99px}
 .cal-dh.today .dname{color:var(--accent)}
 .cal-dh.today .dnum{background:var(--accent); color:var(--on-accent)}
-.cal-grid{display:grid; grid-template-columns:60px repeat(5,1fr); max-height:620px; overflow-y:auto; position:relative}
+.cal-grid{display:grid; grid-template-columns:60px repeat(5,1fr); position:relative}
 .cal-gutter{border-right:1px solid var(--b1)}
 .cal-hr{position:relative; border-bottom:1px solid var(--b1)}
 .cal-hl{position:absolute; top:-7px; right:7px; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--t3)}
