@@ -6,35 +6,37 @@
 <title>Cockpit · CRM Closing IQ Project</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Gabarito:wght@500;600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <style>
 /* ============================== TOKENS ============================== */
 :root{
-  --page:#f0ece4; --surface:#fffdf9; --surface-2:#f9f4ec; --surface-3:#f0eae0;
-  --b1:#e7dfd2; --b2:#d9cdbb; --b3:#c2b49f;
-  --t1:#2a2418; --t2:#6e6453; --t3:#9c9180; --t4:#c2b8a8;
-  --accent:#c25a37; --accent-h:#ad4d2d; --on-accent:#fff;
-  --accent-tint:rgba(194,90,55,.10); --accent-tint-2:rgba(194,90,55,.16);
-  --hot:#c25a37; --warm:#cf8a4a; --cold:#9c9180;
-  --danger:#b34a3a; --danger-tint:rgba(179,74,58,.12);
-  --ok:#5f7d4f; --ok-tint:rgba(95,125,79,.14);
-  --r-card:10px; --r-panel:14px; --r-pill:999px;
-  --sh-card:0 1px 2px rgba(40,30,12,.05), 0 1px 3px rgba(40,30,12,.04);
-  --sh-pop:0 12px 40px rgba(40,28,10,.16), 0 2px 8px rgba(40,28,10,.08);
-  --sh-lift:0 8px 24px rgba(40,28,10,.14);
+  --page:#f7f7f8; --surface:#ffffff; --surface-2:#f7f7f8; --surface-3:#ececee;
+  --b1:#ececee; --b2:#d2d2d4; --b3:#a8a8aa;
+  --t1:#1d1d1e; --t2:#565658; --t3:#7a7a7c; --t4:#a8a8aa;
+  --accent:#f35c04; --accent-h:#d45606; --on-accent:#ffffff;
+  --accent-tint:rgba(243,92,4,.10); --accent-tint-2:rgba(243,92,4,.16);
+  --hot:#f35c04; --warm:#ff9b40; --cold:#a8a8aa;
+  --danger:#d4452a; --danger-tint:rgba(212,69,42,.10);
+  --ok:#2e9e5b; --ok-tint:rgba(46,158,91,.12);
+  --r-card:14px; --r-panel:18px; --r-pill:999px;
+  --sh-card:0 1px 2px rgba(29,29,30,.06), 0 1px 3px rgba(29,29,30,.05);
+  --sh-pop:0 18px 50px rgba(29,29,30,.18), 0 2px 8px rgba(29,29,30,.08);
+  --sh-lift:0 8px 24px rgba(29,29,30,.12);
+  --glow:0 10px 40px rgba(243,92,4,.30);
+  --grad-brand:linear-gradient(96deg,#1d1d1e 0%,#1d1d1e 40%,#5a2e14 60%,#a8460c 78%,#e2580a 92%,#f86a06 100%);
   --rail:188px;
   --pad:14px;
-  --speed:.18s;
+  --speed:.22s; --ease:cubic-bezier(0.22,1,0.36,1);
 }
 [data-theme="dark"]{
   --page:#15110b; --surface:#1e1810; --surface-2:#241d13; --surface-3:#2e2619;
   --b1:#2c2417; --b2:#3b3122; --b3:#544733;
   --t1:#f4efe6; --t2:#bdb09b; --t3:#8a7e6a; --t4:#615847;
   --accent:#db6f4b; --accent-h:#e5825f; --on-accent:#1a130c;
-  --accent-tint:rgba(219,111,75,.14); --accent-tint-2:rgba(219,111,75,.22);
+  --accent-tint:rgba(243,92,4,.14); --accent-tint-2:rgba(243,92,4,.22);
   --hot:#db6f4b; --warm:#d49a5e; --cold:#8a7e6a;
   --danger:#d3725f; --danger-tint:rgba(211,114,95,.16);
   --ok:#8aa873; --ok-tint:rgba(138,168,115,.16);
@@ -55,7 +57,7 @@ body{
 }
 #root{height:100vh}
 .mono{font-family:'JetBrains Mono',monospace; font-feature-settings:"tnum" 1; letter-spacing:-.01em}
-h1,h2,h3,h4{letter-spacing:-.022em; line-height:1.12; font-weight:800}
+h1,h2,h3,h4{font-family:'Gabarito',system-ui,sans-serif; letter-spacing:-.02em; line-height:1.08; font-weight:800}
 button{font-family:inherit; cursor:pointer; border:none; background:none; color:inherit}
 button:disabled{cursor:not-allowed}
 input,textarea{font-family:inherit; color:inherit}
@@ -76,9 +78,9 @@ input,textarea{font-family:inherit; color:inherit}
 }
 .logo{display:flex; align-items:center; gap:10px; padding:6px 8px 18px}
 .logo-mark{
-  width:30px; height:30px; border-radius:8px; background:var(--accent); color:var(--on-accent);
-  display:grid; place-items:center; font-weight:800; font-size:16px; flex:none;
-  box-shadow:0 2px 6px rgba(194,90,55,.35);
+  width:30px; height:30px; border-radius:9px; flex:none;
+  display:grid; place-items:center;
+  box-shadow:0 4px 14px rgba(255,122,0,.35);
 }
 .logo-txt{font-weight:800; font-size:14px; letter-spacing:-.03em}
 .logo-txt span{display:block; font-size:10.5px; font-weight:500; color:var(--t3); letter-spacing:.02em}
@@ -146,9 +148,9 @@ input,textarea{font-family:inherit; color:inherit}
 .seg button svg{width:14px; height:14px; stroke-width:2}
 .seg button.on{background:var(--surface); color:var(--t1); box-shadow:var(--sh-card)}
 
-.btn{display:inline-flex; align-items:center; gap:8px; padding:9px 15px; border-radius:9px; font-weight:700; font-size:13.5px; transition:all var(--speed); border:1px solid transparent}
+.btn{display:inline-flex; align-items:center; gap:8px; padding:10px 17px; border-radius:var(--r-pill); font-weight:700; font-size:13.5px; transition:all var(--speed); border:1px solid transparent}
 .btn svg{width:16px; height:16px; stroke-width:2}
-.btn-accent{background:var(--accent); color:var(--on-accent); box-shadow:0 2px 8px rgba(194,90,55,.3)}
+.btn-accent{background:var(--accent); color:var(--on-accent); box-shadow:var(--glow)}
 .btn-accent:hover{background:var(--accent-h)}
 .btn-ghost{background:var(--surface); border-color:var(--b1); color:var(--t1)}
 .btn-ghost:hover{border-color:var(--b3); background:var(--surface-2)}
@@ -291,7 +293,7 @@ input,textarea{font-family:inherit; color:inherit}
 .act-tx span{font-size:11.5px; color:var(--t3); font-weight:500}
 .act .chev{margin-left:auto; color:var(--t3)}
 .act .chev svg{width:16px; height:16px; stroke-width:2}
-.act.primary{background:var(--accent); border-color:var(--accent); box-shadow:0 4px 14px rgba(194,90,55,.32)}
+.act.primary{background:var(--accent); border-color:var(--accent); box-shadow:var(--glow)}
 .act.primary .act-ic{background:rgba(255,255,255,.16); border-color:transparent}
 .act.primary .act-ic svg{color:var(--on-accent)}
 .act.primary .act-tx b{color:var(--on-accent)}
@@ -404,7 +406,7 @@ input,textarea{font-family:inherit; color:inherit}
 .slot{font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600; padding:8px 4px; border:1px solid var(--b1); border-radius:8px; background:var(--surface); color:var(--t1); transition:all var(--speed); text-align:center}
 .slot:hover:not(.busy):not(.sel){border-color:var(--accent); color:var(--accent)}
 .slot.busy{color:var(--t4); background:var(--surface-3); cursor:not-allowed; text-decoration:line-through; opacity:.6}
-.slot.sel{background:var(--accent); border-color:var(--accent); color:var(--on-accent); box-shadow:0 2px 8px rgba(194,90,55,.3)}
+.slot.sel{background:var(--accent); border-color:var(--accent); color:var(--on-accent); box-shadow:0 2px 8px rgba(243,92,4,.3)}
 .slot-noon{font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:var(--t4); text-align:center; padding:5px 0 2px}
 .slot-sel-bar{margin-top:16px; padding:13px 15px; border:1px solid var(--accent-tint-2); border-radius:11px; background:var(--accent-tint); display:flex; align-items:center; gap:10px}
 .slot-sel-bar .ssb-ic{width:30px; height:30px; border-radius:8px; background:var(--surface); display:grid; place-items:center; flex:none}
@@ -495,7 +497,7 @@ input,textarea{font-family:inherit; color:inherit}
 }
 @keyframes dropIn{from{transform:translateY(-24px); opacity:0}to{transform:none; opacity:1}}
 .incoming::before{content:''; position:absolute; inset:0; border-radius:14px; box-shadow:0 0 0 0 var(--accent); animation:halo 1.8s ease-out infinite; pointer-events:none}
-@keyframes halo{0%{box-shadow:0 0 0 0 rgba(194,90,55,.4)}100%{box-shadow:0 0 0 14px rgba(194,90,55,0)}}
+@keyframes halo{0%{box-shadow:0 0 0 0 rgba(243,92,4,.4)}100%{box-shadow:0 0 0 14px rgba(243,92,4,0)}}
 .incoming .av{position:relative; z-index:1}
 .incoming-tx{flex:1; min-width:0; z-index:1}
 .incoming-tx .eyebrow{display:flex; align-items:center; gap:7px; color:var(--accent)}
@@ -553,7 +555,7 @@ input,textarea{font-family:inherit; color:inherit}
 .adm-cell .v{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:14px}
 .adm-cell .v.txt{font-family:'Hanken Grotesk',sans-serif; font-weight:600}
 .adm-cell .v.secured{color:var(--ok)}
-.btn-validate{background:var(--accent); color:var(--on-accent); padding:9px 18px; border-radius:9px; font-weight:700; font-size:13.5px; display:inline-flex; align-items:center; gap:8px; box-shadow:0 2px 8px rgba(194,90,55,.3)}
+.btn-validate{background:var(--accent); color:var(--on-accent); padding:9px 18px; border-radius:9px; font-weight:700; font-size:13.5px; display:inline-flex; align-items:center; gap:8px; box-shadow:0 2px 8px rgba(243,92,4,.3)}
 .btn-validate:hover{background:var(--accent-h)}
 .btn-validate svg{width:16px; height:16px; stroke-width:2.2}
 .btn-secured{background:var(--ok-tint); color:var(--ok); padding:9px 18px; border-radius:9px; font-weight:700; font-size:13.5px; display:inline-flex; align-items:center; gap:8px}
@@ -1397,7 +1399,7 @@ function App(){
   const [leads,setLeads]=useState(()=>persistedState('iqcrm_leads',SEED).filter(l=>l.owner==='Léo'));
   const [screen,setScreen]=useState(()=>{ const s=persistedState('iqcrm_screen','leads'); return ['leads','fiche','agenda'].includes(s)?s:'leads'; });
   const [selId,setSelId]=useState(()=>persistedState('iqcrm_sel',null));
-  const [theme,setTheme]=useState(()=>persistedState('iqcrm_theme','light'));
+  const [theme,setTheme]=useState(()=>persistedState('iqcrm_theme_v2','dark'));
   const [density,setDensity]=useState(()=>persistedState('iqcrm_density','standard'));
   const [search,setSearch]=useState('');
 
@@ -1415,7 +1417,7 @@ function App(){
   useEffect(()=>localStorage.setItem('iqcrm_leads',JSON.stringify(leads)),[leads]);
   useEffect(()=>localStorage.setItem('iqcrm_screen',JSON.stringify(screen)),[screen]);
   useEffect(()=>localStorage.setItem('iqcrm_sel',JSON.stringify(selId)),[selId]);
-  useEffect(()=>{ localStorage.setItem('iqcrm_theme',JSON.stringify(theme)); document.documentElement.setAttribute('data-theme',theme); },[theme]);
+  useEffect(()=>{ localStorage.setItem('iqcrm_theme_v2',JSON.stringify(theme)); document.documentElement.setAttribute('data-theme',theme); },[theme]);
   useEffect(()=>{ localStorage.setItem('iqcrm_density',JSON.stringify(density)); document.documentElement.setAttribute('data-density',density); },[density]);
 
   const toast=useCallback((title,sub,tone='info')=>{
@@ -1569,8 +1571,13 @@ function App(){
       {/* RAIL */}
       <nav className="rail">
         <div className="logo">
-          <div className="logo-mark">IQ</div>
-          <div className="logo-txt">Cockpit<span>IQ Project</span></div>
+          <div className="logo-mark">
+            <svg viewBox="0 0 40 40" width="30" height="30" aria-label="IQ Project">
+              <rect width="40" height="40" rx="11" fill="#ff7a00"/>
+              <text x="50%" y="54%" dominantBaseline="central" textAnchor="middle" fill="#1d1d1e" fontFamily="Gabarito, system-ui, sans-serif" fontWeight="900" fontSize="18" letterSpacing="-0.5">IQ</text>
+            </svg>
+          </div>
+          <div className="logo-txt">IQ Project<span>by IQ Education</span></div>
         </div>
         {navItems.map(n=>(
           <button key={n.id} className={`nav-item ${navActive===n.id?'active':''}`} onClick={()=>{setScreen(n.id);}}>
