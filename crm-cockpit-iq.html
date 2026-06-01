@@ -284,6 +284,19 @@ input,textarea{font-family:inherit; color:inherit}
 .tl-granola .g-head .eyebrow{color:var(--accent)}
 .tl-granola .g-line{font-size:12.5px; color:var(--t2); display:flex; gap:7px; padding:2px 0}
 .tl-granola .g-line b{color:var(--t1); font-weight:600}
+/* ---- modifier / supprimer une entrée d'historique ---- */
+.tl-right{display:inline-flex; align-items:center; gap:6px; flex:none}
+.tl-actions{display:inline-flex; gap:3px; opacity:0; transition:opacity var(--speed)}
+.tl-item:hover .tl-actions{opacity:1}
+.tl-actions button{width:23px; height:23px; border-radius:6px; display:grid; place-items:center; color:var(--t3); background:none; cursor:pointer}
+.tl-actions button:hover{background:var(--surface-2); color:var(--t1)}
+.tl-actions button.del:hover{color:var(--danger)}
+.tl-actions svg{width:13.5px; height:13.5px; stroke-width:2}
+.tl-edit{margin-top:6px}
+.tl-edit textarea{width:100%; min-height:58px; resize:vertical; background:var(--surface-2); border:1.5px solid var(--b2); border-radius:9px; padding:9px 11px; color:var(--t1); font-size:13px; font-family:inherit; line-height:1.5; box-sizing:border-box}
+.tl-edit textarea:focus{border-color:var(--accent); outline:none}
+.tl-edit-actions{display:flex; gap:8px; margin-top:8px}
+.tl-edit-actions .btn{padding:7px 13px; font-size:12.5px}
 
 /* actions column */
 .actions{display:flex; flex-direction:column; gap:9px}
@@ -641,6 +654,21 @@ input,textarea{font-family:inherit; color:inherit}
 .cc-sub{font-size:13px; color:var(--t3); line-height:1.45; margin-bottom:20px}
 .cc-actions{display:flex; gap:10px}
 .cc-actions .btn{flex:1; justify-content:center; padding:12px}
+
+/* ---- sélecteur d'étape dans la fiche (déplacer le lead sans sortir) ---- */
+.movesel{position:relative; margin-bottom:14px}
+.movesel-lbl{display:block; font-size:11px; font-weight:700; color:var(--t3); text-transform:uppercase; letter-spacing:.04em; margin-bottom:7px}
+.movesel-btn{display:flex; align-items:center; gap:9px; width:100%; padding:11px 13px; border-radius:11px; border:1.5px solid var(--b1); background:var(--surface-2); color:var(--t1); font-size:14px; font-weight:700; cursor:pointer; transition:all var(--speed) var(--ease)}
+.movesel-btn:hover{border-color:var(--b3)}
+.movesel-btn .sdot{width:9px; height:9px; border-radius:99px; flex:none}
+.movesel-chev{margin-left:auto; transition:transform var(--speed)}
+.movesel-btn.open .movesel-chev{transform:rotate(180deg)}
+.movesel-ov{position:fixed; inset:0; z-index:40}
+.movesel-menu{position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:50; background:var(--surface); border:1px solid var(--b1); border-radius:12px; padding:6px; box-shadow:0 14px 34px rgba(0,0,0,.32); max-height:340px; overflow:auto}
+.movesel-item{display:flex; align-items:center; gap:10px; width:100%; padding:10px; border-radius:8px; background:none; color:var(--t2); font-size:13px; font-weight:600; cursor:pointer; text-align:left; transition:background var(--speed),color var(--speed)}
+.movesel-item:hover{background:var(--surface-2); color:var(--t1)}
+.movesel-item.active{color:var(--accent); background:var(--accent-tint)}
+.movesel-item .sdot{width:8px; height:8px; border-radius:99px; flex:none}
 </style>
 </head>
 <body>
@@ -681,7 +709,7 @@ function dbToLead(r, acts){
     offer:r.montant||0, paid:r.statut_paiement==='paye',
     cpf:r.cpf_dispo||0, metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'', situation:r.situation||'',
     rdv_at:r.rdv_at||null, meet_link:r.meet_link||null, hubspot_deal_id:r.hubspot_deal_id||null,
-    timeline:(acts||[]).map(a=>({type:a.type, when:fmtWhen(a.created_at), title:a.titre||'', text:a.contenu||'', paid:a.type==='paiement'}))
+    timeline:(acts||[]).map(a=>({id:a.id, type:a.type, when:fmtWhen(a.created_at), title:a.titre||'', text:a.contenu||'', paid:a.type==='paiement'}))
   };
 }
 
@@ -720,6 +748,13 @@ async function saveLead(id, uiPatch){
 async function addActivite(lead_id, type, titre, contenu, montant){
   try{ await SB.from('activites').insert({lead_id, type, titre:titre||null, contenu:contenu||null, montant:montant||null}); }catch(e){ console.warn('addActivite',e); }
 }
+// modifier / supprimer une entrée d'historique
+async function updateActivite(id, contenu){
+  try{ await SB.from('activites').update({contenu}).eq('id',id); }catch(e){ console.warn('updateActivite',e); }
+}
+async function deleteActivite(id){
+  try{ await SB.from('activites').delete().eq('id',id); }catch(e){ console.warn('deleteActivite',e); }
+}
 
 /* ============================================================= ICONS */
 const I = {
@@ -753,6 +788,8 @@ const I = {
   spark:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/></svg>,
   copy:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>,
   clock:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>,
+  pencil:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="M16.5 4.5l3 3L9 18l-4 1 1-4z"/></svg>,
+  trash:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>,
 };
 
 /* ============================================================= HELPERS */
@@ -774,14 +811,17 @@ const SOURCE_INFO = {
 
 const COLUMNS = [
   {id:'contacter', label:'Lead à contacter'},
+  {id:'atc', label:'ATC'},
   {id:'r1', label:'R1 à faire'},
   {id:'r2', label:'R2 à faire'},
   {id:'apayer', label:'À payer'},
   {id:'paye', label:'Payé'},
   {id:'cpf', label:'CPF (Nour)'},
+  {id:'nonqualifie', label:'Lead non qualifié'},
   {id:'perdu', label:'Prospect perdu'},
 ];
 const COL_LABEL = Object.fromEntries(COLUMNS.map(c=>[c.id,c.label]));
+const COL_COLOR = {contacter:'var(--accent)', atc:'var(--cold)', r1:'var(--warm)', r2:'var(--warm)', apayer:'var(--accent)', paye:'var(--ok)', cpf:'var(--accent)', nonqualifie:'var(--warm)', perdu:'var(--t4)'};
 
 const OFFERS = [
   {id:'1400', amount:1400, tag:'Non chômeur (France Travail)'},
@@ -939,17 +979,19 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onRappeler, rap
   const [dragId, setDragId] = useState(null);
   const [overCol, setOverCol] = useState(null);
   const [over, setOver] = useState(null); // {cardId, pos}
-  const [src, setSrc] = useState('all'); // filtre par source
+  // ATC est désormais une COLONNE à part entière -> retiré du filtre source
+  const SRC_TABS=[{k:'all',label:'Tous'},{k:'lead_gen',label:'Lead gen'},{k:'webinaire',label:'Webinaire'},{k:'mff',label:'MFF'}];
+  const [src, setSrc] = useState(()=>{ const s=persistedState('iqcrm_src','all'); return SRC_TABS.some(o=>o.k===s)?s:'all'; }); // filtre par source (persiste)
   const [srcOpen, setSrcOpen] = useState(false); // menu du sélecteur ouvert
+  useEffect(()=>localStorage.setItem('iqcrm_src',JSON.stringify(src)),[src]);
 
   // compteurs par source — calculés sur la SEULE colonne « Lead à contacter »
   const srcCounts = useMemo(()=>{
     const base = leads.filter(l=>l.column==='contacter');
-    const c={all:base.length, lead_gen:0, webinaire:0, atc:0, mff:0};
+    const c={all:base.length, lead_gen:0, webinaire:0, mff:0};
     base.forEach(l=>{ if(c[l.source]!==undefined) c[l.source]++; });
     return c;
   },[leads]);
-  const SRC_TABS=[{k:'all',label:'Tous'},{k:'lead_gen',label:'Lead gen'},{k:'webinaire',label:'Webinaire'},{k:'atc',label:'ATC'},{k:'mff',label:'MFF'}];
 
   const visible = useMemo(()=> leads.filter(l=>{
     // manager : voit tout (filtrage par closer ajouté au câblage des comptes)
@@ -1050,8 +1092,11 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onRappeler, rap
 }
 
 /* ============================================================= FICHE LEAD */
-function Fiche({lead, onBack, onCall, onPay, onAction}){
-  const statusColor = {contacter:'var(--accent)', r1:'var(--warm)', r2:'var(--warm)', r3:'var(--warm)', apayer:'var(--accent)', paye:'var(--ok)', cpf:'var(--accent)', perdu:'var(--t4)'}[lead.column];
+function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDeleteNote}){
+  const [moveOpen,setMoveOpen]=useState(false);
+  const [editId,setEditId]=useState(null);
+  const [draft,setDraft]=useState('');
+  const statusColor = COL_COLOR[lead.column];
 
   return (
     <div className="fiche">
@@ -1111,10 +1156,27 @@ function Fiche({lead, onBack, onCall, onPay, onAction}){
           <div className="panel-body">
             <div className="tl">
               {lead.timeline.map((ev,i)=>(
-                <div className="tl-item" key={i}>
+                <div className="tl-item" key={ev.id||i}>
                   <span className={`tl-dot ${tlTone[ev.type]||''} ${ev.paid?'ok':''}`}>{(tlIcon[ev.type]||I.note)({})}</span>
-                  <div className="tl-row"><span className="tl-title">{ev.title}</span><span className="tl-when">{ev.when}</span></div>
-                  {ev.text && <div className="tl-text">{ev.text}</div>}
+                  <div className="tl-row">
+                    <span className="tl-title">{ev.title}</span>
+                    <span className="tl-right">
+                      <span className="tl-when">{ev.when}</span>
+                      {ev.id && editId!==ev.id && <span className="tl-actions">
+                        <button title="Modifier" onClick={()=>{ setEditId(ev.id); setDraft(ev.text||''); }}>{I.pencil({})}</button>
+                        <button className="del" title="Supprimer" onClick={()=>onDeleteNote(ev.id)}>{I.trash({})}</button>
+                      </span>}
+                    </span>
+                  </div>
+                  {editId===ev.id ? (
+                    <div className="tl-edit">
+                      <textarea value={draft} onChange={e=>setDraft(e.target.value)} autoFocus/>
+                      <div className="tl-edit-actions">
+                        <button className="btn btn-accent" onClick={()=>{ onEditNote(ev.id, draft.trim()); setEditId(null); }}>Enregistrer</button>
+                        <button className="btn btn-ghost" onClick={()=>setEditId(null)}>Annuler</button>
+                      </div>
+                    </div>
+                  ) : (ev.text && <div className="tl-text">{ev.text}</div>)}
                   {ev.granola && (
                     <div className="tl-granola">
                       <div className="g-head"><I.spark style={{width:13,height:13,strokeWidth:2,color:'var(--accent)'}}/><span className="eyebrow">Recap Granola</span></div>
@@ -1133,6 +1195,24 @@ function Fiche({lead, onBack, onCall, onPay, onAction}){
         <div className="panel">
           <div className="panel-head"><span className="eyebrow">Actions</span></div>
           <div className="panel-body">
+            <div className="movesel">
+              <span className="movesel-lbl">Étape du lead</span>
+              <button className={`movesel-btn ${moveOpen?'open':''}`} onClick={()=>setMoveOpen(o=>!o)}>
+                <span className="sdot" style={{background:COL_COLOR[lead.column]}}></span>
+                <span>{COL_LABEL[lead.column]}</span>
+                <svg className="movesel-chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              {moveOpen && (<>
+                <div className="movesel-ov" onClick={()=>setMoveOpen(false)}></div>
+                <div className="movesel-menu">
+                  {COLUMNS.map(col=>(
+                    <button key={col.id} className={`movesel-item ${col.id===lead.column?'active':''}`} onClick={()=>{ if(col.id!==lead.column) onMove(col.id); setMoveOpen(false); }}>
+                      <span className="sdot" style={{background:COL_COLOR[col.id]}}></span><span>{col.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </>)}
+            </div>
             <div className="actions">
               <button className="act" onClick={onCall}>
                 <span className="act-ic"><I.phone/></span>
@@ -1724,7 +1804,7 @@ function App({session, onLogout}){
     setLeads(ls=>{
       const dragged=ls.find(x=>x.id===id); if(!dragged) return ls;
       const moved={...dragged, column:col,
-        nextAction: changedCol ? (col==='perdu'?'Prospect perdu': col==='cpf'?'Transmis admission': col==='contacter'?'À contacter': col==='r1'?'R1 à faire': col==='r2'?'R2 à faire': col==='r3'?'R3 à faire': dragged.nextAction) : dragged.nextAction};
+        nextAction: changedCol ? (col==='perdu'?'Prospect perdu': col==='cpf'?'Transmis admission': col==='nonqualifie'?'Non qualifié — à retravailler': col==='contacter'?'À contacter': col==='atc'?'Sans réponse — à relancer': col==='r1'?'R1 à faire': col==='r2'?'R2 à faire': col==='r3'?'R3 à faire': dragged.nextAction) : dragged.nextAction};
       const rest=ls.filter(x=>x.id!==id);
       let at;
       if(beforeId && beforeId!==id){ at=rest.findIndex(x=>x.id===beforeId); if(at===-1) at=rest.length; }
@@ -1732,7 +1812,7 @@ function App({session, onLogout}){
       const out=[...rest]; out.splice(at,0,moved); return out;
     });
     if(changedCol){
-      const na = col==='perdu'?'Prospect perdu': col==='cpf'?'Transmis admission': col==='contacter'?'À contacter': col==='r1'?'R1 à faire': col==='r2'?'R2 à faire': col==='r3'?'R3 à faire': null;
+      const na = col==='perdu'?'Prospect perdu': col==='cpf'?'Transmis admission': col==='nonqualifie'?'Non qualifié — à retravailler': col==='contacter'?'À contacter': col==='atc'?'Sans réponse — à relancer': col==='r1'?'R1 à faire': col==='r2'?'R2 à faire': col==='r3'?'R3 à faire': null;
       saveLead(id,{column:col, ...(na?{nextAction:na}:{})});
       toast(`${l.prenom} → ${COL_LABEL[col]}`,'Carte déplacée','accent');
     }
@@ -1756,6 +1836,10 @@ function App({session, onLogout}){
     patch(l.id,prev=>({timeline:[{type:'appel',when:'à l’instant',title:'Appel passé',text:l.tel},...prev.timeline]}));
     toast('Appel enregistré',`${l.prenom} ${l.nom}`,'ok');
   };
+
+  // modifier / supprimer une entrée d'historique (optimiste local + Supabase)
+  const editNote=(actId,text)=>{ if(sel) patch(sel.id,prev=>({timeline:prev.timeline.map(e=> e.id===actId?{...e,text}:e)})); updateActivite(actId,text); };
+  const deleteNote=(actId)=>{ if(sel) patch(sel.id,prev=>({timeline:prev.timeline.filter(e=> e.id!==actId)})); deleteActivite(actId); toast('Entrée supprimée',null,'info'); };
 
   // raccrocher → recap auto rempli (Granola). Reçoit le lead via callId capturé au moment de l'appel.
   const hangup=(notes,checks)=>{
@@ -1888,7 +1972,7 @@ function App({session, onLogout}){
       <main className="work">
         {screen==='leads' && <Board leads={leads} search={search} setSearch={setSearch}
             onOpenLead={openLead} onReorder={reorderLead} onRappeler={()=>setShowRappeler(true)} rappelerCount={rappelerCount}/>}
-        {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen('leads')} onCall={()=>placeCall(sel)}
+        {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen('leads')} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote}
             onPay={()=>setPayTarget({lead:sel})} onAction={doAction}/>}
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen('leads')}>Retour au board</button></div>}
         {screen==='agenda' && <Agenda leads={leads} onOpen={openLead}/>}
