@@ -273,7 +273,6 @@ input,textarea{font-family:inherit; color:inherit}
 .tl-dot.danger{border-color:var(--danger)} .tl-dot.danger svg{color:var(--danger)}
 .tl-row{display:flex; align-items:baseline; gap:8px; justify-content:space-between}
 .tl-title{font-weight:700; font-size:13.5px}
-.tl-title.ok{color:var(--ok)}
 .tl-when{font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--t3); flex:none}
 .tl-text{font-size:13px; color:var(--t2); margin-top:3px; line-height:1.5}
 .tl-granola{margin-top:8px; background:var(--surface-2); border:1px solid var(--b1); border-radius:9px; padding:10px 11px}
@@ -1324,7 +1323,7 @@ function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDel
                 <div className="tl-item" key={ev.id||i}>
                   <span className={`tl-dot ${tlTone[ev.type]||''} ${ev.paid?'ok':''}`}>{(tlIcon[ev.type]||I.note)({})}</span>
                   <div className="tl-row">
-                    <span className={`tl-title ${ev.type==='rdv_accepted'?'ok':''}`}>{ev.title}</span>
+                    <span className="tl-title">{ev.title}</span>
                     <span className="tl-right">
                       <span className="tl-when">{ev.when}</span>
                       {ev.id && editId!==ev.id && <span className="tl-actions">
@@ -1398,10 +1397,6 @@ function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDel
                 <span className="act-tx"><b>Envoyer lien paiement</b><span className="mono">1 400 · 1 250</span></span>
                 <span className="chev"><I.chev/></span>
               </button>
-              {['r1','r2','apayer','paye','cpf'].includes(lead.column) && <button className="act" onClick={()=>onAction('mail')}>
-                <span className="act-ic"><I.mail/></span>
-                <span className="act-tx"><b>Email post-R1</b><span>modèle pré-rempli</span></span>
-              </button>}
               <button className="act" onClick={()=>onAction('cpf')}>
                 <span className="act-ic"><I.doc/></span>
                 <span className="act-tx"><b>Passer à Nour (CPF)</b><span>caler le RDV admission</span></span>
