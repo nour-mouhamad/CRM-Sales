@@ -669,6 +669,11 @@ input,textarea{font-family:inherit; color:inherit}
 .movesel-item:hover{background:var(--surface-2); color:var(--t1)}
 .movesel-item.active{color:var(--accent); background:var(--accent-tint)}
 .movesel-item .sdot{width:8px; height:8px; border-radius:99px; flex:none}
+/* ---- bloc qualification (fiche, identique pour tous les pipes) ---- */
+.qline{display:flex; justify-content:space-between; align-items:baseline; gap:14px; padding:6px 0; border-bottom:1px solid var(--b1); font-size:13px}
+.qline:last-child{border-bottom:none}
+.qk{color:var(--t3); font-weight:600; flex:none}
+.qv{color:var(--t1); font-weight:600; text-align:right}
 </style>
 </head>
 <body>
@@ -802,6 +807,9 @@ const srcLabel = {webinaire:'Webinaire','pub insta':'Pub Insta','référé':'Ré
 // Source d'un lead à contacter = opt-in sur le site (ou MFF). Conditionne l'angle d'ouverture.
 const SOURCE_INFO = {
   webinaire: {label:'Webinaire', via:'Inscrit au webinaire Vibe Coding', angle:'Il a vu la promesse en live → ouvrir sur ce qu’il a retenu, créer le manque.'},
+  lead_gen:  {label:'Lead gen', via:'Lead entrant (formulaire / page)', angle:'Qualifier l’intention : pourquoi il s’est inscrit, créer le manque.'},
+  atc:       {label:'ATC', via:'Déjà tenté, sans réponse', angle:'Relancer : nouvel angle, autre créneau, garder court.'},
+  mff:       {label:'MFF — MaFormation', via:'Vient de MaFormation (MFF)', angle:'Forte intention, ne connaît pas IQ → présenter IQ d’abord, jamais le prix.'},
   brochure:  {label:'Brochure téléchargée', via:'A opt-in pour télécharger la brochure', angle:'Intéressé mais tiède → diagnostiquer son projet avant de pitcher.'},
   ressource: {label:'Ressource téléchargée', via:'A opt-in pour une ressource gratuite', angle:'Lead froid en découverte → qualifier l’intention, présenter IQ.'},
   MFF: {label:'MFF — MaFormation', via:'Vient de MaFormation (MFF)', angle:'Forte intention, ne connaît pas IQ → présenter IQ d’ABORD, jamais le prix.'},
@@ -1118,7 +1126,7 @@ function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDel
         <div className="panel">
           <div className="panel-head"><span className="eyebrow">Situation</span></div>
           <div className="panel-body">
-            {lead.column==='contacter' ? (()=>{ const si=SOURCE_INFO[lead.source]||{label:lead.source,via:'Lead entrant',angle:'Qualifier l’intention.'}; return (<>
+            {(()=>{ const si=SOURCE_INFO[lead.source]||{label:lead.source||'—',via:'Lead entrant',angle:'Qualifier l’intention pendant l’appel.'}; return (<>
               <div className="field">
                 <span className="eyebrow">Source du lead</span>
                 <div className="val" style={{fontWeight:700}}>{si.label}</div>
@@ -1129,21 +1137,13 @@ function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDel
                 <div className="val" style={{fontWeight:600,fontSize:14}}>{si.angle}</div>
               </div>
               <div className="field">
-                <span className="eyebrow">À qualifier pendant l’appel</span>
-                <div className="todo-line"><span className="todo-dot"></span>Métier actuel</div>
-                <div className="todo-line"><span className="todo-dot"></span>Objectif / projet</div>
-                <div className="todo-line"><span className="todo-dot"></span>Statut + solde CPF</div>
-                <div className="todo-line"><span className="todo-dot"></span>Budget / reste à charge</div>
+                <span className="eyebrow">Qualification</span>
+                <div className="qline"><span className="qk">Métier</span><span className="qv">{lead.metier||'—'}</span></div>
+                <div className="qline"><span className="qk">Objectif</span><span className="qv">{lead.veut||'—'}</span></div>
+                <div className="qline"><span className="qk">CPF dispo</span><span className="qv">{lead.cpf?eur(lead.cpf):'—'}</span></div>
+                <div className="qline"><span className="qk">Budget</span><span className="qv">{lead.budget||'—'}</span></div>
               </div>
-            </>); })() : (<>
-              <div className="field"><span className="eyebrow">Métier actuel</span><div className="val">{lead.metier}</div></div>
-              <div className="field"><span className="eyebrow">Ce qu’il veut</span><div className="val" style={{fontWeight:600,fontSize:14}}>{lead.veut}</div></div>
-              <div className="field"><span className="eyebrow">Budget</span><div className="val">{lead.budget}</div></div>
-              <div className="field">
-                <span className="eyebrow">CPF disponible</span>
-                <div className="val mono" style={{color:'var(--t1)'}}>{lead.cpf?eur(lead.cpf):'Aucun'}{lead.fullCpf && <span className="unit">full CPF</span>}</div>
-              </div>
-            </>)}
+            </>); })()}
           </div>
         </div>
 
@@ -1827,14 +1827,16 @@ function App({session, onLogout}){
     const num=(l.tel||'').replace(/[^+\d]/g,'');
     if(!num){ toast('Pas de numéro',`${l.prenom||'Ce lead'} n’a pas de téléphone`,'info'); return; }
     const a=document.createElement('a'); a.href='tel:'+num; document.body.appendChild(a); a.click(); a.remove();
-    setConfirmCall(l);
+    setTimeout(()=>setConfirmCall(l), 3000); // modale de confirmation 3 s après l'ouverture du dialer
   };
-  // enregistre l'appel UNIQUEMENT après confirmation (appel réellement passé)
-  const confirmCallDone=()=>{
+  // résout l'appel selon le choix : 'none' (rien) | 'nrp' | 'appele' -> historique
+  const closeCall=(outcome)=>{
     const l=confirmCall; setConfirmCall(null); if(!l) return;
-    addActivite(l.id,'appel','Appel passé',l.tel);
-    patch(l.id,prev=>({timeline:[{type:'appel',when:'à l’instant',title:'Appel passé',text:l.tel},...prev.timeline]}));
-    toast('Appel enregistré',`${l.prenom} ${l.nom}`,'ok');
+    if(outcome==='none') return;
+    const title = outcome==='nrp' ? 'NRP — ne répond pas' : 'Appelé';
+    addActivite(l.id,'appel',title,l.tel);
+    patch(l.id,prev=>({timeline:[{type:'appel',when:'à l’instant',title,text:l.tel},...prev.timeline]}));
+    toast(outcome==='nrp'?'NRP enregistré':'Appel enregistré',`${l.prenom} ${l.nom}`,'ok');
   };
 
   // modifier / supprimer une entrée d'historique (optimiste local + Supabase)
@@ -1988,8 +1990,9 @@ function App({session, onLogout}){
           <div className="cc-num">{confirmCall.tel}</div>
           <div className="cc-sub">Le dialer du Mac s'est ouvert. Une fois l'appel terminé, confirme pour l'enregistrer dans l'historique du lead.</div>
           <div className="cc-actions">
-            <button className="btn btn-ghost" onClick={()=>setConfirmCall(null)}>Pas appelé</button>
-            <button className="btn btn-accent" onClick={confirmCallDone}>{I.check({style:{width:15,height:15,strokeWidth:2.6}})} Appel passé</button>
+            <button className="btn btn-ghost" onClick={()=>closeCall('none')}>Pas appelé</button>
+            <button className="btn btn-soft" onClick={()=>closeCall('nrp')}>NRP</button>
+            <button className="btn btn-accent" onClick={()=>closeCall('appele')}>{I.check({style:{width:15,height:15,strokeWidth:2.6}})} Appelé</button>
           </div>
         </div>
       </>}
