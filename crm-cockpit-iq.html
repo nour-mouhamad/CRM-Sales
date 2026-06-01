@@ -615,10 +615,44 @@ input,textarea{font-family:inherit; color:inherit}
 .login-msg.ok{background:var(--ok-tint); color:var(--ok)}
 .login-switch{margin-top:4px; font-size:12.5px; color:var(--t2); font-weight:600; background:none}
 .login-switch:hover{color:var(--accent)}
+
+/* ---- filtre par source : sélecteur unique (colonne « Lead à contacter ») ---- */
+.srcdd{position:relative; padding:0 2px 10px}
+.srcdd-btn{display:flex; align-items:center; gap:8px; width:100%; padding:8px 12px; border-radius:10px; border:1.5px solid var(--b1); background:var(--surface); color:var(--t1); font-size:13px; font-weight:600; cursor:pointer; transition:all var(--speed) var(--ease)}
+.srcdd-btn:hover{border-color:var(--b3)}
+.srcdd-pre{color:var(--t3); font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:.04em}
+.srcdd-n{font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; color:var(--t3); background:var(--surface-2); border:1px solid var(--b1); border-radius:6px; padding:1px 6px}
+.srcdd-chev{margin-left:auto; transition:transform var(--speed)}
+.srcdd-btn.open .srcdd-chev{transform:rotate(180deg)}
+.srcdd-ov{position:fixed; inset:0; z-index:40}
+.srcdd-menu{position:absolute; top:calc(100% - 6px); left:2px; right:2px; z-index:50; background:var(--surface); border:1px solid var(--b1); border-radius:12px; padding:6px; box-shadow:0 14px 34px rgba(0,0,0,.32)}
+.srcdd-item{display:flex; align-items:center; gap:10px; width:100%; padding:9px 10px; border-radius:8px; background:none; color:var(--t2); font-size:13px; font-weight:600; cursor:pointer; text-align:left; transition:background var(--speed),color var(--speed)}
+.srcdd-item:hover{background:var(--surface-2); color:var(--t1)}
+.srcdd-item.active{color:var(--accent)}
+.srcdd-item .n{margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--t3)}
+.srcdd-item.active .n{color:var(--accent)}
+
+/* ---- confirmation d'appel (log seulement si l'appel a vraiment eu lieu) ---- */
+.callconfirm{position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:90; width:min(420px,92vw); background:var(--surface); border:1px solid var(--b1); border-radius:18px; padding:26px; text-align:center; box-shadow:0 24px 60px rgba(0,0,0,.42); animation:fade .2s ease}
+.cc-ic{width:54px; height:54px; border-radius:14px; background:var(--accent-tint); color:var(--accent); display:grid; place-items:center; margin:0 auto 14px}
+.cc-ic svg{width:26px; height:26px}
+.callconfirm h3{font-size:17px; font-weight:800; margin-bottom:4px}
+.cc-num{font-family:'JetBrains Mono',monospace; font-size:14px; color:var(--t2); margin-bottom:12px}
+.cc-sub{font-size:13px; color:var(--t3); line-height:1.45; margin-bottom:20px}
+.cc-actions{display:flex; gap:10px}
+.cc-actions .btn{flex:1; justify-content:center; padding:12px}
 </style>
 </head>
 <body>
-<div id="root"></div>
+<div id="root">
+  <!-- Placeholder instantané (avant compilation Babel) : évite tout écran noir au chargement -->
+  <div style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:#f4f4f5;font-family:system-ui,-apple-system,sans-serif">
+    <div style="width:64px;height:48px;border-radius:11px;background:#f35c04;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:26px;letter-spacing:-1px">IQ</div>
+    <div style="width:26px;height:26px;border:3px solid #e3e3e6;border-top-color:#f35c04;border-radius:50%;animation:iqspin .7s linear infinite"></div>
+    <div style="color:#8a8a8f;font-size:13px;font-weight:600">Chargement du Cockpit…</div>
+  </div>
+  <style>@keyframes iqspin{to{transform:rotate(360deg)}}</style>
+</div>
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
@@ -627,15 +661,64 @@ const SUPABASE_URL = 'https://kquoapetuuzwccmmezud.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_QvLoHEJ5XpH16YKA8JJgUg_a3ys4GM4';
 const SB = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 // charge l'état CRM de l'utilisateur (crée la ligne avec les données de démo au 1er login)
-async function loadState(userId){
-  const { data } = await SB.from('crm_state').select('leads').eq('user_id',userId).maybeSingle();
-  if(data && Array.isArray(data.leads) && data.leads.length){ return data.leads; }
-  const seed = SEED.filter(l=>l.owner==='Léo');
-  await SB.from('crm_state').upsert({ user_id:userId, leads:seed, updated_at:new Date().toISOString() });
-  return seed;
+const DEV_ID = 'dev-local'; // mode developer : bypass login, lit quand même Supabase
+
+// pipeline : la table stocke 'a_contacter', l'UI utilise 'contacter'
+const COL_DB2UI = c => c==='a_contacter' ? 'contacter' : c;
+const COL_UI2DB = c => c==='contacter' ? 'a_contacter' : c;
+
+function fmtWhen(ts){
+  if(!ts) return '';
+  try{ const d=new Date(ts); return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; }
 }
-async function saveState(userId, leads){
-  await SB.from('crm_state').upsert({ user_id:userId, leads, updated_at:new Date().toISOString() });
+
+// ligne Supabase -> objet lead attendu par l'UI (aucun champ inventé : vide reste vide)
+function dbToLead(r, acts){
+  return {
+    id:r.id, prenom:r.prenom||'', nom:r.nom||'', tel:r.telephone||'', email:r.email||'',
+    source:r.source, heat:r.heat||null, column:COL_DB2UI(r.colonne), owner:r.owner_closer_id||null,
+    nextAction:r.next_action||'À contacter', live:false, noShow:false,
+    offer:r.montant||0, paid:r.statut_paiement==='paye',
+    cpf:r.cpf_dispo||0, metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'', situation:r.situation||'',
+    rdv_at:r.rdv_at||null, meet_link:r.meet_link||null, hubspot_deal_id:r.hubspot_deal_id||null,
+    timeline:(acts||[]).map(a=>({type:a.type, when:fmtWhen(a.created_at), title:a.titre||'', text:a.contenu||'', paid:a.type==='paiement'}))
+  };
+}
+
+// lecture live : tous les leads + leur historique
+async function loadLeads(){
+  const [{data:rows}, {data:acts}] = await Promise.all([
+    SB.from('leads').select('*').order('date_creation',{ascending:false}),
+    SB.from('activites').select('*').order('created_at',{ascending:false})
+  ]);
+  const byLead={};
+  (acts||[]).forEach(a=>{ (byLead[a.lead_id]=byLead[a.lead_id]||[]).push(a); });
+  return (rows||[]).map(r=>dbToLead(r, byLead[r.id]));
+}
+
+// écriture ciblée d'un champ pilotage (UI -> colonnes DB)
+async function saveLead(id, uiPatch){
+  const m={};
+  if('column' in uiPatch) m.colonne=COL_UI2DB(uiPatch.column);
+  if('nextAction' in uiPatch) m.next_action=uiPatch.nextAction;
+  if('heat' in uiPatch) m.heat=uiPatch.heat;
+  if('offer' in uiPatch) m.montant=uiPatch.offer;
+  if('owner' in uiPatch) m.owner_closer_id=uiPatch.owner;
+  if('rdv_at' in uiPatch) m.rdv_at=uiPatch.rdv_at;
+  if('meet_link' in uiPatch) m.meet_link=uiPatch.meet_link;
+  if('paid' in uiPatch) m.statut_paiement=uiPatch.paid?'paye':'aucun';
+  if('statut_paiement' in uiPatch) m.statut_paiement=uiPatch.statut_paiement;
+  if('metier' in uiPatch) m.metier=uiPatch.metier;
+  if('objectif' in uiPatch) m.objectif=uiPatch.objectif;
+  if('budget' in uiPatch) m.budget=uiPatch.budget;
+  if('cpf' in uiPatch) m.cpf_dispo=uiPatch.cpf;
+  if('situation' in uiPatch) m.situation=uiPatch.situation;
+  try{ if(Object.keys(m).length) await SB.from('leads').update(m).eq('id',id); }catch(e){ console.warn('saveLead',e); }
+}
+
+// ajoute une ligne d'historique (note/appel/rdv/mail/paiement)
+async function addActivite(lead_id, type, titre, contenu, montant){
+  try{ await SB.from('activites').insert({lead_id, type, titre:titre||null, contenu:contenu||null, montant:montant||null}); }catch(e){ console.warn('addActivite',e); }
 }
 
 /* ============================================================= ICONS */
@@ -674,7 +757,10 @@ const I = {
 
 /* ============================================================= HELPERS */
 const eur = (n)=> new Intl.NumberFormat('fr-FR').format(n).replace(/ /g,' ') + ' €';
-const initials = (l)=> (l.prenom[0]+l.nom[0]).toUpperCase();
+const initials = (l)=>{
+  const a=((l.prenom||'').trim()[0]||''), b=((l.nom||'').trim()[0]||'');
+  return ((a+b).toUpperCase()) || ((l.email||'?')[0].toUpperCase());
+};
 const srcLabel = {webinaire:'Webinaire','pub insta':'Pub Insta','référé':'Référé',brochure:'Brochure',MFF:'MFF'};
 // Source d'un lead à contacter = opt-in sur le site (ou MFF). Conditionne l'angle d'ouverture.
 const SOURCE_INFO = {
@@ -853,12 +939,23 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onRappeler, rap
   const [dragId, setDragId] = useState(null);
   const [overCol, setOverCol] = useState(null);
   const [over, setOver] = useState(null); // {cardId, pos}
+  const [src, setSrc] = useState('all'); // filtre par source
+  const [srcOpen, setSrcOpen] = useState(false); // menu du sélecteur ouvert
+
+  // compteurs par source — calculés sur la SEULE colonne « Lead à contacter »
+  const srcCounts = useMemo(()=>{
+    const base = leads.filter(l=>l.column==='contacter');
+    const c={all:base.length, lead_gen:0, webinaire:0, atc:0, mff:0};
+    base.forEach(l=>{ if(c[l.source]!==undefined) c[l.source]++; });
+    return c;
+  },[leads]);
+  const SRC_TABS=[{k:'all',label:'Tous'},{k:'lead_gen',label:'Lead gen'},{k:'webinaire',label:'Webinaire'},{k:'atc',label:'ATC'},{k:'mff',label:'MFF'}];
 
   const visible = useMemo(()=> leads.filter(l=>{
-    if(l.owner!=='Léo') return false; // closer : uniquement SES leads
+    // manager : voit tout (filtrage par closer ajouté au câblage des comptes)
     if(search.trim()){
       const q=search.toLowerCase();
-      if(!(`${l.prenom} ${l.nom} ${l.metier} ${l.email}`.toLowerCase().includes(q))) return false;
+      if(!(`${l.prenom} ${l.nom} ${l.metier} ${l.email} ${l.tel}`.toLowerCase().includes(q))) return false;
     }
     return true;
   }),[leads,search]);
@@ -898,7 +995,8 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onRappeler, rap
       <div className="board-wrap">
         <div className="board">
           {COLUMNS.map(c=>{
-            const items = visible.filter(l=>l.column===c.id);
+            let items = visible.filter(l=>l.column===c.id);
+            if(c.id==='contacter' && src!=='all') items = items.filter(l=>l.source===src);
             return (
               <div key={c.id}
                 className={`col ${c.special?'special':''} ${overCol===c.id?'drag-over':''}`}
@@ -911,6 +1009,26 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onRappeler, rap
                   <span className="col-count">{items.length}</span>
                   <button className="col-add" title="Ajouter" aria-label="Ajouter une carte"><I.plus/></button>
                 </div>
+                {c.id==='contacter' && (()=>{ const cur=SRC_TABS.find(o=>o.k===src)||SRC_TABS[0]; return (
+                  <div className="srcdd">
+                    <button className={`srcdd-btn ${srcOpen?'open':''}`} onClick={()=>setSrcOpen(o=>!o)}>
+                      <span className="srcdd-pre">Source</span>
+                      <span>{cur.label}</span>
+                      <span className="srcdd-n">{srcCounts[cur.k]||0}</span>
+                      <svg className="srcdd-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="m6 9 6 6 6-6"/></svg>
+                    </button>
+                    {srcOpen && (<>
+                      <div className="srcdd-ov" onClick={()=>setSrcOpen(false)}></div>
+                      <div className="srcdd-menu">
+                        {SRC_TABS.map(o=>(
+                          <button key={o.k} className={`srcdd-item ${src===o.k?'active':''}`} onClick={()=>{ setSrc(o.k); setSrcOpen(false); }}>
+                            <span>{o.label}</span><span className="n">{srcCounts[o.k]||0}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </>)}
+                  </div>
+                ); })()}
                 <div className="col-body">
                   {items.length===0 && <div className="col-empty">—</div>}
                   {items.map(l=>(
@@ -1557,16 +1675,23 @@ function App({session, onLogout}){
   const [slotTarget,setSlotTarget]=useState(null); // {lead, mode}
   const [showRappeler,setShowRappeler]=useState(false);
   const [showSettings,setShowSettings]=useState(false);
+  const [confirmCall,setConfirmCall]=useState(null); // {lead} en attente de confirmation après dial
   const [incoming,setIncoming]=useState(null);
   const [toasts,setToasts]=useState([]);
   const incomingIdx=useRef(0);
   const tid=useRef(0);
 
-  // chargement initial depuis Supabase
-  useEffect(()=>{ let on=true; loadState(userId).then(d=>{ if(on){ setLeads(d); setLoaded(true); } }); return ()=>{on=false}; },[userId]);
-  // sauvegarde Supabase (débounce léger) une fois chargé
-  const saveTimer=useRef(null);
-  useEffect(()=>{ if(!loaded) return; clearTimeout(saveTimer.current); saveTimer.current=setTimeout(()=>saveState(userId,leads),600); return ()=>clearTimeout(saveTimer.current); },[leads,loaded,userId]);
+  // chargement initial depuis Supabase (tables leads + activites)
+  const reload=useCallback(()=>{ loadLeads().then(d=>{ setLeads(d); setLoaded(true); }); },[]);
+  useEffect(()=>{ reload(); },[reload]);
+  // temps réel : toute modif (autre closer, manager, réimport) rafraîchit l'écran
+  useEffect(()=>{
+    const ch=SB.channel('crm-live')
+      .on('postgres_changes',{event:'*',schema:'public',table:'leads'},reload)
+      .on('postgres_changes',{event:'*',schema:'public',table:'activites'},reload)
+      .subscribe();
+    return ()=>{ SB.removeChannel(ch); };
+  },[reload]);
   useEffect(()=>localStorage.setItem('iqcrm_screen',JSON.stringify(screen)),[screen]);
   useEffect(()=>localStorage.setItem('iqcrm_sel',JSON.stringify(selId)),[selId]);
   useEffect(()=>{ localStorage.setItem('iqcrm_theme_v2',JSON.stringify(theme)); document.documentElement.setAttribute('data-theme',theme); },[theme]);
@@ -1582,19 +1707,11 @@ function App({session, onLogout}){
   const sel = leads.find(l=>l.id===selId);
   const callLead = leads.find(l=>l.id===callId);
 
-  // incoming lead auto-trigger once on mount
-  useEffect(()=>{
-    const t=setTimeout(()=>{
-      if(!persistedState('iqcrm_sarahDone',false)){
-        setIncoming({...INCOMING_POOL[0]}); ping();
-      }
-    },4200);
-    return ()=>clearTimeout(t);
-  },[]);
+  // (faux lead entrant de démo désactivé — on n'affiche que la vraie donnée)
 
   // esc closes overlays
   useEffect(()=>{
-    const h=(e)=>{ if(e.key==='Escape'){ setPayTarget(null); setSlotTarget(null); setShowRappeler(false); setShowSettings(false); setCallId(null); setIncoming(null); } };
+    const h=(e)=>{ if(e.key==='Escape'){ setPayTarget(null); setSlotTarget(null); setShowRappeler(false); setShowSettings(false); setCallId(null); setIncoming(null); setConfirmCall(null); } };
     window.addEventListener('keydown',h); return ()=>window.removeEventListener('keydown',h);
   },[]);
 
@@ -1614,25 +1731,42 @@ function App({session, onLogout}){
       else { let last=-1; rest.forEach((x,i)=>{ if(x.column===col) last=i; }); at = last===-1?rest.length:last+1; }
       const out=[...rest]; out.splice(at,0,moved); return out;
     });
-    if(changedCol) toast(`${l.prenom} → ${COL_LABEL[col]}`,'Carte déplacée','accent');
+    if(changedCol){
+      const na = col==='perdu'?'Prospect perdu': col==='cpf'?'Transmis admission': col==='contacter'?'À contacter': col==='r1'?'R1 à faire': col==='r2'?'R2 à faire': col==='r3'?'R3 à faire': null;
+      saveLead(id,{column:col, ...(na?{nextAction:na}:{})});
+      toast(`${l.prenom} → ${COL_LABEL[col]}`,'Carte déplacée','accent');
+    }
   };
 
   const startCall=(id)=>{ setSelId(id); setCallId(id); if(screen!=='fiche') setScreen('fiche'); toast('Appel lancé','Granola enregistre','accent'); };
+
+  // VRAI appel : un clic -> ouvre le dialer du Mac (tel:). On NE log PAS ici :
+  // le navigateur ne peut pas savoir si l'appel a vraiment eu lieu -> on demande confirmation.
+  const placeCall=(l)=>{
+    if(!l) return;
+    const num=(l.tel||'').replace(/[^+\d]/g,'');
+    if(!num){ toast('Pas de numéro',`${l.prenom||'Ce lead'} n’a pas de téléphone`,'info'); return; }
+    const a=document.createElement('a'); a.href='tel:'+num; document.body.appendChild(a); a.click(); a.remove();
+    setConfirmCall(l);
+  };
+  // enregistre l'appel UNIQUEMENT après confirmation (appel réellement passé)
+  const confirmCallDone=()=>{
+    const l=confirmCall; setConfirmCall(null); if(!l) return;
+    addActivite(l.id,'appel','Appel passé',l.tel);
+    patch(l.id,prev=>({timeline:[{type:'appel',when:'à l’instant',title:'Appel passé',text:l.tel},...prev.timeline]}));
+    toast('Appel enregistré',`${l.prenom} ${l.nom}`,'ok');
+  };
 
   // raccrocher → recap auto rempli (Granola). Reçoit le lead via callId capturé au moment de l'appel.
   const hangup=(notes,checks)=>{
     const id=callId; const l=leads.find(x=>x.id===id);
     setCallId(null);
     if(!l) return;
-    const done=(checks||[]).filter(Boolean).length;
-    patch(id,prev=>({
-      live:false,
-      nextAction: prev.column==='contacter'?'R1 à faire':prev.nextAction,
-      column: prev.column,
-      timeline:[{type:'recap', when:'à l’instant', title:`Appel terminé — recap Granola (${done}/${CHECKLIST.length})`, text: (notes&&notes.trim())? notes.trim() : 'Recap auto Granola : manque créé, prochaine étape calée.',
-        granola:{contexte:`${l.metier}. ${l.veut}.`, pain:'Stagnation verbalisée pendant l’appel.', angle:'Caler le RDV + confirmer le solde CPF avant le close.'}}, ...prev.timeline]
-    }));
-    toast('Appel terminé','Recap Granola ajouté à la fiche','ok');
+    const txt=(notes&&notes.trim())?notes.trim():'Appel passé.';
+    patch(id,prev=>({ live:false,
+      timeline:[{type:'appel', when:'à l’instant', title:'Appel terminé', text:txt}, ...prev.timeline] }));
+    addActivite(id,'appel','Appel terminé',txt);
+    toast('Appel terminé','Ajouté à l’historique','ok');
   };
 
   const doAction=(type)=>{
@@ -1640,14 +1774,16 @@ function App({session, onLogout}){
     if(type==='note'){
       const txt=window.prompt('Nouvelle note :'); if(!txt) return;
       patch(sel.id,prev=>({timeline:[{type:'note',when:'à l’instant',title:'Note',text:txt},...prev.timeline]}));
+      addActivite(sel.id,'note','Note',txt);
       toast('Note ajoutée',null,'info'); return;
     }
-    if(type==='meet'){ window.open('https://meet.google.com/new','_blank'); toast('Google Meet ouvert',null,'accent'); return; }
+    if(type==='meet'){ window.open(sel.meet_link||'https://meet.google.com/new','_blank'); toast('Google Meet ouvert',null,'accent'); return; }
     if(type==='rdv'){ setSlotTarget({lead:sel, mode:'rdv'}); return; }
     if(type==='cpf'){ setSlotTarget({lead:sel, mode:'cpf'}); return; }
     if(type==='mail'){
-      patch(sel.id,prev=>({timeline:[{type:'mail',when:'à l’instant',title:'Email post-R1 envoyé',text:'Brochure + dates + devoirs (CCI tracking).'},...prev.timeline]}));
-      toast('Email post-R1 envoyé','Modèle pré-rempli · CCI tracking','ok'); return;
+      patch(sel.id,prev=>({timeline:[{type:'mail',when:'à l’instant',title:'Email post-R1 envoyé',text:'Brochure + dates + devoirs.'},...prev.timeline]}));
+      addActivite(sel.id,'mail','Email post-R1 envoyé','Brochure + dates + devoirs.');
+      toast('Email post-R1 envoyé','Modèle pré-rempli','ok'); return;
     }
   };
 
@@ -1655,14 +1791,18 @@ function App({session, onLogout}){
   const confirmSlot=(label)=>{
     const {lead:l, mode}=slotTarget; setSlotTarget(null);
     if(mode==='rdv'){
-      patch(l.id,prev=>({nextAction:`RDV ${label}`, column:prev.column==='contacter'?'r1':prev.column,
-        timeline:[{type:'appel',when:'à l’instant',title:`RDV calé — ${label}`,text:'Invitation envoyée au prospect (Google Agenda).'},...prev.timeline]}));
+      const col = l.column==='contacter'?'r1':l.column;
+      patch(l.id,prev=>({nextAction:`RDV ${label}`, column:col,
+        timeline:[{type:'rdv',when:'à l’instant',title:`RDV calé — ${label}`,text:'Invitation envoyée au prospect.'},...prev.timeline]}));
+      saveLead(l.id,{column:col, nextAction:`RDV ${label}`});
+      addActivite(l.id,'rdv',`RDV calé — ${label}`,'Invitation envoyée au prospect.');
       toast('RDV calé',`${label} · invitation envoyée`,'accent');
     } else {
-      const montant = l.offer || l.admMontant || 1400;
-      patch(l.id,prev=>({column:'cpf', admStatus:'pending', admMontant:montant, formation:prev.formation||'Closing / Vente', nextAction:`RDV admission ${label}`,
-        timeline:[{type:'doc',when:'à l’instant',title:`RDV admission CPF calé — ${label}`,text:`Mail envoyé à toi + à ${l.prenom} (message de bienvenue + dossier CPF). Créneau 30 min avec Nour.`},...prev.timeline]}));
-      toast('RDV admission calé',`${label} · mails envoyés (toi + ${l.prenom})`,'ok');
+      patch(l.id,prev=>({column:'cpf', nextAction:`RDV admission ${label}`,
+        timeline:[{type:'rdv',when:'à l’instant',title:`RDV admission CPF calé — ${label}`,text:`Créneau 30 min avec Nour.`},...prev.timeline]}));
+      saveLead(l.id,{column:'cpf', nextAction:`RDV admission ${label}`});
+      addActivite(l.id,'rdv',`RDV admission CPF calé — ${label}`,'Créneau 30 min avec Nour.');
+      toast('RDV admission calé',`${label}`,'ok');
     }
   };
 
@@ -1670,14 +1810,10 @@ function App({session, onLogout}){
   const sendPayment=(amount,tag)=>{
     const l=payTarget.lead; const id=l.id; setPayTarget(null);
     patch(id,prev=>({column:'apayer', offer:amount, nextAction:`${eur(amount)} envoyé — en attente`,
-      timeline:[{type:'paiement',when:'à l’instant',title:`Lien Stripe envoyé — ${eur(amount)}`,text:`Email envoyé à ${l.email}. En attente de paiement.`},...prev.timeline]}));
+      timeline:[{type:'paiement',when:'à l’instant',title:`Lien de paiement envoyé — ${eur(amount)}`,text:`Email envoyé à ${l.email}. En attente de paiement.`},...prev.timeline]}));
+    saveLead(id,{column:'apayer', offer:amount, statut_paiement:'lien_envoye', nextAction:`${eur(amount)} envoyé — en attente`});
+    addActivite(id,'paiement',`Lien de paiement envoyé — ${eur(amount)}`,`Email envoyé à ${l.email}. En attente de paiement.`,amount);
     toast(`Lien envoyé · ${eur(amount)}`,`Email parti à ${l.prenom}`,'accent');
-    setTimeout(()=>{
-      patch(id,prev=>({column:'paye', paid:true, offer:amount, nextAction:`${eur(amount)} payé`,
-        timeline:[{type:'paiement',when:'à l’instant',title:`Paiement reçu — ${eur(amount)}`,text:'Stripe encaissé. Carte passée en Payé automatiquement.',paid:true},...prev.timeline]}));
-      ping();
-      toast(`Paiement reçu · ${eur(amount)}`,`${l.prenom} ${l.nom} a payé`,'ok');
-    },6000);
   };
 
   const validateAdm=(id)=>{
@@ -1752,7 +1888,7 @@ function App({session, onLogout}){
       <main className="work">
         {screen==='leads' && <Board leads={leads} search={search} setSearch={setSearch}
             onOpenLead={openLead} onReorder={reorderLead} onRappeler={()=>setShowRappeler(true)} rappelerCount={rappelerCount}/>}
-        {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen('leads')} onCall={()=>startCall(sel.id)}
+        {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen('leads')} onCall={()=>placeCall(sel)}
             onPay={()=>setPayTarget({lead:sel})} onAction={doAction}/>}
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen('leads')}>Retour au board</button></div>}
         {screen==='agenda' && <Agenda leads={leads} onOpen={openLead}/>}
@@ -1760,7 +1896,20 @@ function App({session, onLogout}){
 
       {/* OVERLAYS */}
       {callLead && <div className="backdrop" onClick={()=>hangup('',[])}><CallPanel lead={callLead} onHangup={hangup} onPay={()=>setPayTarget({lead:callLead})}/></div>}
-      {showRappeler && <div className="backdrop" onClick={()=>setShowRappeler(false)}><RappelerPanel leads={leads} onClose={()=>setShowRappeler(false)} onCall={(id)=>{setShowRappeler(false); startCall(id);}} onOpen={(id)=>{setShowRappeler(false); openLead(id);}}/></div>}
+      {confirmCall && <>
+        <div className="backdrop" onClick={()=>setConfirmCall(null)}></div>
+        <div className="callconfirm">
+          <div className="cc-ic">{I.phone({})}</div>
+          <h3>Appel lancé vers {confirmCall.prenom} {confirmCall.nom}</h3>
+          <div className="cc-num">{confirmCall.tel}</div>
+          <div className="cc-sub">Le dialer du Mac s'est ouvert. Une fois l'appel terminé, confirme pour l'enregistrer dans l'historique du lead.</div>
+          <div className="cc-actions">
+            <button className="btn btn-ghost" onClick={()=>setConfirmCall(null)}>Pas appelé</button>
+            <button className="btn btn-accent" onClick={confirmCallDone}>{I.check({style:{width:15,height:15,strokeWidth:2.6}})} Appel passé</button>
+          </div>
+        </div>
+      </>}
+      {showRappeler && <div className="backdrop" onClick={()=>setShowRappeler(false)}><RappelerPanel leads={leads} onClose={()=>setShowRappeler(false)} onCall={(id)=>{setShowRappeler(false); placeCall(leads.find(l=>l.id===id));}} onOpen={(id)=>{setShowRappeler(false); openLead(id);}}/></div>}
       {showSettings && <div className="backdrop" onClick={()=>setShowSettings(false)}><Settings theme={theme} setTheme={setTheme} density={density} setDensity={setDensity} onSimulate={simulate} onReset={resetData} onClose={()=>setShowSettings(false)}/></div>}
       {payTarget && <PaymentModal lead={payTarget.lead} onClose={()=>setPayTarget(null)} onSend={sendPayment}/>}
       {slotTarget && <SlotPicker lead={slotTarget.lead} mode={slotTarget.mode} onClose={()=>setSlotTarget(null)} onConfirm={confirmSlot}/>}
@@ -1822,8 +1971,10 @@ function LoginScreen(){
 
 /* ====================== ROOT (auth gate) ====================== */
 function Root(){
-  const [session,setSession]=useState(undefined); // undefined=loading, null=déconnecté
+  const isDev = typeof location!=='undefined' && (location.hash.indexOf('dev')>=0 || location.search.indexOf('dev')>=0);
+  const [session,setSession]=useState(isDev ? {user:{id:DEV_ID,email:'manager · dev'}} : undefined); // undefined=loading, null=déconnecté
   useEffect(()=>{
+    if(isDev) return; // mode dev : pas d'auth Supabase
     SB.auth.getSession().then(({data})=>setSession(data.session||null));
     const {data:sub}=SB.auth.onAuthStateChange((_e,s)=>setSession(s||null));
     return ()=>sub.subscription.unsubscribe();
@@ -1833,7 +1984,33 @@ function Root(){
   return <App session={session} onLogout={()=>SB.auth.signOut()}/>;
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<Root/>);
+/* ===== Filet de sécurité : affiche l'erreur au lieu d'un écran noir ===== */
+class ErrorBoundary extends React.Component{
+  constructor(p){ super(p); this.state={err:null}; }
+  static getDerivedStateFromError(e){ return {err:e}; }
+  render(){
+    if(this.state.err){
+      const e=this.state.err;
+      return (<div style={{padding:'28px',fontFamily:'ui-monospace,Menlo,monospace',color:'#fff',background:'#1d1d1e',minHeight:'100vh',whiteSpace:'pre-wrap',lineHeight:1.5}}>
+        <div style={{color:'#f35c04',fontSize:20,fontWeight:800,marginBottom:14}}>⚠️ Erreur CRM capturée (envoie-moi ce texte)</div>
+        <div style={{fontSize:13}}>{String((e&&e.stack)||(e&&e.message)||e)}</div>
+      </div>);
+    }
+    return this.props.children;
+  }
+}
+// erreurs asynchrones (chargement / temps réel) qui n'atteignent pas React
+function showFatal(label,detail){
+  let el=document.getElementById('fatal-overlay');
+  if(!el){ el=document.createElement('div'); el.id='fatal-overlay';
+    el.setAttribute('style','position:fixed;left:0;right:0;bottom:0;max-height:45vh;overflow:auto;padding:16px 20px;background:#2a0f06;color:#ffd9c2;font-family:ui-monospace,Menlo,monospace;font-size:12px;white-space:pre-wrap;z-index:99999;border-top:3px solid #f35c04');
+    document.body.appendChild(el); }
+  el.textContent += '\n['+label+'] '+detail;
+}
+window.addEventListener('error',ev=>showFatal('JS', (ev.error&&ev.error.stack)||ev.message));
+window.addEventListener('unhandledrejection',ev=>showFatal('PROMISE', (ev.reason&&(ev.reason.stack||ev.reason.message))||String(ev.reason)));
+
+ReactDOM.createRoot(document.getElementById('root')).render(<ErrorBoundary><Root/></ErrorBoundary>);
 </script>
 </body>
 </html>
