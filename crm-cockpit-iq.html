@@ -221,6 +221,8 @@ input,textarea{font-family:inherit; color:inherit}
 .card-action .live.idle{background:var(--b3)}
 .card-action.money{color:var(--accent)}
 .card-action.paid{color:var(--ok)}
+.card-action.confirmed{color:var(--ok)}
+.card-action.confirmed .live{background:var(--ok)}
 .card-action .amt{font-family:'JetBrains Mono',monospace; font-weight:700}
 
 /* ============================== FICHE ============================== */
@@ -271,6 +273,7 @@ input,textarea{font-family:inherit; color:inherit}
 .tl-dot.danger{border-color:var(--danger)} .tl-dot.danger svg{color:var(--danger)}
 .tl-row{display:flex; align-items:baseline; gap:8px; justify-content:space-between}
 .tl-title{font-weight:700; font-size:13.5px}
+.tl-title.ok{color:var(--ok)}
 .tl-when{font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--t3); flex:none}
 .tl-text{font-size:13px; color:var(--t2); margin-top:3px; line-height:1.5}
 .tl-granola{margin-top:8px; background:var(--surface-2); border:1px solid var(--b1); border-radius:9px; padding:10px 11px}
@@ -796,6 +799,7 @@ function dbToLead(r, acts){
     offer:r.montant||0, paid:r.statut_paiement==='paye',
     cpf:r.cpf_dispo||0, metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'', situation:r.situation||'',
     rdv_at:r.rdv_at||null, meet_link:r.meet_link||null, hubspot_deal_id:r.hubspot_deal_id||null,
+    rdv_event_id:r.rdv_event_id||null, rdv_agenda:r.rdv_agenda||null, rdv_status:r.rdv_status||'needsAction',
     timeline:(acts||[]).map(a=>({id:a.id, type:a.type, when:fmtWhen(a.created_at), title:a.titre||'', text:a.contenu||'', paid:a.type==='paiement'}))
   };
 }
@@ -821,6 +825,9 @@ async function saveLead(id, uiPatch){
   if('owner' in uiPatch) m.owner_closer_id=uiPatch.owner;
   if('rdv_at' in uiPatch) m.rdv_at=uiPatch.rdv_at;
   if('meet_link' in uiPatch) m.meet_link=uiPatch.meet_link;
+  if('rdv_event_id' in uiPatch) m.rdv_event_id=uiPatch.rdv_event_id;
+  if('rdv_agenda' in uiPatch) m.rdv_agenda=uiPatch.rdv_agenda;
+  if('rdv_status' in uiPatch) m.rdv_status=uiPatch.rdv_status;
   if('paid' in uiPatch) m.statut_paiement=uiPatch.paid?'paye':'aucun';
   if('statut_paiement' in uiPatch) m.statut_paiement=uiPatch.statut_paiement;
   if('metier' in uiPatch) m.metier=uiPatch.metier;
@@ -1057,8 +1064,8 @@ const INCOMING_POOL = [
 ];
 
 /* ============================================================= TIMELINE ICON MAP */
-const tlIcon = {appel:I.phone, mail:I.mail, sms:I.sms, note:I.note, noshow:I.noshow, recap:I.spark, paiement:I.euro};
-const tlTone = {paiement:'ok', noshow:'danger', recap:'accent', appel:'accent'};
+const tlIcon = {appel:I.phone, mail:I.mail, sms:I.sms, note:I.note, noshow:I.noshow, recap:I.spark, paiement:I.euro, rdv_accepted:I.check};
+const tlTone = {paiement:'ok', noshow:'danger', recap:'accent', appel:'accent', rdv_accepted:'ok'};
 
 /* ============================================================= SMALL COMPONENTS */
 function Avatar({lead, size='sz-md', muted}){
@@ -1088,7 +1095,7 @@ function LeadCard({lead, onOpen, onDragStart, onDragEnd, dragging, onCardDragOve
   } else if(col==='cpf'){
     actionEl = <div className="card-action"><span className="live idle"></span>{lead.admStatus==='secured'?'Dossier sécurisé':'Dossier CPF — admission'}</div>;
   } else {
-    actionEl = <div className="card-action"><span className={`live ${lead.live?'':'idle'}`}></span>{lead.nextAction}</div>;
+    actionEl = <div className={`card-action ${lead.rdv_status==='accepted'?'confirmed':''}`}><span className={`live ${lead.rdv_status==='accepted'?'':(lead.live?'':'idle')}`}></span>{lead.nextAction}</div>;
   }
   return (
     <div className={`card ${dragging?'dragging':''} ${dropPos?('drop-'+dropPos):''}`} draggable
@@ -1272,6 +1279,15 @@ function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDel
                 <div className="val" style={{fontWeight:700}}>{si.label}</div>
                 <div className="val-sub">{si.via}</div>
               </div>
+              {lead.rdv_at && (()=>{ const type=lead.column==='r2'?'R2':'R1'; const d=new Date(lead.rdv_at); const lbl=d.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short'})+' · '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); const ok=lead.rdv_status==='accepted'; return (
+              <div className="field">
+                <span className="eyebrow">Rendez-vous du lead</span>
+                <div className="val" style={{fontWeight:700, display:'flex', alignItems:'center', gap:7, color: ok?'var(--ok)':'var(--t3)'}}>
+                  <span style={{width:7, height:7, borderRadius:99, flex:'none', background: ok?'var(--ok)':'var(--b3)'}}></span>
+                  {type} {ok?'accepté':'calé'} — {lbl}
+                </div>
+              </div>
+              ); })()}
               <div className="field">
                 <span className="eyebrow">Angle d’ouverture</span>
                 <div className="val" style={{fontWeight:600,fontSize:14}}>{si.angle}</div>
@@ -1308,7 +1324,7 @@ function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDel
                 <div className="tl-item" key={ev.id||i}>
                   <span className={`tl-dot ${tlTone[ev.type]||''} ${ev.paid?'ok':''}`}>{(tlIcon[ev.type]||I.note)({})}</span>
                   <div className="tl-row">
-                    <span className="tl-title">{ev.title}</span>
+                    <span className={`tl-title ${ev.type==='rdv_accepted'?'ok':''}`}>{ev.title}</span>
                     <span className="tl-right">
                       <span className="tl-when">{ev.when}</span>
                       {ev.id && editId!==ev.id && <span className="tl-actions">
@@ -1526,10 +1542,10 @@ function RdvPicker({lead, agendas, onClose, onBooked}){
   const fmtLabel=(s)=> s.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short'})+' · '+s.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
   const confirm=async()=>{ if(!slot) return; setSaving(true); setErr(null);
     try{ const ev=await callFn('create-meeting',{ agenda,
-        summary:`${type} — IQ Project × ${(lead.prenom||'')} ${(lead.nom||'')}`.trim(),
-        description:`Rendez-vous ${type} (${dur} min) avec ${(lead.prenom||'')} ${(lead.nom||'')}. Source : ${lead.source||''}.`.trim(),
+        summary:`IQ Project × ${(lead.prenom||lead.nom||'')}`.trim(),
+        description:`Rendez-vous (${dur} min) avec ${(lead.prenom||'')} ${(lead.nom||'')}. Source : ${lead.source||''}.`.trim(),
         startISO:slot.s.toISOString(), endISO:slot.e.toISOString(), attendees:[lead.email, agenda] });
-      onBooked({type, label:fmtLabel(slot.s), startISO:slot.s.toISOString(), meet:ev.hangoutLink||null}); }
+      onBooked({type, label:fmtLabel(slot.s), startISO:slot.s.toISOString(), meet:ev.hangoutLink||null, eventId:ev.id||null, agenda}); }
     catch(e){ setErr(e.message); setSaving(false); } };
   return (
     <>
@@ -2139,6 +2155,25 @@ function App({session, onLogout}){
       .subscribe();
     return ()=>{ SB.removeChannel(ch); };
   },[reload]);
+  // suivi acceptation Google Meet : poll discret du responseStatus des RDV en attente -> carte verte quand le lead accepte
+  const leadsRef=useRef(leads); useEffect(()=>{ leadsRef.current=leads; },[leads]);
+  const pollRdv=useCallback(async()=>{
+    const now=Date.now();
+    const targets=(leadsRef.current||[]).filter(l=>l.rdv_event_id && l.rdv_agenda && l.rdv_status!=='accepted' && (!l.rdv_at || new Date(l.rdv_at).getTime() > now-2*3600000));
+    for(const l of targets){
+      try{ const j=await callFn('rdv-status',{agenda:l.rdv_agenda, eventId:l.rdv_event_id, attendee:l.email});
+        if(j && j.responseStatus && j.responseStatus!==l.rdv_status){
+          if(j.responseStatus==='accepted'){
+            const type=l.column==='r2'?'R2':'R1';
+            const lbl=l.rdv_at?(()=>{const d=new Date(l.rdv_at); return d.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short'})+' · '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});})():'';
+            await addActivite(l.id,'rdv_accepted',`${type} accepté${lbl?` — ${lbl}`:''}`,'Le lead a confirmé sa présence (Google Agenda).');
+          }
+          await saveLead(l.id,{rdv_status:j.responseStatus});
+        }
+      }catch(e){}
+    }
+  },[]);
+  useEffect(()=>{ if(!loaded) return; pollRdv(); const t=setInterval(pollRdv, 300000); return ()=>clearInterval(t); },[loaded,pollRdv]);
   useEffect(()=>localStorage.setItem('iqcrm_screen',JSON.stringify(screen)),[screen]);
   useEffect(()=>localStorage.setItem('iqcrm_sel',JSON.stringify(selId)),[selId]);
   useEffect(()=>{ localStorage.setItem('iqcrm_theme_v2',JSON.stringify(theme)); document.documentElement.setAttribute('data-theme',theme); },[theme]);
@@ -2269,12 +2304,12 @@ function App({session, onLogout}){
 
   // confirmation d'un créneau (RDV closing ou RDV admission CPF)
   // RDV calé via Google (R1/R2) : event réel créé par RdvPicker, ici on log + on classe la carte
-  const bookRdv=({type,label,startISO,meet})=>{
+  const bookRdv=({type,label,startISO,meet,eventId,agenda})=>{
     const l=slotTarget&&slotTarget.lead; setSlotTarget(null); if(!l) return;
     const col = type==='R2' ? 'r2' : 'r1';
-    patch(l.id,prev=>({column:col, nextAction:`${type} — ${label}`, rdv_at:startISO, meet_link:meet||prev.meet_link,
+    patch(l.id,prev=>({column:col, nextAction:`${type} — ${label}`, rdv_at:startISO, meet_link:meet||prev.meet_link, rdv_event_id:eventId||null, rdv_agenda:agenda||null, rdv_status:'needsAction',
       timeline:[{type:'rdv',when:'à l’instant',title:`${type} calé — ${label}`,text: meet?('Invitation + Meet envoyés.'):'Invitation envoyée.'},...prev.timeline]}));
-    saveLead(l.id,{column:col, nextAction:`${type} — ${label}`, rdv_at:startISO, ...(meet?{meet_link:meet}:{})});
+    saveLead(l.id,{column:col, nextAction:`${type} — ${label}`, rdv_at:startISO, ...(meet?{meet_link:meet}:{}), ...(eventId?{rdv_event_id:eventId, rdv_agenda:agenda, rdv_status:'needsAction'}:{})});
     addActivite(l.id,'rdv',`${type} calé — ${label}`, meet?('Invitation envoyée · Meet : '+meet):'Invitation envoyée.');
     toast(`${type} calé`,`${label} · invitation envoyée`,'ok');
   };
