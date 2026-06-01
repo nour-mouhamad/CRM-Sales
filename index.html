@@ -172,13 +172,6 @@ input,textarea{font-family:inherit; color:inherit}
 .eyebrow{font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.13em; text-transform:uppercase; color:var(--t3)}
 .src{font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--t3)}
 
-/* ----- heat gauge ----- */
-.heat{display:inline-flex; align-items:flex-end; gap:2px; height:13px}
-.heat i{width:3.5px; border-radius:2px; background:var(--b2)}
-.heat i:nth-child(1){height:5px} .heat i:nth-child(2){height:9px} .heat i:nth-child(3){height:13px}
-.heat.chaud i{background:var(--hot)}
-.heat.tiede i:nth-child(1),.heat.tiede i:nth-child(2){background:var(--warm)}
-.heat.froid i:nth-child(1){background:var(--cold)}
 
 /* ----- badges ----- */
 .tag{font-family:'JetBrains Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; padding:3px 7px; border-radius:6px; display:inline-flex; align-items:center; gap:4px}
@@ -701,6 +694,9 @@ input,textarea{font-family:inherit; color:inherit}
 .card:hover .card-del, .card:focus-within .card-del{opacity:1}
 .card-del:hover{color:var(--danger); border-color:var(--danger)}
 .card-del svg{width:14px; height:14px; stroke-width:2}
+/* ---- bouton Annuler dans un toast ---- */
+.t-undo{margin-left:auto; flex:none; padding:6px 12px; border-radius:8px; border:1px solid var(--b3); background:transparent; color:var(--t1); font-size:12.5px; font-weight:700; cursor:pointer; white-space:nowrap}
+.t-undo:hover{background:var(--surface-3); border-color:var(--accent); color:var(--accent)}
 .rdv-connect{text-align:center; padding:26px 10px}
 .rdv-connect p{color:var(--t2); font-size:14px; line-height:1.55; margin-bottom:16px; max-width:440px; margin:0 auto 16px}
 .rdv-err{margin-top:12px; background:var(--danger-tint); color:var(--danger); font-size:12.5px; padding:9px 12px; border-radius:9px}
@@ -751,7 +747,7 @@ function dbToLead(r, acts){
 // lecture live : tous les leads + leur historique
 async function loadLeads(){
   const [{data:rows}, {data:acts}] = await Promise.all([
-    SB.from('leads').select('*').order('date_creation',{ascending:false}),
+    SB.from('leads').select('*').is('deleted_at', null).order('date_creation',{ascending:false}),
     SB.from('activites').select('*').order('created_at',{ascending:false})
   ]);
   const byLead={};
@@ -1012,9 +1008,6 @@ const tlTone = {paiement:'ok', noshow:'danger', recap:'accent', appel:'accent'};
 function Avatar({lead, size='sz-md', muted}){
   return <div className={`avatar ${size} ${muted?'muted':''}`}>{initials(lead)}</div>;
 }
-function Heat({level}){
-  return <span className={`heat ${level}`} title={`Chaleur : ${level}`}><i></i><i></i><i></i></span>;
-}
 function Src({source}){ return <span className="src">{srcLabel[source]||source}</span>; }
 function CopyField({value, icon}){
   const [done,setDone]=useState(false);
@@ -1057,7 +1050,7 @@ function LeadCard({lead, onOpen, onDragStart, onDragEnd, dragging, onCardDragOve
           <div className="card-name">{lead.prenom} {lead.nom}
             {lead.noShow && <span className="tag tag-noshow">No-show</span>}
           </div>
-          <div className="card-sub"><Src source={lead.source}/><Heat level={lead.heat}/></div>
+          <div className="card-sub"><Src source={lead.source}/></div>
         </div>
       </div>
       {actionEl}
@@ -1129,7 +1122,7 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onRappeler, rap
         <div className="board">
           {COLUMNS.map(c=>{
             const colItems = visible.filter(l=>l.column===c.id);        // total colonne (compteur du titre — non filtré par source)
-            const items = (c.id==='contacter' && src!=='all') ? colItems.filter(l=>l.source===src) : colItems; // cartes affichées
+            const items = (c.id==='contacter' && src!=='all' && !search.trim()) ? colItems.filter(l=>l.source===src) : colItems; // cartes affichées (filtre source ignoré pendant une recherche)
             return (
               <div key={c.id}
                 className={`col ${c.special?'special':''} ${overCol===c.id?'drag-over':''}`}
@@ -1197,7 +1190,7 @@ function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDel
       <div className="fiche-head">
         <button className="back" onClick={onBack}><I.back/>Mes leads</button>
         <div className="fiche-id">
-          <h1>{lead.prenom} {lead.nom} <Heat level={lead.heat}/></h1>
+          <h1>{lead.prenom} {lead.nom}</h1>
           <div className="fiche-contacts">
             <span className="contact copy phone" onClick={onCall} title="Cliquer pour appeler"><I.phone/><span className="mono">{lead.tel}</span></span>
             <CopyField value={lead.email} icon={I.mail}/>
@@ -1769,7 +1762,6 @@ function Recherche({leads, onOpen}){
                 <b>{l.prenom} {l.nom}</b>
                 <span><Src source={l.source}/> · {l.metier} · <span className="mono">{l.tel}</span></span>
               </div>
-              <Heat level={l.heat}/>
               <span className="stage-chip">{COL_LABEL[l.column]}</span>
             </div>
           ))}
@@ -1904,7 +1896,7 @@ function Incoming({lead, onTake, onDismiss}){
         <div className="incoming-tx">
           <span className="eyebrow">Nouveau lead · Sonnerie <span className="sonner"></span></span>
           <h4>{lead.prenom} {lead.nom}</h4>
-          <span className="sub"><Src source={lead.source}/> <Heat level={lead.heat}/> · <span className="mono">{eur(lead.cpf)}</span> dispo</span>
+          <span className="sub"><Src source={lead.source}/> · <span className="mono">{eur(lead.cpf)}</span> dispo</span>
         </div>
         <button className="btn btn-accent incoming-take" onClick={onTake}>Je le prends</button>
       </div>
@@ -1920,6 +1912,7 @@ function Toasts({toasts}){
         <div className={`toast ${t.tone||'info'}`} key={t.id}>
           <span className="t-ic">{(t.tone==='ok'?I.check:t.tone==='accent'?I.bell:I.spark)({})}</span>
           <div className="t-tx"><b>{t.title}</b>{t.sub && <span>{t.sub}</span>}</div>
+          {t.action && <button className="t-undo" onClick={t.action.fn}>{t.action.label}</button>}
         </div>
       ))}
     </div>
@@ -1988,11 +1981,17 @@ function App({session, onLogout}){
   useEffect(()=>{ localStorage.setItem('iqcrm_theme_v2',JSON.stringify(theme)); document.documentElement.setAttribute('data-theme',theme); },[theme]);
   useEffect(()=>{ localStorage.setItem('iqcrm_density',JSON.stringify(density)); document.documentElement.setAttribute('data-density',density); },[density]);
 
-  const toast=useCallback((title,sub,tone='info')=>{
+  const toast=useCallback((title,sub,tone='info',action)=>{
     const id=++tid.current;
-    setToasts(t=>[...t,{id,title,sub,tone}]);
-    setTimeout(()=>setToasts(t=>t.filter(x=>x.id!==id)),3800);
+    setToasts(t=>[...t,{id,title,sub,tone,action}]);
+    setTimeout(()=>setToasts(t=>t.filter(x=>x.id!==id)), action?6500:3800);
   },[]);
+
+  // pile d'annulation invisible + Ctrl/Cmd+Z
+  const undoRef=useRef([]);
+  const pushUndo=useCallback((label,fn)=>{ const e={label,fn}; undoRef.current.push(e); if(undoRef.current.length>25) undoRef.current.shift(); return e; },[]);
+  const runUndo=useCallback((entry)=>{ const arr=undoRef.current; const i=entry?arr.indexOf(entry):arr.length-1; if(i<0){ toast('Rien à annuler',null,'info'); return; } const e=arr.splice(i,1)[0]; Promise.resolve(e.fn()).catch(()=>{}); toast('Action annulée',e.label,'ok'); },[toast]);
+  useEffect(()=>{ const h=(e)=>{ if((e.metaKey||e.ctrlKey)&&(e.key==='z'||e.key==='Z')){ const tg=e.target; if(tg&&(tg.tagName==='INPUT'||tg.tagName==='TEXTAREA'||tg.isContentEditable)) return; e.preventDefault(); runUndo(); } }; window.addEventListener('keydown',h); return ()=>window.removeEventListener('keydown',h); },[runUndo]);
 
   const patch=useCallback((id,fn)=>setLeads(ls=>ls.map(l=>l.id===id?{...l,...(typeof fn==='function'?fn(l):fn)}:l)),[]);
   const sel = leads.find(l=>l.id===selId);
@@ -2025,7 +2024,9 @@ function App({session, onLogout}){
     if(changedCol){
       const na = col==='perdu'?'Prospect perdu': col==='cpf'?'Transmis admission': col==='nonqualifie'?'Non qualifié — à retravailler': col==='contacter'?'À contacter': col==='atc'?'Sans réponse — à relancer': col==='r1'?'R1 à faire': col==='r2'?'R2 à faire': col==='r3'?'R3 à faire': null;
       saveLead(id,{column:col, ...(na?{nextAction:na}:{})});
-      toast(`${l.prenom} → ${COL_LABEL[col]}`,'Carte déplacée','accent');
+      const fromCol=l.column, fromNa=l.nextAction;
+      const entry=pushUndo(`Déplacement · ${(l.prenom||'')+' '+(l.nom||'')}`.trim(), async()=>{ patch(id,{column:fromCol, nextAction:fromNa}); await saveLead(id,{column:fromCol, nextAction:fromNa}); reload(); });
+      toast(`${l.prenom} → ${COL_LABEL[col]}`,'Carte déplacée','accent',{label:'Annuler', fn:()=>runUndo(entry)});
     }
   };
 
@@ -2050,16 +2051,23 @@ function App({session, onLogout}){
     toast(outcome==='nrp'?'NRP enregistré':'Appel enregistré',`${l.prenom} ${l.nom}`,'ok');
   };
 
-  // ajout manuel d'un lead dans une colonne (Supabase + optimiste)
-  const addLead=async(fields)=>{ const lead=await createLead(fields); setLeads(ls=>[lead,...ls]); setAddTarget(null); toast('Lead ajouté',(lead.prenom||lead.nom||lead.email||'').toString().trim(),'ok'); };
-  // suppression d'un lead en 1 clic (cascade sur ses activités) — optimiste + Supabase
+  // ajout manuel d'un lead — annulable (Ctrl+Z / Annuler → corbeille douce)
+  const addLead=async(fields)=>{
+    const lead=await createLead(fields); setLeads(ls=>[lead,...ls]); setAddTarget(null);
+    const name=(lead.prenom||lead.nom||lead.email||'').toString().trim();
+    const entry=pushUndo(`Ajout · ${name}`, async()=>{ setLeads(ls=>ls.filter(x=>x.id!==lead.id)); await SB.from('leads').update({deleted_at:new Date().toISOString()}).eq('id',lead.id); });
+    toast('Lead ajouté', name, 'ok', {label:'Annuler', fn:()=>runUndo(entry)});
+  };
+  // suppression d'un lead en 1 clic — corbeille DOUCE (deleted_at) → récupérable via Annuler / Ctrl+Z
   const deleteLead=async(id)=>{
     const l=leads.find(x=>x.id===id);
     setLeads(ls=>ls.filter(x=>x.id!==id));
     if(selId===id){ setSelId(null); setScreen('leads'); }
-    try{ const { error }=await SB.from('leads').delete().eq('id',id); if(error) throw error;
-      toast('Lead supprimé', l?(`${l.prenom||''} ${l.nom||''}`.trim()||l.email||''):'', 'info'); }
-    catch(e){ toast('Échec suppression', e.message, 'info'); reload(); }
+    try{ const { error }=await SB.from('leads').update({deleted_at:new Date().toISOString()}).eq('id',id); if(error) throw error; }
+    catch(e){ toast('Échec suppression', e.message, 'info'); reload(); return; }
+    const name = l?(`${l.prenom||''} ${l.nom||''}`.trim()||l.email||''):'';
+    const entry=pushUndo(`Suppression · ${name}`, async()=>{ if(l) setLeads(ls=> ls.some(x=>x.id===id)?ls:[l,...ls]); await SB.from('leads').update({deleted_at:null}).eq('id',id); reload(); });
+    toast('Lead supprimé', name, 'info', { label:'Annuler', fn:()=>runUndo(entry) });
   };
 
   // modifier / supprimer une entrée d'historique (optimiste local + Supabase)
