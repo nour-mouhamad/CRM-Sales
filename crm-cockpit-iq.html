@@ -11,7 +11,6 @@
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 /* ============================== TOKENS ============================== */
 :root{
@@ -433,13 +432,6 @@ input,textarea{font-family:inherit; color:inherit}
 .slot-sel-bar span{font-size:12px; color:var(--t2); display:block}
 
 /* explainer Granola */
-.granola-explain{margin-top:16px; border:1px solid var(--b1); border-radius:11px; background:var(--surface-2); padding:13px 14px}
-.granola-explain .ge-head{display:flex; align-items:center; gap:8px; margin-bottom:8px}
-.granola-explain .ge-head b{font-weight:700; font-size:13px}
-.granola-explain .ge-head svg{width:15px; height:15px; color:var(--accent)}
-.granola-explain ol{margin:0; padding-left:18px}
-.granola-explain li{font-size:12.5px; color:var(--t2); line-height:1.55; padding:2px 0}
-.granola-explain li b{color:var(--t1); font-weight:600}
 .info-box{margin-top:14px; border:1px solid var(--b1); border-radius:11px; background:var(--surface-2); padding:12px 14px; font-size:12.5px; color:var(--t2); line-height:1.55}
 .info-box b{color:var(--t1)}
 .info-box .ib-head{display:flex; align-items:center; gap:7px; font-weight:700; color:var(--t1); margin-bottom:6px; font-size:13px}
@@ -454,7 +446,6 @@ input,textarea{font-family:inherit; color:inherit}
 .side-head{display:flex; align-items:center; gap:11px; padding:16px 18px; border-bottom:1px solid var(--b1)}
 .side-head h3{font-size:16px; flex:1}
 .side-body{flex:1; min-height:0; overflow-y:auto; padding:14px 18px}
-.side-foot{padding:14px 18px; border-top:1px solid var(--b1); display:flex; gap:10px}
 
 /* à rappeler rows */
 .rap-row{display:flex; align-items:center; gap:12px; padding:12px; border:1px solid var(--b1); border-radius:11px; margin-bottom:9px; background:var(--surface-2); transition:border var(--speed)}
@@ -464,37 +455,6 @@ input,textarea{font-family:inherit; color:inherit}
 .rap-tx span{font-size:11.5px; color:var(--t3); display:flex; align-items:center; gap:6px; margin-top:2px}
 .rap-prio{font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; width:20px; text-align:center; color:var(--t4)}
 
-/* call panel */
-.call-status{display:flex; align-items:center; gap:9px; flex:1}
-.rec{display:inline-flex; align-items:center; gap:6px; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; letter-spacing:.06em; color:var(--accent)}
-.rec .rdot{width:8px; height:8px; border-radius:99px; background:var(--accent); animation:blink 1.3s ease-in-out infinite}
-@keyframes blink{50%{opacity:.25}}
-.call-timer{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:15px}
-.brief{background:var(--surface-2); border:1px solid var(--b1); border-radius:11px; padding:13px 14px; margin-bottom:16px}
-.brief .b-line{display:flex; gap:10px; font-size:13px; padding:4px 0; color:var(--t2); line-height:1.5}
-.brief .b-line .n{font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--accent); flex:none}
-.brief .b-line b{color:var(--t1); font-weight:600}
-.check{display:flex; align-items:center; gap:11px; padding:11px 13px; border:1px solid var(--b1); border-radius:10px; margin-bottom:8px; cursor:pointer; transition:all var(--speed); background:var(--surface)}
-.check:hover{border-color:var(--b3)}
-.check.done{background:var(--surface-2); border-color:var(--b1)}
-.cbox{width:19px; height:19px; border-radius:6px; border:2px solid var(--b3); display:grid; place-items:center; flex:none; transition:all var(--speed)}
-.cbox svg{width:12px; height:12px; stroke-width:3; color:var(--on-accent); opacity:0}
-.check.done .cbox{background:var(--accent); border-color:var(--accent)}
-.check.done .cbox svg{opacity:1}
-.check-tx{font-size:13px; font-weight:600; transition:color var(--speed)}
-.check.done .check-tx{color:var(--t3); text-decoration:line-through}
-.granola-live{display:flex; align-items:center; gap:11px; padding:11px 13px; border:1px solid var(--accent-tint-2); border-radius:10px; background:var(--accent-tint); margin-bottom:8px}
-.granola-live .check-tx{color:var(--accent)}
-.wave{display:inline-flex; align-items:center; gap:2px; margin-left:auto; height:18px}
-.wave i{width:2.5px; background:var(--accent); border-radius:2px; animation:wv 1s ease-in-out infinite}
-.wave i:nth-child(1){animation-delay:0s} .wave i:nth-child(2){animation-delay:.15s}
-.wave i:nth-child(3){animation-delay:.3s} .wave i:nth-child(4){animation-delay:.45s} .wave i:nth-child(5){animation-delay:.2s}
-@keyframes wv{0%,100%{height:5px}50%{height:16px}}
-.notes-area{width:100%; min-height:96px; border:1px solid var(--b1); border-radius:10px; background:var(--surface-2); padding:11px 12px; font-size:13px; resize:vertical; outline:none; transition:border var(--speed)}
-.notes-area:focus{border-color:var(--accent); background:var(--surface)}
-.offer-chip{margin-top:14px; border:1px dashed var(--b2); border-radius:10px; padding:12px; text-align:center; background:repeating-linear-gradient(135deg,transparent,transparent 8px,var(--surface-2) 8px,var(--surface-2) 16px)}
-.offer-chip .eyebrow{display:block; margin-bottom:4px}
-.offer-chip b{font-family:'JetBrains Mono',monospace; font-size:16px}
 
 /* settings */
 .set-row{display:flex; align-items:center; justify-content:space-between; padding:14px 0; border-bottom:1px solid var(--b1)}
@@ -788,6 +748,8 @@ function fmtWhen(ts){
   if(!ts) return '';
   try{ const d=new Date(ts); return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; }
 }
+// libellé RDV homogène (« mer. 04 juin · 14:30 ») — fiche / picker / poll
+const fmtRdv = (d)=>{ const x=new Date(d); return x.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short'})+' · '+x.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); };
 
 // ligne Supabase -> objet lead attendu par l'UI (aucun champ inventé : vide reste vide)
 function dbToLead(r, acts){
@@ -865,40 +827,6 @@ async function deleteActivite(id){
   try{ await SB.from('activites').delete().eq('id',id); }catch(e){ console.warn('deleteActivite',e); }
 }
 
-/* ====================== GOOGLE CALENDAR ====================== */
-const GCAL_CLIENT_ID = ''; // <<< COLLER ICI l'ID client OAuth Google (…apps.googleusercontent.com)
-const GCAL_SCOPE = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly';
-let _gToken=null, _gExp=0, _gTC=null;
-const gcalConfigured = ()=> !!GCAL_CLIENT_ID && typeof google!=='undefined' && google.accounts && google.accounts.oauth2;
-const gcalConnected = ()=> !!_gToken && Date.now() < _gExp-60000;
-function gcalToken(interactive){
-  return new Promise((resolve,reject)=>{
-    if(gcalConnected()) return resolve(_gToken);
-    if(!gcalConfigured()) return reject(new Error('Google Agenda pas encore configuré (ID client manquant).'));
-    if(!_gTC) _gTC = google.accounts.oauth2.initTokenClient({client_id:GCAL_CLIENT_ID, scope:GCAL_SCOPE, callback:()=>{}});
-    _gTC.callback = (resp)=>{ if(resp && resp.error) return reject(new Error(resp.error_description||resp.error)); _gToken=resp.access_token; _gExp=Date.now()+((resp.expires_in||3600)*1000); resolve(_gToken); };
-    _gTC.requestAccessToken({prompt: interactive ? 'consent' : ''});
-  });
-}
-// créneaux occupés (primary) entre deux ISO
-async function gcalBusy(timeMinISO, timeMaxISO){
-  const t=await gcalToken(false);
-  const r=await fetch('https://www.googleapis.com/calendar/v3/freeBusy',{method:'POST',headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify({timeMin:timeMinISO,timeMax:timeMaxISO,items:[{id:'primary'}]})});
-  const j=await r.json(); if(!r.ok) throw new Error((j.error&&j.error.message)||'Lecture agenda échouée');
-  return (j.calendars&&j.calendars.primary&&j.calendars.primary.busy)||[];
-}
-// crée l'événement (Meet + invitations) sur l'agenda principal de l'organisateur connecté
-async function gcalCreate({summary,description,startISO,endISO,attendees}){
-  const t=await gcalToken(true);
-  const r=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1&sendUpdates=all',{method:'POST',headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify({
-    summary, description, start:{dateTime:startISO}, end:{dateTime:endISO},
-    attendees:(attendees||[]).filter(Boolean).map(e=>({email:e})),
-    conferenceData:{createRequest:{requestId:'iq'+Date.now(),conferenceSolutionKey:{type:'hangoutsMeet'}}}
-  })});
-  const j=await r.json(); if(!r.ok) throw new Error((j.error&&j.error.message)||'Création de l’événement échouée');
-  return j; // { hangoutLink, htmlLink, ... }
-}
-
 /* ============================================================= ICONS */
 const I = {
   leads:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><rect x="3" y="4" width="5" height="16" rx="1.4"/><rect x="10" y="4" width="5" height="11" rx="1.4"/><rect x="17" y="4" width="4" height="14" rx="1.4"/></svg>,
@@ -969,18 +897,12 @@ const COLUMNS = [
 ];
 const COL_LABEL = Object.fromEntries(COLUMNS.map(c=>[c.id,c.label]));
 const COL_COLOR = {contacter:'var(--accent)', atc:'var(--cold)', r1:'var(--warm)', r2:'var(--warm)', apayer:'var(--accent)', paye:'var(--ok)', cpf:'var(--accent)', nonqualifie:'var(--warm)', perdu:'var(--t4)'};
+// libellé d'action par défaut quand un lead change de colonne
+const NEXT_BY_COL = {perdu:'Prospect perdu', cpf:'Transmis admission', nonqualifie:'Non qualifié — à retravailler', contacter:'À contacter', atc:'Sans réponse — à relancer', r1:'R1 à faire', r2:'R2 à faire', r3:'R3 à faire'};
 
 const OFFERS = [
   {id:'1400', amount:1400, tag:'Non chômeur (France Travail)'},
   {id:'1250', amount:1250, tag:'Chômeur (France Travail)'},
-];
-
-const CHECKLIST = [
-  'Confirmer le montant CPF disponible',
-  'Valider l’objectif & l’échéance',
-  'Présenter l’offre adaptée',
-  'Traiter l’objection principale',
-  'Caler la prochaine date (R2 / paiement)',
 ];
 
 /* ----------- seed data (réaliste FR — formation closing/vente, CPF) ----------- */
@@ -1278,7 +1200,7 @@ function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDel
                 <div className="val" style={{fontWeight:700}}>{si.label}</div>
                 <div className="val-sub">{si.via}</div>
               </div>
-              {lead.rdv_at && (()=>{ const type=lead.column==='r2'?'R2':'R1'; const d=new Date(lead.rdv_at); const lbl=d.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short'})+' · '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); const ok=lead.rdv_status==='accepted'; return (
+              {lead.rdv_at && (()=>{ const type=lead.column==='r2'?'R2':'R1'; const lbl=fmtRdv(lead.rdv_at); const ok=lead.rdv_status==='accepted'; return (
               <div className="field">
                 <span className="eyebrow">Rendez-vous du lead</span>
                 <div className="val" style={{fontWeight:700, display:'flex', alignItems:'center', gap:7, color: ok?'var(--ok)':'var(--t3)'}}>
@@ -1410,67 +1332,6 @@ function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDel
   );
 }
 
-/* ============================================================= CALL PANEL */
-function CallPanel({lead, onHangup, onPay}){
-  const [sec,setSec]=useState(0);
-  const [checks,setChecks]=useState(()=>CHECKLIST.map(()=>false));
-  const [notes,setNotes]=useState('');
-  useEffect(()=>{ const t=setInterval(()=>setSec(s=>s+1),1000); return ()=>clearInterval(t); },[]);
-  const mm=String(Math.floor(sec/60)).padStart(2,'0'), ss=String(sec%60).padStart(2,'0');
-  return (
-    <div className="side" onClick={e=>e.stopPropagation()}>
-      <div className="side-head">
-        <span className="call-status">
-          <span className="rec"><span className="rdot"></span>EN APPEL</span>
-          <span className="call-timer">{mm}:{ss}</span>
-        </span>
-        <h3 style={{flex:'none',fontSize:15}}>{lead.prenom} {lead.nom}</h3>
-        <button className="x-btn" style={{position:'static'}} onClick={()=>onHangup(notes,checks)}><I.x/></button>
-      </div>
-      <div className="side-body">
-        <div className="brief">
-          <div className="b-line"><span className="n">1</span><span>Ouvrir sur sa stagnation : <b>« {lead.metier} — où ça t’a mené jusqu’ici ? »</b> Créer le manque.</span></div>
-          <div className="b-line"><span className="n">2</span><span>Qualifier le financement : statut + solde CPF réel <b>(CPF + complément)</b>, jamais « 2900 » sec.</span></div>
-          <div className="b-line"><span className="n">3</span><span>Verrouiller la prochaine étape : <b>caler le RDV avant de raccrocher.</b></span></div>
-        </div>
-        <span className="eyebrow" style={{display:'block',marginBottom:9}}>Avant de raccrocher</span>
-        {CHECKLIST.map((c,i)=>(
-          <div key={i} className={`check ${checks[i]?'done':''}`} role="button" tabIndex={0}
-            onClick={()=>setChecks(a=>a.map((v,j)=>j===i?!v:v))}
-            onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault(); setChecks(a=>a.map((v,j)=>j===i?!v:v));}}}>
-            <span className="cbox"><I.check/></span><span className="check-tx">{c}</span>
-          </div>
-        ))}
-        <div className="granola-live">
-          <span className="rdot" style={{width:8,height:8,borderRadius:99,background:'var(--accent)',animation:'blink 1.3s infinite'}}></span>
-          <span className="check-tx">Granola enregistre cet appel</span>
-          <span className="wave"><i></i><i></i><i></i><i></i><i></i></span>
-        </div>
-        <span className="eyebrow" style={{display:'block',margin:'16px 0 8px'}}>Notes libres (optionnel)</span>
-        <textarea className="notes-area" placeholder="Tape ce qui se dit pendant l’appel…" value={notes} onChange={e=>setNotes(e.target.value)}/>
-        <div className="offer-chip">
-          <span className="eyebrow">Offre adaptée</span>
-          <b>{lead.cpf>=1500?'reste à charge ≈ 1 400 €':lead.budget}</b>
-        </div>
-        <div className="granola-explain">
-          <div className="ge-head"><I.spark/><b>Le recap se génère tout seul</b></div>
-          <ol>
-            <li><b>Avant l’appel</b> : ouvre Granola (appli Mac/Chrome), il détecte ton appel et se met en écoute — le point rouge ci-dessus confirme.</li>
-            <li><b>Pendant</b> : tu ne touches à rien, Granola transcrit en direct. Tes notes ci-dessus s’ajoutent au recap.</li>
-            <li><b>Quand tu raccroches</b> : Granola génère le résumé en ~30 s et <b>remplit la fiche automatiquement</b> (contexte, pain point, angle). Aucun bouton à cliquer.</li>
-          </ol>
-        </div>
-      </div>
-      <div className="side-foot">
-        <button className="btn btn-ghost" style={{flex:'none'}} onClick={()=>onPay()}><I.euro/>Lien paiement</button>
-        <button className="btn btn-accent" style={{flex:1,justifyContent:'center'}} onClick={()=>onHangup(notes,checks)}>
-          <I.phone/>Raccrocher · le recap se remplit
-        </button>
-      </div>
-    </div>
-  );
-}
-
 /* ============================================================= SLOT PICKER (agenda) */
 const SLOT_WEEK = [
   {d:'Lun', n:'2 juin'}, {d:'Mar', n:'3 juin'}, {d:'Mer', n:'4 juin'},
@@ -1534,7 +1395,7 @@ function RdvPicker({lead, agendas, onClose, onBooked}){
   const isBusy=(s,e)=>{ if(!busy) return false; const ss=s.getTime(), ee=e.getTime(); return busy.some(b=> ss<b.e && ee>b.s); };
   const daySlots=(day)=>{ const out=[]; const last=DAY_END*60-dur; for(let m=DAY_START*60; m<=last; m+=STEP){ const sl=slotAt(day,m); if(sl.s.getTime()<now) continue; if(isBusy(sl.s,sl.e)) continue; out.push(sl); } return out; };
   useEffect(()=>{ if(pickedRef.current) return; pickedRef.current=true; const fi=days.findIndex(d=>daySlots(d).length>0); if(fi>0) setDayIx(fi); },[]); // au montage : 1er jour avec un créneau futur
-  const fmtLabel=(s)=> s.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short'})+' · '+s.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  const fmtLabel=fmtRdv;
   const confirm=async()=>{ if(!slot) return; setSaving(true); setErr(null);
     try{ const ev=await callFn('create-meeting',{ agenda,
         summary:`IQ Project × ${(lead.prenom||lead.nom||'')}`.trim(),
@@ -2122,12 +1983,10 @@ function App({session, onLogout}){
   const [density,setDensity]=useState(()=>persistedState('iqcrm_density','standard'));
   const [search,setSearch]=useState('');
 
-  const [callId,setCallId]=useState(null);
   const [payTarget,setPayTarget]=useState(null); // {lead}
   const [slotTarget,setSlotTarget]=useState(null); // {lead, mode}
   const [showRappeler,setShowRappeler]=useState(false);
   const [showSettings,setShowSettings]=useState(false);
-  const [confirmCall,setConfirmCall]=useState(null); // {lead} en attente de confirmation après dial
   const [addTarget,setAddTarget]=useState(null); // colonne où ajouter un lead manuellement
   const [incoming,setIncoming]=useState(null);
   const [toasts,setToasts]=useState([]);
@@ -2160,7 +2019,7 @@ function App({session, onLogout}){
         if(j && j.responseStatus && j.responseStatus!==l.rdv_status){
           if(j.responseStatus==='accepted'){
             const type=l.column==='r2'?'R2':'R1';
-            const lbl=l.rdv_at?(()=>{const d=new Date(l.rdv_at); return d.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short'})+' · '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});})():'';
+            const lbl=l.rdv_at?fmtRdv(l.rdv_at):'';
             await addActivite(l.id,'rdv_accepted',`${type} accepté${lbl?` — ${lbl}`:''}`,'Le lead a confirmé sa présence (Google Agenda).');
           }
           await saveLead(l.id,{rdv_status:j.responseStatus});
@@ -2188,13 +2047,12 @@ function App({session, onLogout}){
 
   const patch=useCallback((id,fn)=>setLeads(ls=>ls.map(l=>l.id===id?{...l,...(typeof fn==='function'?fn(l):fn)}:l)),[]);
   const sel = leads.find(l=>l.id===selId);
-  const callLead = leads.find(l=>l.id===callId);
 
   // (faux lead entrant de démo désactivé — on n'affiche que la vraie donnée)
 
   // esc closes overlays
   useEffect(()=>{
-    const h=(e)=>{ if(e.key==='Escape'){ setPayTarget(null); setSlotTarget(null); setShowRappeler(false); setShowSettings(false); setCallId(null); setIncoming(null); setConfirmCall(null); setAddTarget(null); } };
+    const h=(e)=>{ if(e.key==='Escape'){ setPayTarget(null); setSlotTarget(null); setShowRappeler(false); setShowSettings(false); setIncoming(null); setAddTarget(null); } };
     window.addEventListener('keydown',h); return ()=>window.removeEventListener('keydown',h);
   },[]);
 
@@ -2207,7 +2065,7 @@ function App({session, onLogout}){
     setLeads(ls=>{
       const dragged=ls.find(x=>x.id===id); if(!dragged) return ls;
       const moved={...dragged, column:col,
-        nextAction: changedCol ? (col==='perdu'?'Prospect perdu': col==='cpf'?'Transmis admission': col==='nonqualifie'?'Non qualifié — à retravailler': col==='contacter'?'À contacter': col==='atc'?'Sans réponse — à relancer': col==='r1'?'R1 à faire': col==='r2'?'R2 à faire': col==='r3'?'R3 à faire': dragged.nextAction) : dragged.nextAction};
+        nextAction: changedCol ? (NEXT_BY_COL[col] || dragged.nextAction) : dragged.nextAction};
       const rest=ls.filter(x=>x.id!==id);
       let at;
       if(beforeId && beforeId!==id){ at=rest.findIndex(x=>x.id===beforeId); if(at===-1) at=rest.length; }
@@ -2215,7 +2073,7 @@ function App({session, onLogout}){
       const out=[...rest]; out.splice(at,0,moved); return out;
     });
     if(changedCol){
-      const na = col==='perdu'?'Prospect perdu': col==='cpf'?'Transmis admission': col==='nonqualifie'?'Non qualifié — à retravailler': col==='contacter'?'À contacter': col==='atc'?'Sans réponse — à relancer': col==='r1'?'R1 à faire': col==='r2'?'R2 à faire': col==='r3'?'R3 à faire': null;
+      const na = NEXT_BY_COL[col] || null;
       saveLead(id,{column:col, ...(na?{nextAction:na}:{})});
       const fromCol=l.column, fromNa=l.nextAction;
       const entry=pushUndo(`Déplacement · ${(l.prenom||'')+' '+(l.nom||'')}`.trim(), async()=>{ patch(id,{column:fromCol, nextAction:fromNa}); await saveLead(id,{column:fromCol, nextAction:fromNa}); reload(); });
@@ -2223,7 +2081,6 @@ function App({session, onLogout}){
     }
   };
 
-  const startCall=(id)=>{ setSelId(id); setCallId(id); if(screen!=='fiche') setScreen('fiche'); toast('Appel lancé','Granola enregistre','accent'); };
 
   // VRAI appel : un clic -> ouvre le dialer du Mac (tel:). On NE log PAS ici :
   // le navigateur ne peut pas savoir si l'appel a vraiment eu lieu -> on demande confirmation.
@@ -2267,34 +2124,11 @@ function App({session, onLogout}){
   // édition d'un champ de qualification (uiKey = champ local, saveKey = clé attendue par saveLead -> colonne DB)
   const editField=(uiKey,saveKey,value)=>{ if(!sel) return; patch(sel.id,{[uiKey]:value}); saveLead(sel.id,{[saveKey]:value}); };
 
-  // raccrocher → recap auto rempli (Granola). Reçoit le lead via callId capturé au moment de l'appel.
-  const hangup=(notes,checks)=>{
-    const id=callId; const l=leads.find(x=>x.id===id);
-    setCallId(null);
-    if(!l) return;
-    const txt=(notes&&notes.trim())?notes.trim():'Appel passé.';
-    patch(id,prev=>({ live:false,
-      timeline:[{type:'appel', when:'à l’instant', title:'Appel terminé', text:txt}, ...prev.timeline] }));
-    addActivite(id,'appel','Appel terminé',txt);
-    toast('Appel terminé','Ajouté à l’historique','ok');
-  };
-
   const doAction=(type)=>{
     if(!sel) return;
-    if(type==='note'){
-      const txt=window.prompt('Nouvelle note :'); if(!txt) return;
-      patch(sel.id,prev=>({timeline:[{type:'note',when:'à l’instant',title:'Note',text:txt},...prev.timeline]}));
-      addActivite(sel.id,'note','Note',txt);
-      toast('Note ajoutée',null,'info'); return;
-    }
     if(type==='meet'){ window.open(sel.meet_link||'https://meet.google.com/new','_blank'); toast('Google Meet ouvert',null,'accent'); return; }
     if(type==='rdv'){ setSlotTarget({lead:sel, mode:'rdv'}); return; }
     if(type==='cpf'){ setSlotTarget({lead:sel, mode:'cpf'}); return; }
-    if(type==='mail'){
-      patch(sel.id,prev=>({timeline:[{type:'mail',when:'à l’instant',title:'Email post-R1 envoyé',text:'Brochure + dates + devoirs.'},...prev.timeline]}));
-      addActivite(sel.id,'mail','Email post-R1 envoyé','Brochure + dates + devoirs.');
-      toast('Email post-R1 envoyé','Modèle pré-rempli','ok'); return;
-    }
   };
 
   // confirmation d'un créneau (RDV closing ou RDV admission CPF)
@@ -2417,7 +2251,6 @@ function App({session, onLogout}){
       </main>
 
       {/* OVERLAYS */}
-      {callLead && <div className="backdrop" onClick={()=>hangup('',[])}><CallPanel lead={callLead} onHangup={hangup} onPay={()=>setPayTarget({lead:callLead})}/></div>}
       {addTarget && <AddLeadModal column={addTarget} onClose={()=>setAddTarget(null)} onAdd={addLead}/>}
       {showRappeler && <div className="backdrop" onClick={()=>setShowRappeler(false)}><RappelerPanel leads={leads} onClose={()=>setShowRappeler(false)} onCall={(id)=>{setShowRappeler(false); placeCall(leads.find(l=>l.id===id));}} onOpen={(id)=>{setShowRappeler(false); openLead(id);}}/></div>}
       {showSettings && <div className="backdrop" onClick={()=>setShowSettings(false)}><Settings theme={theme} setTheme={setTheme} density={density} setDensity={setDensity} onSimulate={simulate} onReset={resetData} onClose={()=>setShowSettings(false)}/></div>}
