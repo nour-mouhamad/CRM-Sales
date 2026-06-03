@@ -1676,11 +1676,11 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage }){
     <div className="backdrop" onClick={onClose}></div>
     <div className="modal recap-modal" onClick={e=>e.stopPropagation()}>
       <button className="x-btn" onClick={onClose}><I.x/></button>
-      <div className="m-fixhead"><span className="eyebrow m-eye">Récap IA</span><div style={{fontSize:20,fontWeight:800,letterSpacing:'-.02em',marginTop:6}}>Résumer le call</div></div>
+      <div className="m-fixhead"><span className="eyebrow m-eye">Récap IQ</span><div style={{fontSize:20,fontWeight:800,letterSpacing:'-.02em',marginTop:6}}>Résumer le call</div></div>
       {phase==='input' && (<>
         <textarea className="note-ta recap-ta" autoFocus placeholder="Colle ici le transcript du call (Granola, Zoom, notes…)" value={text} onChange={e=>setText(e.target.value)}/>
         <div className="modal-note">L'IA détecte le type de call, remplit les champs vides et propose les actions.</div>
-        <div className="modal-foot"><button className="btn btn-ghost" onClick={onClose}>Annuler</button><button className="btn btn-accent" disabled={text.trim().length<20} onClick={analyze}>Analyser le call</button></div>
+        <div className="modal-foot"><button className="btn btn-ghost" onClick={onClose}>Annuler</button><button className="btn btn-accent" disabled={text.trim().length<20} onClick={analyze}>Résumer le call</button></div>
       </>)}
       {phase==='loading' && <div className="recap-loading"><div className="recap-spin"></div>Analyse du call en cours…</div>}
       {phase==='error' && (<>
