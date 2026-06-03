@@ -374,6 +374,41 @@ input,textarea{font-family:inherit; color:inherit}
 .x-btn:hover{background:var(--surface-2); color:var(--t1)}
 .x-btn svg{width:16px; height:16px; stroke-width:2}
 
+/* recap call (IA) */
+.head-btns{display:flex; align-items:center; gap:8px}
+.modal.recap-modal{width:580px}
+.recap-ta{min-height:200px}
+.recap-loading{display:flex; flex-direction:column; align-items:center; gap:14px; padding:44px 0; color:var(--t2); font-size:13.5px; font-weight:500}
+.recap-spin{width:30px; height:30px; border:3px solid var(--b2); border-top-color:var(--accent); border-radius:50%; animation:recap-rot .8s linear infinite}
+@keyframes recap-rot{to{transform:rotate(360deg)}}
+.recap-err{margin-top:14px; padding:12px 14px; border-radius:11px; background:var(--surface-2); border:1px solid var(--b2); color:var(--t1); font-size:13px}
+.recap-type{display:inline-block; font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; background:var(--accent-tint); color:var(--accent); padding:3px 9px; border-radius:99px; margin-bottom:12px}
+.recap-box{border:1px solid var(--b1); border-radius:12px; padding:14px 16px; max-height:300px; overflow:auto; background:var(--surface-2)}
+.recap-md{font-size:13px; color:var(--t2); line-height:1.6}
+.recap-h{font-weight:800; color:var(--t1); font-size:13px; margin:11px 0 4px; letter-spacing:-.01em}
+.recap-h:first-child{margin-top:0}
+.recap-p{margin:3px 0}
+.recap-li{margin:2px 0 2px 15px; position:relative}
+.recap-li:before{content:'•'; position:absolute; left:-13px; color:var(--accent)}
+.recap-sp{height:7px}
+.recap-actions{margin-top:14px; border:1px solid var(--accent); border-radius:12px; padding:12px 15px; background:var(--accent-tint)}
+.recap-actions-h{font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--accent); margin-bottom:9px}
+.recap-action{display:flex; align-items:flex-start; gap:9px; font-size:13px; color:var(--t1); font-weight:600; padding:4px 0; line-height:1.45}
+.ra-dot{width:7px; height:7px; border-radius:50%; background:var(--accent); flex:none; margin-top:6px}
+.recap-action.prio-haute .ra-dot{background:var(--bad,#e5484d)}
+.recap-action.prio-basse .ra-dot{background:var(--t4)}
+.recap-meta{margin-top:12px; font-size:12.5px; color:var(--t2)}
+.recap-conflicts{margin-top:12px; border:1px solid var(--warm); border-radius:11px; padding:10px 12px; background:var(--surface-2)}
+.rc-h{font-size:10.5px; font-weight:700; color:var(--warm); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px}
+.rc-row{display:flex; align-items:center; gap:8px; padding:4px 0; font-size:12.5px}
+.rc-lbl{font-weight:700; color:var(--t1); min-width:80px}
+.rc-vs{flex:1; color:var(--t3); min-width:0}
+.rc-cur{text-decoration:line-through; opacity:.8}
+.rc-new{color:var(--t1); font-weight:600}
+.rc-btn{padding:4px 10px !important; font-size:11.5px !important}
+.recap-stage{margin-top:12px; font-size:12.5px; color:var(--t2); font-weight:500}
+.recap-stage.warn{color:var(--warm)}
+
 /* email copiable + tel dans la fiche */
 .contact.copy{cursor:pointer; color:var(--t1); background:var(--surface-2); border:1px solid var(--b1); padding:6px 11px; border-radius:8px; transition:all var(--speed)}
 .contact.copy:hover{border-color:var(--accent); color:var(--accent)}
@@ -1161,9 +1196,10 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onRappeler, rap
 }
 
 /* ============================================================= FICHE LEAD */
-function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDeleteNote, onEditField, onNote}){
+function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage}){
   const [moveOpen,setMoveOpen]=useState(false);
   const [noteOpen,setNoteOpen]=useState(false);
+  const [recapOpen,setRecapOpen]=useState(false);
   const moveBtnRef=useRef(null);
   const [movePos,setMovePos]=useState(null);
   const toggleMove=()=>{ if(moveOpen){ setMoveOpen(false); return; } const r=moveBtnRef.current.getBoundingClientRect(); setMovePos({top:r.bottom+4, left:r.left, width:r.width, maxH:Math.max(200, window.innerHeight-r.bottom-16)}); setMoveOpen(true); };
@@ -1176,6 +1212,7 @@ function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDel
   return (
     <div className="fiche">
       {noteOpen && <NoteModal onClose={()=>setNoteOpen(false)} onNote={(t,ti,tx)=>{ onNote(t,ti,tx); setNoteOpen(false); }}/>}
+      {recapOpen && <RecapModal lead={lead} onClose={()=>setRecapOpen(false)} onEditField={onEditField} onNote={onNote} onAdvanceStage={onAdvanceStage}/>}
       <div className="fiche-head">
         <button className="back" onClick={onBack}><I.back/>Mes leads</button>
         <div className="fiche-id">
@@ -1237,7 +1274,10 @@ function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDel
         <div className="panel">
           <div className="panel-head">
             <span className="eyebrow">Historique · {lead.timeline.length} événement{lead.timeline.length>1?'s':''}</span>
-            <button className="btn btn-soft" style={{padding:'6px 11px',fontSize:12.5}} onClick={()=>setNoteOpen(true)}><I.plus style={{width:14,height:14}}/>Note</button>
+            <div className="head-btns">
+              <button className="btn btn-accent" style={{padding:'6px 11px',fontSize:12.5}} onClick={()=>setRecapOpen(true)}><I.spark style={{width:14,height:14}}/>Résumer le call</button>
+              <button className="btn btn-soft" style={{padding:'6px 11px',fontSize:12.5}} onClick={()=>setNoteOpen(true)}><I.plus style={{width:14,height:14}}/>Note</button>
+            </div>
           </div>
           <div className="panel-body">
             <div className="tl">
@@ -1527,6 +1567,124 @@ function NoteModal({ onClose, onNote }){
           <div className="note-foot"><button className="btn btn-ghost" onClick={()=>setStep('choose')}>Retour</button><button className="btn btn-accent" onClick={()=>commit('appel','Appelé')}>Enregistrer l’appel</button></div>
         </>)}
       </div>
+    </div>
+  </>);
+}
+
+/* ============================================================= RECAP CALL (IA) */
+// rendu markdown léger (gras, titres ##, puces) — pas de HTML brut, on construit du React.
+function mdInline(s){
+  return String(s).split(/(\*\*[^*]+\*\*)/g).map((p,i)=> p.startsWith('**')&&p.endsWith('**') ? <b key={i}>{p.slice(2,-2)}</b> : p);
+}
+function MdText({ text }){
+  const lines=String(text||'').split('\n');
+  return (<div className="recap-md">{lines.map((ln,i)=>{
+    const t=ln.trim();
+    if(!t) return <div key={i} className="recap-sp"/>;
+    if(t.startsWith('## ')) return <div key={i} className="recap-h">{t.slice(3)}</div>;
+    if(t.startsWith('# ')) return <div key={i} className="recap-h">{t.slice(2)}</div>;
+    if(t.startsWith('- ')||t.startsWith('• ')||t.startsWith('* ')) return <div key={i} className="recap-li">{mdInline(t.slice(2))}</div>;
+    return <div key={i} className="recap-p">{mdInline(t)}</div>;
+  })}</div>);
+}
+
+// Colle un transcript -> Edge Function `recap` (Gemini) -> récap adaptatif.
+// Auto-applique : remplit les champs VIDES, signale les conflits sans écraser,
+// sauve le récap en note datée, fait avancer l'étape R1/R2 UNIQUEMENT si un RDV est calé.
+function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage }){
+  const [text,setText]=useState('');
+  const [phase,setPhase]=useState('input'); // input | loading | result | error
+  const [result,setResult]=useState(null);
+  const [applied,setApplied]=useState({filled:[], conflicts:[], stage:{msg:''}});
+  const [err,setErr]=useState('');
+  const alive=useRef(true);
+  useEffect(()=>()=>{ alive.current=false; },[]);
+  const norm=s=>(s==null?'':String(s)).trim().toLowerCase();
+
+  async function analyze(){
+    const tx=text.trim();
+    if(tx.length<20) return;
+    setPhase('loading'); setErr('');
+    try{
+      const out=await callFn('recap',{ transcript:tx, lead:{prenom:lead.prenom, nom:lead.nom, source:lead.source, column:lead.column} });
+      if(!alive.current) return; // modale fermée pendant l'analyse -> on n'applique rien
+      const F=out.fields||{};
+      const filled=[], conflicts=[];
+      const consider=(newVal, uiKey, saveKey, label, isNum)=>{
+        if(newVal==null || newVal==='' || (isNum && !Number(newVal))) return;
+        const cur = isNum ? (lead[uiKey]||0) : (lead[uiKey]||'');
+        const curEmpty = isNum ? !cur : !String(cur).trim();
+        if(curEmpty){ onEditField(uiKey, saveKey, newVal); filled.push({label, value:newVal}); }
+        else if(isNum ? Number(cur)!==Number(newVal) : norm(cur)!==norm(newVal)){
+          conflicts.push({label, uiKey, saveKey, cur, neu:newVal, isNum});
+        }
+      };
+      consider(F.metier,'metier','metier','Métier',false);
+      consider(F.objectif,'veut','objectif','Objectif',false);
+      consider(F.cpf,'cpf','cpf','CPF dispo',true);
+      consider(F.budget,'budget','budget','Budget',false);
+      // récap -> note datée (finit toujours par les actions s'il y en a ; priorité conservée ;
+      // pas de note polluante si transcript jugé non exploitable et rien d'extrait)
+      const acts=(out.actions||[]);
+      const actTxt = acts.length ? ('\n\n— Actions —\n'+acts.map(a=>'• '+a.label+(a.priority==='haute'?' (prioritaire)':'')).join('\n')) : '';
+      const junk = out.call_type==='autre' && !acts.length && !filled.length && !conflicts.length;
+      if(!junk) onNote('note', 'Récap · '+(out.call_type_label||'Call'), (out.recap_markdown||'').trim()+actTxt);
+      // étape : avance UNIQUEMENT contacter/atc -> R1 si un RDV est calé (rdv_at présent).
+      // Un seul champ rdv_at ne permet pas de certifier qu'un R2 distinct est calé :
+      // le passage en R2 (et toute avancée depuis un état déjà avancé) reste donc manuel.
+      let stage={msg:''};
+      const sg=out.suggested_stage;
+      const RANK={contacter:0, atc:1, r1:2, r2:3}, cur=RANK[lead.column];
+      if(sg==='r1' && (lead.column==='contacter' || lead.column==='atc')){
+        if(lead.rdv_at){ onAdvanceStage('r1'); stage={msg:'Étape → R1 à faire'}; }
+        else stage={msg:'Passage en R1 non appliqué : aucun RDV calé (à faire à la main).', warn:true};
+      } else if((sg==='r1'||sg==='r2') && cur!=null && RANK[sg]>cur){
+        stage={msg:'Avancée vers '+(sg==='r2'?'R2':'R1')+' suggérée — à confirmer à la main.', warn:true};
+      }
+      setApplied({filled, conflicts, stage});
+      setResult(out); setPhase('result');
+    }catch(e){ if(!alive.current) return; setErr(e.message||'Erreur inconnue'); setPhase('error'); }
+  }
+
+  function resolveConflict(c){
+    onEditField(c.uiKey, c.saveKey, c.neu);
+    setApplied(a=>({...a, conflicts:a.conflicts.filter(x=>x!==c), filled:[...a.filled,{label:c.label,value:c.neu}]}));
+  }
+
+  return (<>
+    <div className="backdrop" onClick={onClose}></div>
+    <div className="modal recap-modal" onClick={e=>e.stopPropagation()}>
+      <button className="x-btn" onClick={onClose}><I.x/></button>
+      <div className="m-fixhead"><span className="eyebrow m-eye">Récap IA</span><div style={{fontSize:20,fontWeight:800,letterSpacing:'-.02em',marginTop:6}}>Résumer le call</div></div>
+      {phase==='input' && (<>
+        <textarea className="note-ta recap-ta" autoFocus placeholder="Colle ici le transcript du call (Granola, Zoom, notes…)" value={text} onChange={e=>setText(e.target.value)}/>
+        <div className="modal-note">L'IA détecte le type de call, remplit les champs vides et propose les actions.</div>
+        <div className="modal-foot"><button className="btn btn-ghost" onClick={onClose}>Annuler</button><button className="btn btn-accent" disabled={text.trim().length<20} onClick={analyze}>Analyser le call</button></div>
+      </>)}
+      {phase==='loading' && <div className="recap-loading"><div className="recap-spin"></div>Analyse du call en cours…</div>}
+      {phase==='error' && (<>
+        <div className="recap-err">{err}</div>
+        <div className="modal-foot"><button className="btn btn-ghost" onClick={()=>setPhase('input')}>Réessayer</button><button className="btn btn-accent" onClick={onClose}>Fermer</button></div>
+      </>)}
+      {phase==='result' && result && (<>
+        <span className="recap-type">{result.call_type_label||'Call'}</span>
+        <div className="recap-box"><MdText text={result.recap_markdown}/></div>
+        {result.actions && result.actions.length>0 && (
+          <div className="recap-actions">
+            <div className="recap-actions-h">Actions</div>
+            {result.actions.map((a,i)=>(<div key={i} className={`recap-action prio-${a.priority||'moyenne'}`}><span className="ra-dot"></span>{a.label}</div>))}
+          </div>
+        )}
+        {applied.filled.length>0 && <div className="recap-meta"><b>Champs remplis :</b> {applied.filled.map(f=>f.label).join(', ')}</div>}
+        {applied.conflicts.length>0 && (
+          <div className="recap-conflicts">
+            <div className="rc-h">Conflits — non écrasés</div>
+            {applied.conflicts.map((c,i)=>(<div key={i} className="rc-row"><span className="rc-lbl">{c.label}</span><span className="rc-vs"><span className="rc-cur">{c.isNum?eur(c.cur):String(c.cur)}</span> → <span className="rc-new">{c.isNum?eur(c.neu):String(c.neu)}</span></span><button className="btn btn-soft rc-btn" onClick={()=>resolveConflict(c)}>Remplacer</button></div>))}
+          </div>
+        )}
+        {applied.stage.msg && <div className={`recap-stage ${applied.stage.warn?'warn':''}`}>{applied.stage.msg}</div>}
+        <div className="modal-foot"><button className="btn btn-accent" onClick={onClose}>Fermer</button></div>
+      </>)}
     </div>
   </>);
 }
@@ -2059,7 +2217,7 @@ function App({session, onLogout}){
   /* ---------- actions ---------- */
   const openLead=(id)=>{ setSelId(id); setScreen('fiche'); setSearch(''); }; // vide la recherche à l'ouverture d'un lead
 
-  const reorderLead=(id,col,beforeId)=>{
+  const reorderLead=(id,col,beforeId,opts)=>{
     const l=leads.find(x=>x.id===id); if(!l) return;
     const changedCol = l.column!==col;
     setLeads(ls=>{
@@ -2075,9 +2233,11 @@ function App({session, onLogout}){
     if(changedCol){
       const na = NEXT_BY_COL[col] || null;
       saveLead(id,{column:col, ...(na?{nextAction:na}:{})});
-      const fromCol=l.column, fromNa=l.nextAction;
-      const entry=pushUndo(`Déplacement · ${(l.prenom||'')+' '+(l.nom||'')}`.trim(), async()=>{ patch(id,{column:fromCol, nextAction:fromNa}); await saveLead(id,{column:fromCol, nextAction:fromNa}); reload(); });
-      toast(`${l.prenom} → ${COL_LABEL[col]}`,'Carte déplacée','accent',{label:'Annuler', fn:()=>runUndo(entry)});
+      if(!(opts && opts.silent)){
+        const fromCol=l.column, fromNa=l.nextAction;
+        const entry=pushUndo(`Déplacement · ${(l.prenom||'')+' '+(l.nom||'')}`.trim(), async()=>{ patch(id,{column:fromCol, nextAction:fromNa}); await saveLead(id,{column:fromCol, nextAction:fromNa}); reload(); });
+        toast(`${l.prenom} → ${COL_LABEL[col]}`,'Carte déplacée','accent',{label:'Annuler', fn:()=>runUndo(entry)});
+      }
     }
   };
 
@@ -2245,7 +2405,7 @@ function App({session, onLogout}){
         {screen==='leads' && <Board leads={leads} search={search} setSearch={setSearch}
             onOpenLead={openLead} onReorder={reorderLead} onRappeler={()=>setShowRappeler(true)} rappelerCount={rappelerCount} onAddLead={(col)=>setAddTarget(col)} onDelete={deleteLead}/>}
         {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen('leads')} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
-            onPay={()=>setPayTarget({lead:sel})} onAction={doAction}/>}
+            onPay={()=>setPayTarget({lead:sel})} onAction={doAction} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})}/>}
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen('leads')}>Retour au board</button></div>}
         {screen==='agenda' && <Agenda leads={leads} onOpen={openLead}/>}
       </main>
