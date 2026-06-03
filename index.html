@@ -409,14 +409,21 @@ input,textarea{font-family:inherit; color:inherit}
 .recap-stage{margin-top:12px; font-size:12.5px; color:var(--t2); font-weight:500}
 .recap-stage.warn{color:var(--warm)}
 
-/* récap dans l'historique : accordéon repliable */
-.tl-recap{flex:1; min-width:0; border:1px solid var(--b1); border-radius:11px; overflow:hidden; background:var(--surface-2)}
-.tl-recap-head{display:flex; align-items:center; gap:9px; padding:10px 12px; cursor:pointer; user-select:none; transition:background var(--speed)}
+/* récap dans l'historique : accordéon repliable (carte autonome, pas de point de timeline) */
+.tl-recap{margin:0 0 14px; border:1px solid var(--b2); border-radius:11px; overflow:hidden; background:var(--surface-2)}
+.tl-recap:last-child{margin-bottom:0}
+.tl-recap-head{display:flex; align-items:center; gap:9px; padding:11px 13px; cursor:pointer; user-select:none; transition:background var(--speed)}
 .tl-recap-head:hover{background:var(--surface-3)}
-.tl-recap-chev{flex:none; color:var(--accent); transition:transform .2s ease}
+.tl-recap-chev{flex:none; color:var(--t3); transition:transform .2s ease}
 .tl-recap-head.open .tl-recap-chev{transform:rotate(90deg)}
+.tl-recap-ic{flex:none; display:grid; place-items:center; color:var(--accent)}
+.tl-recap-ic svg{width:14px; height:14px}
 .tl-recap-title{font-weight:700; font-size:13px; color:var(--t1); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .tl-recap-right{display:flex; align-items:center; gap:8px; flex:none}
+.tl-recap-del{width:23px; height:23px; border-radius:6px; display:grid; place-items:center; color:var(--t3); background:none; cursor:pointer; opacity:0; transition:opacity var(--speed)}
+.tl-recap:hover .tl-recap-del{opacity:1}
+.tl-recap-del:hover{color:var(--danger); background:var(--surface)}
+.tl-recap-del svg{width:13.5px; height:13.5px}
 .tl-recap-body{padding:11px 14px 13px; border-top:1px solid var(--b1)}
 .tl-recap-body .recap-md{font-size:12.5px}
 
@@ -1707,19 +1714,17 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage }){
 function RecapTl({ ev, onDelete }){
   const [open,setOpen]=useState(false);
   return (
-    <div className="tl-item">
-      <span className="tl-dot accent">{I.spark({})}</span>
-      <div className="tl-recap">
-        <div className={`tl-recap-head ${open?'open':''}`} onClick={()=>setOpen(o=>!o)}>
-          <svg className="tl-recap-chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6"><path d="m9 18 6-6-6-6"/></svg>
-          <span className="tl-recap-title">{ev.title}</span>
-          <span className="tl-recap-right">
-            <span className="tl-when">{ev.when}</span>
-            {ev.id && <span className="tl-actions"><button className="del" title="Supprimer" onClick={e=>{ e.stopPropagation(); onDelete(ev.id); }}>{I.trash({})}</button></span>}
-          </span>
-        </div>
-        {open && <div className="tl-recap-body"><MdText text={ev.text}/></div>}
+    <div className="tl-recap">
+      <div className={`tl-recap-head ${open?'open':''}`} onClick={()=>setOpen(o=>!o)}>
+        <svg className="tl-recap-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6"><path d="m9 18 6-6-6-6"/></svg>
+        <span className="tl-recap-ic">{I.spark({})}</span>
+        <span className="tl-recap-title">{ev.title}</span>
+        <span className="tl-recap-right">
+          <span className="tl-when">{ev.when}</span>
+          {ev.id && <button className="tl-recap-del" title="Supprimer" onClick={e=>{ e.stopPropagation(); onDelete(ev.id); }}>{I.trash({})}</button>}
+        </span>
       </div>
+      {open && <div className="tl-recap-body"><MdText text={ev.text}/></div>}
     </div>
   );
 }
