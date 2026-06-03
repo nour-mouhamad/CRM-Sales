@@ -391,6 +391,16 @@ input,textarea{font-family:inherit; color:inherit}
 .recap-li{margin:2px 0 2px 15px; position:relative}
 .recap-li:before{content:'•'; position:absolute; left:-13px; color:var(--accent)}
 .recap-sp{height:7px}
+.recap-edit{width:100%; min-height:150px; max-height:240px; resize:vertical; box-sizing:border-box; border:1px solid var(--b2); border-radius:12px; padding:12px 14px; background:var(--surface-2); color:var(--t1); font-family:inherit; font-size:12.5px; line-height:1.6}
+.recap-edit:focus{border-color:var(--accent); outline:none}
+.recap-action-edit{display:flex; align-items:center; gap:9px; padding:3px 0}
+.recap-action-edit input{flex:1; min-width:0; background:var(--surface); border:1px solid var(--b1); border-radius:7px; padding:6px 9px; color:var(--t1); font-size:13px; font-family:inherit}
+.recap-action-edit input:focus{border-color:var(--accent); outline:none}
+.recap-action-edit .ra-del{flex:none; width:24px; height:24px; border-radius:6px; display:grid; place-items:center; color:var(--t3); cursor:pointer; background:none}
+.recap-action-edit .ra-del:hover{color:var(--danger); background:var(--surface)}
+.recap-action-edit .ra-del svg{width:14px; height:14px}
+.recap-add{margin-top:8px; font-size:12px; color:var(--accent); background:none; cursor:pointer; font-weight:600; padding:4px 0}
+.recap-add:hover{text-decoration:underline}
 .recap-actions{margin-top:14px; border:1px solid var(--accent); border-radius:12px; padding:12px 15px; background:var(--accent-tint)}
 .recap-actions-h{font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--accent); margin-bottom:9px}
 .recap-action{display:flex; align-items:flex-start; gap:9px; font-size:13px; color:var(--t1); font-weight:600; padding:4px 0; line-height:1.45}
@@ -1616,7 +1626,9 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage }){
   const [text,setText]=useState('');
   const [phase,setPhase]=useState('input'); // input | loading | result | error
   const [result,setResult]=useState(null);
-  const [applied,setApplied]=useState({filled:[], conflicts:[], stage:{msg:''}});
+  const [applied,setApplied]=useState({filled:[], stage:{msg:''}});
+  const [recapText,setRecapText]=useState('');
+  const [editActions,setEditActions]=useState([]);
   const [err,setErr]=useState('');
   const alive=useRef(true);
   useEffect(()=>()=>{ alive.current=false; },[]);
@@ -1644,12 +1656,9 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage }){
       consider(F.objectif,'veut','objectif','Objectif',false);
       consider(F.cpf,'cpf','cpf','CPF dispo',true);
       consider(F.budget,'budget','budget','Budget',false);
-      // récap -> note datée (finit toujours par les actions s'il y en a ; priorité conservée ;
-      // pas de note polluante si transcript jugé non exploitable et rien d'extrait)
-      const acts=(out.actions||[]);
-      const actTxt = acts.length ? ('\n\n— Actions —\n'+acts.map(a=>'• '+a.label+(a.priority==='haute'?' (prioritaire)':'')).join('\n')) : '';
-      const junk = out.call_type==='autre' && !acts.length && !filled.length && !conflicts.length;
-      if(!junk) onNote('note', 'Récap · '+(out.call_type_label||'Call'), (out.recap_markdown||'').trim()+actTxt);
+      // récap + actions -> état ÉDITABLE (la sauvegarde en note se fait au clic "Confirmer")
+      setRecapText((out.recap_markdown||'').trim());
+      setEditActions((out.actions||[]).map(a=>({label:a.label, priority:a.priority||'moyenne'})));
       // étape : avance UNIQUEMENT contacter/atc -> R1 si un RDV est calé (rdv_at présent).
       // Un seul champ rdv_at ne permet pas de certifier qu'un R2 distinct est calé :
       // le passage en R2 (et toute avancée depuis un état déjà avancé) reste donc manuel.
@@ -1662,9 +1671,18 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage }){
       } else if((sg==='r1'||sg==='r2') && cur!=null && RANK[sg]>cur){
         stage={msg:'Avancée vers '+(sg==='r2'?'R2':'R1')+' suggérée — à confirmer à la main.', warn:true};
       }
-      setApplied({filled, conflicts, stage});
+      setApplied({filled, stage});
       setResult(out); setPhase('result');
     }catch(e){ if(!alive.current) return; setErr(e.message||'Erreur inconnue'); setPhase('error'); }
+  }
+
+  // "Confirmer" : enregistre le récap ÉDITÉ (résumé + actions) en note datée, puis ferme.
+  function confirm(){
+    const acts=editActions.filter(a=>a.label.trim());
+    const actTxt = acts.length ? ('\n\n— Actions —\n'+acts.map(a=>'• '+a.label.trim()+(a.priority==='haute'?' (prioritaire)':'')).join('\n')) : '';
+    const body=(recapText.trim()+actTxt).trim();
+    if(body) onNote('note', 'Récap · '+((result&&result.call_type_label)||'Call'), body);
+    onClose();
   }
 
   return (<>
@@ -1684,16 +1702,21 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage }){
       </>)}
       {phase==='result' && result && (<>
         <span className="recap-type">{result.call_type_label||'Call'}</span>
-        <div className="recap-box"><MdText text={result.recap_markdown}/></div>
-        {result.actions && result.actions.length>0 && (
-          <div className="recap-actions">
-            <div className="recap-actions-h">Actions</div>
-            {result.actions.map((a,i)=>(<div key={i} className={`recap-action prio-${a.priority||'moyenne'}`}><span className="ra-dot"></span>{a.label}</div>))}
-          </div>
-        )}
+        <textarea className="recap-edit" value={recapText} onChange={e=>setRecapText(e.target.value)} placeholder="Résumé du call (modifiable)…"/>
+        <div className="recap-actions">
+          <div className="recap-actions-h">Actions</div>
+          {editActions.map((a,i)=>(
+            <div key={i} className="recap-action-edit">
+              <span className="ra-dot" style={{background: a.priority==='haute'?'var(--bad,#e5484d)':(a.priority==='basse'?'var(--t4)':'var(--accent)')}}></span>
+              <input value={a.label} onChange={e=>setEditActions(arr=>arr.map((x,j)=>j===i?{...x,label:e.target.value}:x))} placeholder="Action…"/>
+              <button className="ra-del" title="Retirer" onClick={()=>setEditActions(arr=>arr.filter((_,j)=>j!==i))}><I.x/></button>
+            </div>
+          ))}
+          <button className="recap-add" onClick={()=>setEditActions(arr=>[...arr,{label:'',priority:'moyenne'}])}>+ Ajouter une action</button>
+        </div>
         {applied.filled.length>0 && <div className="recap-meta"><b>Champs remplis :</b> {applied.filled.map(f=>f.label).join(', ')}</div>}
         {applied.stage.msg && <div className={`recap-stage ${applied.stage.warn?'warn':''}`}>{applied.stage.msg}</div>}
-        <div className="modal-foot"><button className="btn btn-accent" onClick={onClose}>Confirmer</button></div>
+        <div className="modal-foot"><button className="btn btn-accent" onClick={confirm}>Confirmer</button></div>
       </>)}
     </div>
   </>);
