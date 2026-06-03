@@ -258,16 +258,17 @@ input,textarea{font-family:inherit; color:inherit}
 .field .val.big{font-size:21px; font-weight:800; letter-spacing:-.03em}
 .field .val.mono{font-family:'JetBrains Mono',monospace}
 .field .val .unit{font-size:13px; color:var(--t3); font-weight:600; margin-left:5px}
-/* catégorie Action (panneau Situation) — case « action réalisée » */
-.action-row{display:flex; align-items:flex-start; gap:11px; cursor:pointer; user-select:none; padding:2px 0}
-.action-row input{position:absolute; opacity:0; width:0; height:0}
-.action-box{flex:none; width:20px; height:20px; border-radius:6px; border:2px solid var(--b3); display:grid; place-items:center; transition:all var(--speed); margin-top:1px}
+/* catégorie Action (panneau Situation) — action éditable + case « réalisée » */
+.action-row{display:flex; align-items:center; gap:11px; padding:2px 0}
+.action-box{flex:none; width:20px; height:20px; border-radius:6px; border:2px solid var(--b3); display:grid; place-items:center; cursor:pointer; transition:all var(--speed)}
 .action-box svg{width:12px; height:12px; stroke-width:3.2; color:var(--on-accent); opacity:0; transform:scale(.5); transition:all var(--speed)}
-.action-row:hover .action-box{border-color:var(--accent)}
+.action-box:hover{border-color:var(--accent)}
 .action-row.done .action-box{background:var(--accent); border-color:var(--accent)}
 .action-row.done .action-box svg{opacity:1; transform:scale(1)}
-.action-tx{font-size:14px; font-weight:600; color:var(--t1); line-height:1.45}
+.action-tx{flex:1; min-width:0; font-size:14px; font-weight:600; color:var(--t1); line-height:1.4; cursor:pointer; padding:3px 6px; margin:-3px -6px; border-radius:6px; transition:background var(--speed)}
+.action-tx:hover{background:var(--surface-2)}
 .action-row.done .action-tx{color:var(--t3); text-decoration:line-through}
+.action-edit{flex:1; min-width:0; background:var(--surface); border:1px solid var(--accent); border-radius:7px; padding:5px 9px; color:var(--t1); font-size:14px; font-weight:600; font-family:inherit; outline:none}
 
 /* timeline */
 .tl{position:relative; padding-left:6px}
@@ -1274,13 +1275,16 @@ function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDel
             {(()=>{ const si=SOURCE_INFO[lead.source]||{label:lead.source||'—',via:'Lead entrant',angle:'Qualifier l’intention pendant l’appel.'}; return (<>
               <div className="field">
                 <span className="eyebrow">Action</span>
-                {lead.nextAction ? (
-                  <label className={`action-row ${actionDone?'done':''}`}>
-                    <input type="checkbox" checked={actionDone} onChange={e=>onToggleAction(e.target.checked)}/>
-                    <span className="action-box">{I.check({})}</span>
-                    <span className="action-tx">{lead.nextAction}</span>
-                  </label>
-                ) : <div className="val" style={{color:'var(--t3)',fontWeight:500}}>Aucune action en cours</div>}
+                <div className={`action-row ${actionDone?'done':''}`}>
+                  <span className="action-box" onClick={()=>lead.nextAction && onToggleAction(!actionDone)} title={actionDone?'Marquer non fait':'Marquer comme fait'}>{I.check({})}</span>
+                  {editingField==='action' ? (
+                    <input className="action-edit" autoFocus defaultValue={lead.nextAction||''} placeholder="Action à réaliser…"
+                      onKeyDown={e=>{ if(e.key==='Enter') e.target.blur(); if(e.key==='Escape') setEditingField(null); }}
+                      onBlur={e=>{ onEditField('nextAction','nextAction', e.target.value.trim()||null); setEditingField(null); }}/>
+                  ) : (
+                    <span className="action-tx" onClick={()=>setEditingField('action')} title="Cliquer pour modifier">{lead.nextAction||'Définir une action'}</span>
+                  )}
+                </div>
               </div>
               <div className="field">
                 <span className="eyebrow">Source du lead</span>
@@ -1704,6 +1708,9 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage }){
     const actTxt = acts.length ? ('\n\n— Actions —\n'+acts.map(a=>'• '+a.label.trim()+(a.priority==='haute'?' (prioritaire)':'')).join('\n')) : '';
     const body=(recapText.trim()+actTxt).trim();
     if(body) onNote('note', 'Récap · '+((result&&result.call_type_label)||'Call'), body);
+    // l'action prioritaire du call devient l'Action du lead (catégorie Action + carte board)
+    const prio = acts.find(a=>a.priority==='haute') || acts[0];
+    if(prio) onEditField('nextAction','nextAction', prio.label.trim());
     onClose();
   }
 
