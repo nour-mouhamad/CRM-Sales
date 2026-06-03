@@ -269,6 +269,17 @@ input,textarea{font-family:inherit; color:inherit}
 .action-tx:hover{background:var(--surface-2)}
 .action-row.done .action-tx{color:var(--t3); text-decoration:line-through}
 .action-edit{flex:1; min-width:0; background:var(--surface); border:1px solid var(--accent); border-radius:7px; padding:5px 9px; color:var(--t1); font-size:14px; font-weight:600; font-family:inherit; outline:none}
+.action-edit-li{flex:1; min-width:0; background:none; border:1px solid transparent; border-radius:7px; padding:5px 6px; margin:-1px -6px; color:var(--t1); font-size:14px; font-weight:600; font-family:inherit; outline:none; transition:border-color var(--speed)}
+.action-edit-li::placeholder{color:var(--t4)}
+.action-edit-li:hover{border-color:var(--b1)}
+.action-edit-li:focus{border-color:var(--accent); background:var(--surface)}
+.action-row.done .action-edit-li{color:var(--t3); text-decoration:line-through}
+.action-del{flex:none; width:22px; height:22px; border-radius:6px; display:grid; place-items:center; color:var(--t4); cursor:pointer; background:none; opacity:0; transition:all var(--speed)}
+.action-row:hover .action-del{opacity:1}
+.action-del:hover{color:var(--danger); background:var(--surface-2)}
+.action-del svg{width:13px; height:13px}
+.action-add{margin-top:6px; font-size:12.5px; color:var(--accent); background:none; cursor:pointer; font-weight:600; padding:4px 2px}
+.action-add:hover{text-decoration:underline}
 
 /* timeline */
 .tl{position:relative; padding-left:6px}
@@ -830,7 +841,7 @@ function dbToLead(r, acts){
   return {
     id:r.id, prenom:r.prenom||'', nom:r.nom||'', tel:r.telephone||'', email:r.email||'',
     source:r.source, heat:r.heat||null, column:COL_DB2UI(r.colonne), owner:r.owner_closer_id||null,
-    nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, live:false, noShow:false,
+    nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, extraActions:Array.isArray(r.extra_actions)?r.extra_actions:[], live:false, noShow:false,
     offer:r.montant||0, paid:r.statut_paiement==='paye',
     cpf:r.cpf_dispo||0, metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'', situation:r.situation||'',
     rdv_at:r.rdv_at||null, meet_link:r.meet_link||null, hubspot_deal_id:r.hubspot_deal_id||null,
@@ -856,6 +867,7 @@ async function saveLead(id, uiPatch){
   if('column' in uiPatch) m.colonne=COL_UI2DB(uiPatch.column);
   if('nextAction' in uiPatch) m.next_action=uiPatch.nextAction;
   if('actionDoneFor' in uiPatch) m.action_done_for=uiPatch.actionDoneFor;
+  if('extraActions' in uiPatch) m.extra_actions=uiPatch.extraActions;
   if('heat' in uiPatch) m.heat=uiPatch.heat;
   if('offer' in uiPatch) m.montant=uiPatch.offer;
   if('owner' in uiPatch) m.owner_closer_id=uiPatch.owner;
@@ -1236,7 +1248,7 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onRappeler, rap
 }
 
 /* ============================================================= FICHE LEAD */
-function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onToggleAction}){
+function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onToggleAction, onActions}){
   const [moveOpen,setMoveOpen]=useState(false);
   const [noteOpen,setNoteOpen]=useState(false);
   const [recapOpen,setRecapOpen]=useState(false);
@@ -1285,6 +1297,16 @@ function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDel
                     <span className="action-tx" onClick={()=>setEditingField('action')} title="Cliquer pour modifier">{lead.nextAction||'Définir une action'}</span>
                   )}
                 </div>
+                {(lead.extraActions||[]).map((a,i)=>(
+                  <div key={i} className={`action-row ${a.done?'done':''}`}>
+                    <span className="action-box" onClick={()=>onActions(lead.extraActions.map((x,j)=>j===i?{...x,done:!x.done}:x), true)} title={a.done?'Marquer non fait':'Marquer comme fait'}>{I.check({})}</span>
+                    <input className="action-edit-li" value={a.label} placeholder="Action à réaliser…"
+                      onChange={e=>onActions(lead.extraActions.map((x,j)=>j===i?{...x,label:e.target.value}:x), false)}
+                      onBlur={()=>onActions(lead.extraActions, true)}/>
+                    <button className="action-del" title="Retirer" onClick={()=>onActions(lead.extraActions.filter((_,j)=>j!==i), true)}><I.x/></button>
+                  </div>
+                ))}
+                <button className="action-add" onClick={()=>onActions([...(lead.extraActions||[]), {label:'',done:false}], true)}>+ Ajouter une action</button>
               </div>
               <div className="field">
                 <span className="eyebrow">Source du lead</span>
@@ -2365,6 +2387,7 @@ function App({session, onLogout}){
   // édition d'un champ de qualification (uiKey = champ local, saveKey = clé attendue par saveLead -> colonne DB)
   const editField=(uiKey,saveKey,value)=>{ if(!sel) return; patch(sel.id,{[uiKey]:value}); saveLead(sel.id,{[saveKey]:value}); };
   const toggleAction=(checked)=>{ if(!sel) return; const v=checked?(sel.nextAction||null):null; patch(sel.id,{actionDoneFor:v}); saveLead(sel.id,{actionDoneFor:v}); };
+  const setActions=(arr,persist)=>{ if(!sel) return; patch(sel.id,{extraActions:arr}); if(persist) saveLead(sel.id,{extraActions:arr}); };
 
   const doAction=(type)=>{
     if(!sel) return;
@@ -2487,7 +2510,7 @@ function App({session, onLogout}){
         {screen==='leads' && <Board leads={leads} search={search} setSearch={setSearch}
             onOpenLead={openLead} onReorder={reorderLead} onRappeler={()=>setShowRappeler(true)} rappelerCount={rappelerCount} onAddLead={(col)=>setAddTarget(col)} onDelete={deleteLead}/>}
         {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen('leads')} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
-            onPay={()=>setPayTarget({lead:sel})} onAction={doAction} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction}/>}
+            onPay={()=>setPayTarget({lead:sel})} onAction={doAction} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions}/>}
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen('leads')}>Retour au board</button></div>}
         {screen==='agenda' && <Agenda leads={leads} onOpen={openLead}/>}
       </main>
