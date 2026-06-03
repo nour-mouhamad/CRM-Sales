@@ -1676,7 +1676,7 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage }){
     <div className="backdrop" onClick={onClose}></div>
     <div className="modal recap-modal" onClick={e=>e.stopPropagation()}>
       <button className="x-btn" onClick={onClose}><I.x/></button>
-      <div className="m-fixhead"><span className="eyebrow m-eye">Récap IQ</span><div style={{fontSize:20,fontWeight:800,letterSpacing:'-.02em',marginTop:6}}>Résumer le call</div></div>
+      <div className="m-fixhead"><div style={{fontSize:20,fontWeight:800,letterSpacing:'-.02em'}}>Récap IQ</div></div>
       {phase==='input' && (<>
         <textarea className="note-ta recap-ta" autoFocus placeholder="Colle ici le transcript du call (Granola, Zoom, notes…)" value={text} onChange={e=>setText(e.target.value)}/>
         <div className="modal-note">L'IA détecte le type de call, remplit les champs vides et propose les actions.</div>
