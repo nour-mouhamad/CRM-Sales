@@ -376,14 +376,14 @@ input,textarea{font-family:inherit; color:inherit}
 
 /* recap call (IA) */
 .head-btns{display:flex; align-items:center; gap:8px}
-.modal.recap-modal{width:580px}
+.modal.recap-modal{width:580px; max-height:90vh; overflow-y:auto}
 .recap-ta{min-height:200px}
 .recap-loading{display:flex; flex-direction:column; align-items:center; gap:14px; padding:44px 0; color:var(--t2); font-size:13.5px; font-weight:500}
 .recap-spin{width:30px; height:30px; border:3px solid var(--b2); border-top-color:var(--accent); border-radius:50%; animation:recap-rot .8s linear infinite}
 @keyframes recap-rot{to{transform:rotate(360deg)}}
 .recap-err{margin-top:14px; padding:12px 14px; border-radius:11px; background:var(--surface-2); border:1px solid var(--b2); color:var(--t1); font-size:13px}
 .recap-type{display:inline-block; font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; background:var(--accent-tint); color:var(--accent); padding:3px 9px; border-radius:99px; margin-bottom:12px}
-.recap-box{border:1px solid var(--b1); border-radius:12px; padding:14px 16px; max-height:300px; overflow:auto; background:var(--surface-2)}
+.recap-box{border:1px solid var(--b1); border-radius:12px; padding:14px 16px; max-height:240px; overflow:auto; background:var(--surface-2)}
 .recap-md{font-size:13px; color:var(--t2); line-height:1.6}
 .recap-h{font-weight:800; color:var(--t1); font-size:13px; margin:11px 0 4px; letter-spacing:-.01em}
 .recap-h:first-child{margin-top:0}
@@ -1667,11 +1667,6 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage }){
     }catch(e){ if(!alive.current) return; setErr(e.message||'Erreur inconnue'); setPhase('error'); }
   }
 
-  function resolveConflict(c){
-    onEditField(c.uiKey, c.saveKey, c.neu);
-    setApplied(a=>({...a, conflicts:a.conflicts.filter(x=>x!==c), filled:[...a.filled,{label:c.label,value:c.neu}]}));
-  }
-
   return (<>
     <div className="backdrop" onClick={onClose}></div>
     <div className="modal recap-modal" onClick={e=>e.stopPropagation()}>
@@ -1697,14 +1692,8 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage }){
           </div>
         )}
         {applied.filled.length>0 && <div className="recap-meta"><b>Champs remplis :</b> {applied.filled.map(f=>f.label).join(', ')}</div>}
-        {applied.conflicts.length>0 && (
-          <div className="recap-conflicts">
-            <div className="rc-h">Conflits — non écrasés</div>
-            {applied.conflicts.map((c,i)=>(<div key={i} className="rc-row"><span className="rc-lbl">{c.label}</span><span className="rc-vs"><span className="rc-cur">{c.isNum?eur(c.cur):String(c.cur)}</span> → <span className="rc-new">{c.isNum?eur(c.neu):String(c.neu)}</span></span><button className="btn btn-soft rc-btn" onClick={()=>resolveConflict(c)}>Remplacer</button></div>))}
-          </div>
-        )}
         {applied.stage.msg && <div className={`recap-stage ${applied.stage.warn?'warn':''}`}>{applied.stage.msg}</div>}
-        <div className="modal-foot"><button className="btn btn-accent" onClick={onClose}>Fermer</button></div>
+        <div className="modal-foot"><button className="btn btn-accent" onClick={onClose}>Confirmer</button></div>
       </>)}
     </div>
   </>);
