@@ -258,6 +258,16 @@ input,textarea{font-family:inherit; color:inherit}
 .field .val.big{font-size:21px; font-weight:800; letter-spacing:-.03em}
 .field .val.mono{font-family:'JetBrains Mono',monospace}
 .field .val .unit{font-size:13px; color:var(--t3); font-weight:600; margin-left:5px}
+/* catégorie Action (panneau Situation) — case « action réalisée » */
+.action-row{display:flex; align-items:flex-start; gap:11px; cursor:pointer; user-select:none; padding:2px 0}
+.action-row input{position:absolute; opacity:0; width:0; height:0}
+.action-box{flex:none; width:20px; height:20px; border-radius:6px; border:2px solid var(--b3); display:grid; place-items:center; transition:all var(--speed); margin-top:1px}
+.action-box svg{width:12px; height:12px; stroke-width:3.2; color:var(--on-accent); opacity:0; transform:scale(.5); transition:all var(--speed)}
+.action-row:hover .action-box{border-color:var(--accent)}
+.action-row.done .action-box{background:var(--accent); border-color:var(--accent)}
+.action-row.done .action-box svg{opacity:1; transform:scale(1)}
+.action-tx{font-size:14px; font-weight:600; color:var(--t1); line-height:1.45}
+.action-row.done .action-tx{color:var(--t3); text-decoration:line-through}
 
 /* timeline */
 .tl{position:relative; padding-left:6px}
@@ -819,7 +829,7 @@ function dbToLead(r, acts){
   return {
     id:r.id, prenom:r.prenom||'', nom:r.nom||'', tel:r.telephone||'', email:r.email||'',
     source:r.source, heat:r.heat||null, column:COL_DB2UI(r.colonne), owner:r.owner_closer_id||null,
-    nextAction:r.next_action||'À contacter', live:false, noShow:false,
+    nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, live:false, noShow:false,
     offer:r.montant||0, paid:r.statut_paiement==='paye',
     cpf:r.cpf_dispo||0, metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'', situation:r.situation||'',
     rdv_at:r.rdv_at||null, meet_link:r.meet_link||null, hubspot_deal_id:r.hubspot_deal_id||null,
@@ -844,6 +854,7 @@ async function saveLead(id, uiPatch){
   const m={};
   if('column' in uiPatch) m.colonne=COL_UI2DB(uiPatch.column);
   if('nextAction' in uiPatch) m.next_action=uiPatch.nextAction;
+  if('actionDoneFor' in uiPatch) m.action_done_for=uiPatch.actionDoneFor;
   if('heat' in uiPatch) m.heat=uiPatch.heat;
   if('offer' in uiPatch) m.montant=uiPatch.offer;
   if('owner' in uiPatch) m.owner_closer_id=uiPatch.owner;
@@ -1224,7 +1235,7 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onRappeler, rap
 }
 
 /* ============================================================= FICHE LEAD */
-function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage}){
+function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onToggleAction}){
   const [moveOpen,setMoveOpen]=useState(false);
   const [noteOpen,setNoteOpen]=useState(false);
   const [recapOpen,setRecapOpen]=useState(false);
@@ -1235,6 +1246,7 @@ function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDel
   const [draft,setDraft]=useState('');
   const [editingField,setEditingField]=useState(null);
   const statusColor = COL_COLOR[lead.column];
+  const actionDone = !!lead.nextAction && lead.actionDoneFor===lead.nextAction;
   const QUALIF=[{label:'Métier',k:'metier',save:'metier'},{label:'Objectif',k:'veut',save:'objectif'},{label:'CPF dispo',k:'cpf',save:'cpf',num:true},{label:'Budget',k:'budget',save:'budget'}];
 
   return (
@@ -1260,6 +1272,16 @@ function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDel
           <div className="panel-head"><span className="eyebrow">Situation</span></div>
           <div className="panel-body">
             {(()=>{ const si=SOURCE_INFO[lead.source]||{label:lead.source||'—',via:'Lead entrant',angle:'Qualifier l’intention pendant l’appel.'}; return (<>
+              <div className="field">
+                <span className="eyebrow">Action</span>
+                {lead.nextAction ? (
+                  <label className={`action-row ${actionDone?'done':''}`}>
+                    <input type="checkbox" checked={actionDone} onChange={e=>onToggleAction(e.target.checked)}/>
+                    <span className="action-box">{I.check({})}</span>
+                    <span className="action-tx">{lead.nextAction}</span>
+                  </label>
+                ) : <div className="val" style={{color:'var(--t3)',fontWeight:500}}>Aucune action en cours</div>}
+              </div>
               <div className="field">
                 <span className="eyebrow">Source du lead</span>
                 <div className="val" style={{fontWeight:700}}>{si.label}</div>
@@ -2335,6 +2357,7 @@ function App({session, onLogout}){
   const deleteNote=(actId)=>{ if(sel) patch(sel.id,prev=>({timeline:prev.timeline.filter(e=> e.id!==actId)})); deleteActivite(actId); toast('Entrée supprimée',null,'info'); };
   // édition d'un champ de qualification (uiKey = champ local, saveKey = clé attendue par saveLead -> colonne DB)
   const editField=(uiKey,saveKey,value)=>{ if(!sel) return; patch(sel.id,{[uiKey]:value}); saveLead(sel.id,{[saveKey]:value}); };
+  const toggleAction=(checked)=>{ if(!sel) return; const v=checked?(sel.nextAction||null):null; patch(sel.id,{actionDoneFor:v}); saveLead(sel.id,{actionDoneFor:v}); };
 
   const doAction=(type)=>{
     if(!sel) return;
@@ -2457,7 +2480,7 @@ function App({session, onLogout}){
         {screen==='leads' && <Board leads={leads} search={search} setSearch={setSearch}
             onOpenLead={openLead} onReorder={reorderLead} onRappeler={()=>setShowRappeler(true)} rappelerCount={rappelerCount} onAddLead={(col)=>setAddTarget(col)} onDelete={deleteLead}/>}
         {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen('leads')} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
-            onPay={()=>setPayTarget({lead:sel})} onAction={doAction} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})}/>}
+            onPay={()=>setPayTarget({lead:sel})} onAction={doAction} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction}/>}
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen('leads')}>Retour au board</button></div>}
         {screen==='agenda' && <Agenda leads={leads} onOpen={openLead}/>}
       </main>
