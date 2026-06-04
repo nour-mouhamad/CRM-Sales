@@ -832,7 +832,6 @@ function fmtWhen(ts){
   try{ const d=new Date(ts); return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; }
 }
 // libellé RDV homogène (« mer. 04 juin · 14:30 ») — fiche / picker / poll
-const fmtRdv = (d)=>{ const x=new Date(d); return x.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short'})+' · '+x.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); };
 
 // ligne Supabase -> objet lead attendu par l'UI (aucun champ inventé : vide reste vide)
 function dbToLead(r, acts){
@@ -842,8 +841,7 @@ function dbToLead(r, acts){
     nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, extraActions:Array.isArray(r.extra_actions)?r.extra_actions:[], live:false, noShow:false,
     offer:r.montant||0, paid:r.statut_paiement==='paye',
     cpf:r.cpf_dispo||0, metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'',
-    rdv_at:r.rdv_at||null, meet_link:r.meet_link||null, hubspot_deal_id:r.hubspot_deal_id||null,
-    rdv_event_id:r.rdv_event_id||null, rdv_agenda:r.rdv_agenda||null, rdv_status:r.rdv_status||'needsAction',
+    rdv_at:r.rdv_at||null, hubspot_deal_id:r.hubspot_deal_id||null,
     timeline:(acts||[]).map(a=>({id:a.id, type:a.type, when:fmtWhen(a.created_at), title:a.titre||'', text:a.contenu||'', paid:a.type==='paiement'}))
   };
 }
@@ -869,11 +867,6 @@ async function saveLead(id, uiPatch){
   if('heat' in uiPatch) m.heat=uiPatch.heat;
   if('offer' in uiPatch) m.montant=uiPatch.offer;
   if('owner' in uiPatch) m.owner_closer_id=uiPatch.owner;
-  if('rdv_at' in uiPatch) m.rdv_at=uiPatch.rdv_at;
-  if('meet_link' in uiPatch) m.meet_link=uiPatch.meet_link;
-  if('rdv_event_id' in uiPatch) m.rdv_event_id=uiPatch.rdv_event_id;
-  if('rdv_agenda' in uiPatch) m.rdv_agenda=uiPatch.rdv_agenda;
-  if('rdv_status' in uiPatch) m.rdv_status=uiPatch.rdv_status;
   if('paid' in uiPatch) m.statut_paiement=uiPatch.paid?'paye':'aucun';
   if('statut_paiement' in uiPatch) m.statut_paiement=uiPatch.statut_paiement;
   if('metier' in uiPatch) m.metier=uiPatch.metier;
@@ -1106,7 +1099,7 @@ const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDrag
   } else if(col==='cpf'){
     actionEl = <div className="card-action"><span className="live idle"></span>{lead.admStatus==='secured'?'Dossier sécurisé':'Dossier CPF — admission'}</div>;
   } else {
-    actionEl = <div className={`card-action ${lead.rdv_status==='accepted'?'confirmed':''}`}><span className={`live ${lead.rdv_status==='accepted'?'':(lead.live?'':'idle')}`}></span>{lead.nextAction}</div>;
+    actionEl = <div className="card-action"><span className={`live ${lead.live?'':'idle'}`}></span>{lead.nextAction}</div>;
   }
   return (
     <div className={`card ${dragging?'dragging':''} ${dropPos?('drop-'+dropPos):''}`} draggable
@@ -1257,7 +1250,7 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
 }
 
 /* ============================================================= FICHE LEAD */
-function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onToggleAction, onActions}){
+function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onToggleAction, onActions}){
   const [moveOpen,setMoveOpen]=useState(false);
   const [noteOpen,setNoteOpen]=useState(false);
   const [recapOpen,setRecapOpen]=useState(false);
@@ -1322,15 +1315,6 @@ function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDel
                 <div className="val" style={{fontWeight:700}}>{si.label}</div>
                 <div className="val-sub">{si.via}</div>
               </div>
-              {lead.rdv_at && (()=>{ const type='RDV'; const lbl=fmtRdv(lead.rdv_at); const ok=lead.rdv_status==='accepted'; return (
-              <div className="field">
-                <span className="eyebrow">Rendez-vous du lead</span>
-                <div className="val" style={{fontWeight:700, display:'flex', alignItems:'center', gap:7, color: ok?'var(--ok)':'var(--t3)'}}>
-                  <span style={{width:7, height:7, borderRadius:99, flex:'none', background: ok?'var(--ok)':'var(--b3)'}}></span>
-                  {type} {ok?'accepté':'calé'} — {lbl}
-                </div>
-              </div>
-              ); })()}
               <div className="field">
                 <span className="eyebrow">Angle d’ouverture</span>
                 <div className="val" style={{fontWeight:600,fontSize:14}}>{si.angle}</div>
@@ -1432,16 +1416,6 @@ function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDel
                 <span className="act-ic"><I.phone/></span>
                 <span className="act-tx"><b>Appeler</b><span className={lead.tel?'mono':''}>{lead.tel||'Pas de numéro'}</span></span>
               </button>
-              {lead.meet_link && <button className="act" onClick={()=>onAction('meet')}>
-                <span className="act-ic"><I.video/></span>
-                <span className="act-tx"><b>Rejoindre le meet</b><span>ouvrir le Google Meet du RDV</span></span>
-                <span className="chev"><I.chev/></span>
-              </button>}
-              <button className="act" onClick={()=>onAction('rdv')}>
-                <span className="act-ic"><I.calPlus/></span>
-                <span className="act-tx"><b>Caler un RDV</b><span>choisir un créneau</span></span>
-                <span className="chev"><I.chev/></span>
-              </button>
               <button className="act" onClick={onPay}>
                 <span className="act-ic"><I.euro/></span>
                 <span className="act-tx"><b>Envoyer lien paiement</b><span className="mono">1 400 · 1 250</span></span>
@@ -1465,142 +1439,6 @@ async function callFn(name, body){
   if(!r.ok) throw new Error(j.error || ('Erreur '+name+' ('+r.status+')'));
   return j;
 }
-const RDV_AGENDAS = [{id:'gestion@iq-project.ai', label:'Gestion'}];
-// OAuth Google — client_id public (jamais le secret, qui reste côté serveur dans app_secrets)
-const GOOGLE_CLIENT_ID = '892824850603-t16t5rcqefu3lhfgi3ronl3t3tsdduop.apps.googleusercontent.com';
-const GOOGLE_REDIRECT_URI = SUPABASE_URL + '/functions/v1/oauth-callback';
-const GOOGLE_SCOPES = 'openid email https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly';
-function buildConnectUrl(email){
-  const p = new URLSearchParams({ client_id:GOOGLE_CLIENT_ID, redirect_uri:GOOGLE_REDIRECT_URI, response_type:'code', scope:GOOGLE_SCOPES, access_type:'offline', prompt:'consent', include_granted_scopes:'true', login_hint:email||'' });
-  return 'https://accounts.google.com/o/oauth2/v2/auth?' + p.toString();
-}
-function agendaLabelFor(email){ const lp=String(email||'').split('@')[0]; const w=lp.split(/[.\-_]/)[0]||lp; return w.charAt(0).toUpperCase()+w.slice(1); }
-
-function RdvPicker({lead, agendas, onClose, onBooked}){
-  const AG = (agendas && agendas.length) ? agendas : RDV_AGENDAS;
-  const [type,setType]=useState('R1');
-  const [dur,setDur]=useState(60);
-  const [agenda,setAgenda]=useState(AG[0].id);
-  const [busy,setBusy]=useState(null);
-  const [slot,setSlot]=useState(null);
-  const [busyLoading,setBusyLoading]=useState(false);
-  const [saving,setSaving]=useState(false);
-  const [err,setErr]=useState(null);
-  const [dayIx,setDayIx]=useState(0);
-  const pickedRef=useRef(false);
-  const days=useMemo(()=>{ const out=[]; const d=new Date(); d.setHours(0,0,0,0); while(out.length<10){ const wd=d.getDay(); if(wd!==0&&wd!==6) out.push(new Date(d)); d.setDate(d.getDate()+1); } return out; },[]);
-  const DAY_START=9, DAY_END=19, STEP=15;   // créneaux toutes les 15 min, 09:00 → 19:00
-  const now=Date.now();
-  const setTypeDur=(tp)=>{ setType(tp); setDur(tp==='R1'?60:45); setSlot(null); };
-  const agendaLabel=(AG.find(a=>a.id===agenda)||{}).label||agenda;
-  const loadBusy=useCallback(async()=>{ setBusyLoading(true); setErr(null); setBusy(null); setSlot(null);
-    try{ const min=new Date(days[0]); const max=new Date(days[days.length-1]); max.setHours(23,59,0,0);
-      const j=await callFn('freebusy',{agenda, timeMin:min.toISOString(), timeMax:max.toISOString()});
-      setBusy((j.busy||[]).map(x=>({s:new Date(x.start).getTime(), e:new Date(x.end).getTime()}))); }
-    catch(e){ setErr(e.message); setBusy([]); } setBusyLoading(false); },[days, agenda]);
-  useEffect(()=>{ loadBusy(); },[loadBusy]);
-  const slotAt=(day,mins)=>{ const s=new Date(day); s.setHours(0,0,0,0); s.setMinutes(mins); return {s, e:new Date(s.getTime()+dur*60000)}; };
-  const isBusy=(s,e)=>{ if(!busy) return false; const ss=s.getTime(), ee=e.getTime(); return busy.some(b=> ss<b.e && ee>b.s); };
-  const daySlots=(day)=>{ const out=[]; const last=DAY_END*60-dur; for(let m=DAY_START*60; m<=last; m+=STEP){ const sl=slotAt(day,m); if(sl.s.getTime()<now) continue; if(isBusy(sl.s,sl.e)) continue; out.push(sl); } return out; };
-  useEffect(()=>{ if(pickedRef.current) return; pickedRef.current=true; const fi=days.findIndex(d=>daySlots(d).length>0); if(fi>0) setDayIx(fi); },[]); // au montage : 1er jour avec un créneau futur
-  const fmtLabel=fmtRdv;
-  const confirm=async()=>{ if(!slot) return; setSaving(true); setErr(null);
-    try{ const ev=await callFn('create-meeting',{ agenda,
-        summary:`IQ Project × ${(lead.prenom||lead.nom||'')}`.trim(),
-        description:`Rendez-vous (${dur} min) avec ${(lead.prenom||'')} ${(lead.nom||'')}. Source : ${lead.source||''}.`.trim(),
-        startISO:slot.s.toISOString(), endISO:slot.e.toISOString(), attendees:[lead.email, agenda] });
-      onBooked({type, label:fmtLabel(slot.s), startISO:slot.s.toISOString(), meet:ev.hangoutLink||null, eventId:ev.id||null, agenda}); }
-    catch(e){ setErr(e.message); setSaving(false); } };
-  return (
-    <>
-      <div className="backdrop" onClick={onClose}></div>
-      <div className="modal wide" onClick={e=>e.stopPropagation()}>
-        <button className="x-btn" onClick={onClose}><I.x/></button>
-        <div className="m-fixhead">
-          <span className="eyebrow m-eye">Caler un RDV · Google Agenda</span>
-          <div style={{fontSize:20,fontWeight:800,letterSpacing:'-.02em',marginTop:6}}>Rendez-vous · {lead.prenom} {lead.nom}</div>
-          <div className="rdv-opts">
-            <div className="rdv-seg"><button className={type==='R1'?'on':''} onClick={()=>setTypeDur('R1')}>R1</button><button className={type==='R2'?'on':''} onClick={()=>setTypeDur('R2')}>R2</button></div>
-            <div className="rdv-durs">{[30,45,60,90].map(d=><button key={d} className={`rdv-dur ${dur===d?'on':''}`} onClick={()=>{setDur(d); setSlot(null);}}>{d} min</button>)}</div>
-            <div className="rdv-agenda">
-              <span className="rdv-agenda-lbl">Agenda</span>
-              <select value={agenda} onChange={e=>setAgenda(e.target.value)}>
-                {AG.map(a=><option key={a.id} value={a.id}>{a.label} · {a.id}</option>)}
-              </select>
-            </div>
-          </div>
-        </div>
-        <div className="m-scroll">
-          {err && <div className="rdv-err">{err}</div>}
-          <div className="rdv-cal">
-            <div className="rdv-cal-days">
-              {days.map((day,di)=>{ const cnt=daySlots(day).length;
-                return (
-                  <button key={di} className={`rdv-day ${di===dayIx?'on':''} ${cnt===0?'empty':''}`} disabled={cnt===0} onClick={()=>{ pickedRef.current=true; setDayIx(di); }}>
-                    <span className="rdv-day-wd">{day.toLocaleDateString('fr-FR',{weekday:'short'})}</span>
-                    <span className="rdv-day-dm">{day.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}</span>
-                    <span className="rdv-day-cnt">{cnt?cnt+' dispo':'—'}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="rdv-cal-times">
-              <div className="rdv-times-head">{days[dayIx].toLocaleDateString('fr-FR',{weekday:'long',day:'2-digit',month:'long'})}</div>
-              {(()=>{ const list=daySlots(days[dayIx]);
-                if(!list.length) return <div className="rdv-times-empty">Aucun créneau disponible ce jour-là.</div>;
-                return (
-                  <div className="rdv-times-list">
-                    {list.map(({s,e})=>{ const isSel=slot&&slot.s.getTime()===s.getTime();
-                      return <button key={s.getTime()} className={`rdv-time ${isSel?'sel':''}`} onClick={()=>setSlot({s,e})}>{s.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</button>; })}
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-          {slot && <div className="slot-sel-bar"><span className="ssb-ic"><I.clock/></span><div><b>{fmtLabel(slot.s)}</b><span>{type} · {dur} min · {agendaLabel} → invitation + Meet à {lead.prenom}</span></div></div>}
-        </div>
-        <div className="m-fixfoot">
-          <button className="btn btn-ghost" onClick={onClose}>Annuler</button>
-          <button className="btn btn-accent" disabled={!slot||saving} onClick={confirm}><I.check/>{saving?'Création…':'Créer le RDV & inviter'}</button>
-        </div>
-      </div>
-    </>
-  );
-}
-
-function ConnectAgendaModal({ agendas, onReload, onClose }){
-  const [email,setEmail]=useState('');
-  const [copied,setCopied]=useState(false);
-  const valid=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-  const link=valid?buildConnectUrl(email.trim()):'';
-  const mailBody=`Salut,\n\nPour que tes rendez-vous IQ Project se calent directement dans ton Google Agenda (dispos lues + Meet créé automatiquement), connecte ton agenda en 1 clic ici :\n\n${link}\n\nClique le lien, choisis ton compte Google. Tu verras une fois un écran « Google n'a pas validé cette application » → clique « Paramètres avancés » puis « Continuer vers IQ Cockpit », et autorise. C'est tout.\n\nMerci !`;
-  const mailto=valid?`mailto:${encodeURIComponent(email.trim())}?subject=${encodeURIComponent("Connecte ton Google Agenda — IQ Project")}&body=${encodeURIComponent(mailBody)}`:'';
-  const copy=()=>{ if(!link) return; navigator.clipboard.writeText(link).then(()=>{ setCopied(true); setTimeout(()=>setCopied(false),1600); }).catch(()=>{}); };
-  return (<>
-    <div className="backdrop" onClick={onClose}></div>
-    <div className="modal" onClick={e=>e.stopPropagation()}>
-      <button className="x-btn" onClick={onClose}><I.x/></button>
-      <div className="m-fixhead"><span className="eyebrow m-eye">Agendas Google connectés</span><div style={{fontSize:20,fontWeight:800,letterSpacing:'-.02em',marginTop:6}}>Connecter un agenda</div></div>
-      <div className="note-body">
-        <div className="ag-list">
-          {(agendas&&agendas.length)?agendas.map(a=>(
-            <div className="ag-row" key={a.id}><span className="ag-dot"></span><div className="ag-meta"><b>{a.label}</b><span>{a.id}</span></div><span className="ag-ok">{I.check({style:{width:14,height:14,strokeWidth:2.6}})} connecté</span></div>
-          )):<div className="ag-empty">Aucun agenda connecté pour l’instant.</div>}
-          <button className="btn btn-soft ag-refresh" onClick={onReload}>Rafraîchir la liste</button>
-        </div>
-        <div className="ag-sep"></div>
-        <div className="note-sub">Inviter un closer à connecter son agenda :</div>
-        <input className="ag-input" type="email" placeholder="email du closer (ex : prenom@gmail.com)" value={email} onChange={e=>setEmail(e.target.value)} autoFocus/>
-        {valid && <div className="ag-actions">
-          <a className="btn btn-accent" href={mailto}>{I.mail({style:{width:15,height:15}})} Envoyer l’invitation</a>
-          <button className="btn btn-soft" onClick={copy}>{copied?I.check({style:{width:15,height:15,strokeWidth:2.6}}):I.copy({style:{width:15,height:15}})} {copied?'Copié':'Copier le lien'}</button>
-        </div>}
-        <p className="ag-note">Le closer reçoit le lien, choisit son compte Google, passe une fois l’écran « app non vérifiée » (Avancé → Continuer), autorise — son agenda apparaît ici après « Rafraîchir ».</p>
-      </div>
-    </div>
-  </>);
-}
-
 function NoteModal({ onClose, onNote }){
   const [step,setStep]=useState('choose'); // choose | ecrite | appele
   const [text,setText]=useState('');
@@ -2094,22 +1932,16 @@ function App({session, onLogout}){
   const [search,setSearch]=useState('');
 
   const [payTarget,setPayTarget]=useState(null); // {lead}
-  const [slotTarget,setSlotTarget]=useState(null); // {lead, mode}
   const [showSettings,setShowSettings]=useState(false);
   const [addTarget,setAddTarget]=useState(null); // colonne où ajouter un lead manuellement
   const [incoming,setIncoming]=useState(null);
   const [toasts,setToasts]=useState([]);
-  const [agendas,setAgendas]=useState([]);          // agendas Google connectés (table google_tokens)
-  const [showAgendas,setShowAgendas]=useState(false);
   const incomingIdx=useRef(0);
   const tid=useRef(0);
 
   // chargement initial depuis Supabase (tables leads + activites)
   const reload=useCallback(()=>{ loadLeads().then(d=>{ setLeads(d); setLoaded(true); }); },[]);
   useEffect(()=>{ reload(); },[reload]);
-  // agendas Google réellement connectés (alimente le sélecteur du RdvPicker + le modal de connexion)
-  const loadAgendas=useCallback(()=>{ callFn('list-agendas',{}).then(j=>{ setAgendas((j.agendas||[]).map(x=>({id:x.email, label:agendaLabelFor(x.email)}))); }).catch(()=>{}); },[]);
-  useEffect(()=>{ loadAgendas(); },[loadAgendas]);
   // temps réel : toute modif (autre closer, manager, réimport) rafraîchit l'écran
   useEffect(()=>{
     const ch=SB.channel('crm-live')
@@ -2118,24 +1950,6 @@ function App({session, onLogout}){
       .subscribe();
     return ()=>{ SB.removeChannel(ch); };
   },[reload]);
-  // suivi acceptation Google Meet : poll discret du responseStatus des RDV en attente -> carte verte quand le lead accepte
-  const leadsRef=useRef(leads); useEffect(()=>{ leadsRef.current=leads; },[leads]);
-  const pollRdv=useCallback(async()=>{
-    const now=Date.now();
-    const targets=(leadsRef.current||[]).filter(l=>l.rdv_event_id && l.rdv_agenda && l.rdv_status!=='accepted' && (!l.rdv_at || new Date(l.rdv_at).getTime() > now-2*3600000));
-    for(const l of targets){
-      try{ const j=await callFn('rdv-status',{agenda:l.rdv_agenda, eventId:l.rdv_event_id, attendee:l.email});
-        if(j && j.responseStatus && j.responseStatus!==l.rdv_status){
-          if(j.responseStatus==='accepted'){
-            const lbl=l.rdv_at?fmtRdv(l.rdv_at):'';
-            await addActivite(l.id,'rdv_accepted',`RDV accepté${lbl?` — ${lbl}`:''}`,'Le lead a confirmé sa présence (Google Agenda).');
-          }
-          await saveLead(l.id,{rdv_status:j.responseStatus});
-        }
-      }catch(e){}
-    }
-  },[]);
-  useEffect(()=>{ if(!loaded) return; pollRdv(); const t=setInterval(pollRdv, 300000); return ()=>clearInterval(t); },[loaded,pollRdv]);
   useEffect(()=>localStorage.setItem('iqcrm_screen',JSON.stringify(screen)),[screen]);
   useEffect(()=>localStorage.setItem('iqcrm_sel',JSON.stringify(selId)),[selId]);
   useEffect(()=>{ localStorage.setItem('iqcrm_theme_v2',JSON.stringify(theme)); document.documentElement.setAttribute('data-theme',theme); },[theme]);
@@ -2236,24 +2050,6 @@ function App({session, onLogout}){
   const toggleAction=(checked)=>{ if(!sel) return; const v=checked?(sel.nextAction||null):null; patch(sel.id,{actionDoneFor:v}); saveLead(sel.id,{actionDoneFor:v}); };
   const setActions=(arr,persist)=>{ if(!sel) return; patch(sel.id,{extraActions:arr}); if(persist) saveLead(sel.id,{extraActions:arr}); };
 
-  const doAction=(type)=>{
-    if(!sel) return;
-    if(type==='meet'){ window.open(sel.meet_link||'https://meet.google.com/new','_blank'); toast('Google Meet ouvert',null,'accent'); return; }
-    if(type==='rdv'){ setSlotTarget({lead:sel, mode:'rdv'}); return; }
-  };
-
-  // confirmation d'un créneau (RDV closing ou RDV admission CPF)
-  // RDV calé via Google (R1/R2) : event réel créé par RdvPicker, ici on log + on classe la carte
-  const bookRdv=({type,label,startISO,meet,eventId,agenda})=>{
-    const l=slotTarget&&slotTarget.lead; setSlotTarget(null); if(!l) return;
-    const col = ['contacter','perso','atc'].includes(l.column) ? 'rdv1' : l.column;
-    patch(l.id,prev=>({column:col, nextAction:`${type} — ${label}`, rdv_at:startISO, meet_link:meet||prev.meet_link, rdv_event_id:eventId||null, rdv_agenda:agenda||null, rdv_status:'needsAction',
-      timeline:[{type:'rdv',when:'à l’instant',title:`${type} calé — ${label}`,text: meet?('Invitation + Meet envoyés.'):'Invitation envoyée.'},...prev.timeline]}));
-    saveLead(l.id,{column:col, nextAction:`${type} — ${label}`, rdv_at:startISO, ...(meet?{meet_link:meet}:{}), ...(eventId?{rdv_event_id:eventId, rdv_agenda:agenda, rdv_status:'needsAction'}:{})});
-    addActivite(l.id,'rdv',`${type} calé — ${label}`, meet?('Invitation envoyée · Meet : '+meet):'Invitation envoyée.');
-    toast(`${type} calé`,`${label} · invitation envoyée`,'ok');
-  };
-
   // payment send → À payer, then auto Payé (id capturé, transition garantie)
   const sendPayment=(amount,tag)=>{
     const l=payTarget.lead; const id=l.id; setPayTarget(null);
@@ -2315,7 +2111,6 @@ function App({session, onLogout}){
         <div className="rail-spacer"></div>
         <div className="rail-tools">
           <button className="icon-btn" title="Thème" onClick={()=>setTheme(t=>t==='light'?'dark':'light')}>{theme==='light'?I.moon({}):I.sun({})}</button>
-          <button className="icon-btn" title="Connecter un agenda" onClick={()=>{ setShowAgendas(true); loadAgendas(); }}>{I.agenda({})}</button>
           <button className="icon-btn" title="Réglages" onClick={()=>setShowSettings(true)}>{I.gear({})}</button>
         </div>
         <div className="profile">
@@ -2330,7 +2125,7 @@ function App({session, onLogout}){
         {screen==='leads' && <Board leads={leads} search={search} setSearch={setSearch}
             onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col)=>setAddTarget(col)} onDelete={deleteLead}/>}
         {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen('leads')} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
-            onPay={()=>setPayTarget({lead:sel})} onAction={doAction} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions}/>}
+            onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions}/>}
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen('leads')}>Retour au board</button></div>}
         {screen==='agenda' && <Agenda leads={leads} onOpen={openLead}/>}
       </main>
@@ -2339,8 +2134,6 @@ function App({session, onLogout}){
       {addTarget && <AddLeadModal column={addTarget} onClose={()=>setAddTarget(null)} onAdd={addLead}/>}
       {showSettings && <div className="backdrop" onClick={()=>setShowSettings(false)}><Settings theme={theme} setTheme={setTheme} density={density} setDensity={setDensity} onSimulate={simulate} onReset={resetData} onClose={()=>setShowSettings(false)}/></div>}
       {payTarget && <PaymentModal lead={payTarget.lead} onClose={()=>setPayTarget(null)} onSend={sendPayment}/>}
-      {slotTarget && slotTarget.mode==='rdv' && <RdvPicker lead={slotTarget.lead} agendas={agendas} onClose={()=>setSlotTarget(null)} onBooked={bookRdv}/>}
-      {showAgendas && <ConnectAgendaModal agendas={agendas} onReload={loadAgendas} onClose={()=>setShowAgendas(false)}/>}
       {incoming && <Incoming lead={incoming} onTake={takeIncoming} onDismiss={()=>{setIncoming(null); localStorage.setItem('iqcrm_sarahDone',JSON.stringify(true));}}/>}
 
       <Toasts toasts={toasts}/>
