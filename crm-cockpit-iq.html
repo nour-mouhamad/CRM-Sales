@@ -242,8 +242,10 @@ input,textarea{font-family:inherit; color:inherit}
 .fiche-grid{display:grid; grid-template-columns:1fr 1.15fr .9fr; gap:16px; align-items:start}
 @media(max-width:1180px){.fiche-grid{grid-template-columns:1fr 1fr}}
 .panel{background:var(--surface); border:1px solid var(--b1); border-radius:var(--r-panel); overflow:hidden}
-.panel-head{display:flex; align-items:center; justify-content:space-between; padding:13px 16px; border-bottom:1px solid var(--b1)}
+.panel-head{display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:55px; box-sizing:border-box; padding:10px 16px; border-bottom:1px solid var(--b1); background:var(--surface-2)}
 .panel-head .eyebrow{font-size:10.5px}
+.panel-head .btn-soft{background:var(--surface); border-color:var(--b2)}
+.panel-head .btn-soft:hover{background:var(--surface-3); border-color:var(--b3)}
 .panel-body{padding:6px 16px 16px}
 
 .field{padding:13px 0; border-bottom:1px solid var(--b1)}
@@ -278,6 +280,29 @@ input,textarea{font-family:inherit; color:inherit}
 .action-del svg{width:13px; height:13px}
 .action-add{margin-top:6px; font-size:12.5px; color:var(--accent); background:none; cursor:pointer; font-weight:600; padding:4px 2px}
 .action-add:hover{text-decoration:underline}
+/* Parcours — historique des étapes du lead */
+.parcours{padding:2px 0 12px; border-bottom:1px solid var(--b1); margin-bottom:12px}
+.parcours .eyebrow{display:block; margin-bottom:9px}
+.parcours-list{display:flex; flex-direction:column; gap:7px}
+.parcours-step{display:flex; align-items:center; gap:10px}
+.parcours-dot{flex:none; width:8px; height:8px; border-radius:50%; background:var(--accent)}
+.parcours-lbl{flex:1; min-width:0; font-size:13px; font-weight:600; color:var(--t1)}
+.parcours-when{font-size:11.5px; color:var(--t3); font-weight:500; white-space:nowrap}
+/* Appropriation du lead par le closer */
+.claim{display:flex; align-items:center; gap:11px; cursor:pointer; padding:7px 9px; margin:0 -9px; border-radius:9px; border:1px solid transparent; transition:all var(--speed)}
+.claim:hover{background:var(--surface-2); border-color:var(--b1)}
+.claim-box{flex:none; width:20px; height:20px; border-radius:6px; border:2px solid var(--b3); display:grid; place-items:center; color:transparent; transition:all var(--speed)}
+.claim:hover .claim-box{border-color:var(--accent)}
+.claim-box.on{background:var(--accent); border-color:var(--accent); color:#fff}
+.claim-box svg{width:13px; height:13px; stroke-width:3}
+.claim-tx{display:flex; flex-direction:column; line-height:1.3}
+.claim-tx b{font-size:14px; font-weight:600; color:var(--t1)}
+.claim-tx span{font-size:11.5px; color:var(--t3); font-weight:500}
+.claim.done .claim-tx b{color:var(--accent)}
+.claim.other{cursor:default}
+.claim.other:hover{background:none; border-color:transparent}
+.claim.other .claim-box.on{background:var(--t3); border-color:var(--t3)}
+.claim.other .claim-tx b{color:var(--t2)}
 
 /* timeline */
 .tl{position:relative; padding-left:6px}
@@ -770,21 +795,8 @@ input,textarea{font-family:inherit; color:inherit}
 .addlead-form input:focus{border-color:var(--accent)}
 .addlead-foot{display:flex; gap:10px; margin-top:6px}
 .addlead-foot .btn{flex:1; justify-content:center; padding:12px}
-/* ---- modale Note (type : écrite / appel) ---- */
+/* ---- modale Note (note écrite / NRP) ---- */
 .note-body{padding:16px 22px 22px; display:flex; flex-direction:column; gap:12px}
-.note-choice{display:flex; align-items:center; gap:12px; width:100%; padding:14px; border-radius:12px; border:1.5px solid var(--b1); background:var(--surface-2); text-align:left; cursor:pointer; transition:all var(--speed)}
-.note-choice:hover{border-color:var(--b3); background:var(--surface-3)}
-.note-choice-ic{width:34px; height:34px; border-radius:9px; display:grid; place-items:center; background:var(--surface); color:var(--accent); flex:none}
-.note-choice-ic svg{width:17px; height:17px}
-.note-choice-tx{display:flex; flex-direction:column}
-.note-choice-tx b{font-size:14px}
-.note-choice-tx span{font-size:12px; color:var(--t3)}
-.note-choice .chev{margin-left:auto; color:var(--t3)}
-.note-callbox{border:1.5px solid var(--b1); border-radius:12px; padding:13px 14px; background:var(--surface-2)}
-.note-callbox-h{display:flex; align-items:center; gap:10px; margin-bottom:10px; font-size:14px; font-weight:700}
-.note-callbox-h .note-choice-ic{width:30px; height:30px}
-.note-callbox-btns{display:flex; gap:10px}
-.note-callbox-btns .btn{flex:1; justify-content:center; padding:11px}
 .note-ta{width:100%; min-height:110px; resize:vertical; background:var(--surface-2); border:1.5px solid var(--b2); border-radius:10px; padding:11px 13px; color:var(--t1); font-size:14px; font-family:inherit; line-height:1.5; outline:none; box-sizing:border-box}
 .note-ta:focus{border-color:var(--accent)}
 .note-sub{font-size:13px; color:var(--t3)}
@@ -894,7 +906,7 @@ async function createLead(fields){
 
 // ajoute une ligne d'historique (note/appel/rdv/mail/paiement)
 async function addActivite(lead_id, type, titre, contenu, montant){
-  try{ await SB.from('activites').insert({lead_id, type, titre:titre||null, contenu:contenu||null, montant:montant||null}); }catch(e){ console.warn('addActivite',e); }
+  try{ const { data } = await SB.from('activites').insert({lead_id, type, titre:titre||null, contenu:contenu||null, montant:montant||null}).select('id').single(); return data&&data.id; }catch(e){ console.warn('addActivite',e); }
 }
 // modifier / supprimer une entrée d'historique
 async function updateActivite(id, contenu){
@@ -1076,13 +1088,22 @@ function Avatar({lead, size='sz-md', muted}){
   return <div className={`avatar ${size} ${muted?'muted':''}`}>{initials(lead)}</div>;
 }
 function Src({source}){ return <span className="src">{srcLabel[source]||source}</span>; }
-function CopyField({value, icon}){
+function fmtPhone(t){
+  if(!t) return '';
+  const d=String(t).replace(/[^\d+]/g,'');
+  let m=d.match(/^\+33(\d)(\d\d)(\d\d)(\d\d)(\d\d)$/);
+  if(m) return '+33 '+m[1]+' '+m[2]+' '+m[3]+' '+m[4]+' '+m[5];
+  m=d.match(/^0(\d)(\d\d)(\d\d)(\d\d)(\d\d)$/);
+  if(m) return '0'+m[1]+' '+m[2]+' '+m[3]+' '+m[4]+' '+m[5];
+  return t;
+}
+function CopyField({value, icon, copyVal, title}){
   const [done,setDone]=useState(false);
-  const copy=()=>{ try{ navigator.clipboard.writeText(value); }catch(e){} setDone(true); setTimeout(()=>setDone(false),1400); };
+  const copy=()=>{ try{ navigator.clipboard.writeText(copyVal||value); }catch(e){} setDone(true); setTimeout(()=>setDone(false),1400); };
   return (
     <span className={`contact copy ${done?'copied':''}`} onClick={copy} tabIndex={0} role="button"
       onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault(); copy();}}}
-      title="Cliquer pour copier l’email">
+      title={title||'Cliquer pour copier'}>
       {icon({})}<span className="mono">{value}</span>{done?<I.check className="copy-ic"/>:<I.copy className="copy-ic"/>}
     </span>
   );
@@ -1250,9 +1271,10 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
 }
 
 /* ============================================================= FICHE LEAD */
-function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onToggleAction, onActions}){
+function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onToggleAction, onActions, onClaim, meId}){
   const [moveOpen,setMoveOpen]=useState(false);
   const [noteOpen,setNoteOpen]=useState(false);
+  const [noteMode,setNoteMode]=useState('note'); // 'note' = note écrite | 'nrp' = appel sans réponse
   const [recapOpen,setRecapOpen]=useState(false);
   const moveBtnRef=useRef(null);
   const [movePos,setMovePos]=useState(null);
@@ -1265,7 +1287,7 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
 
   return (
     <div className="fiche">
-      {noteOpen && <NoteModal onClose={()=>setNoteOpen(false)} onNote={(t,ti,tx)=>{ onNote(t,ti,tx); setNoteOpen(false); }}/>}
+      {noteOpen && <NoteModal mode={noteMode} onClose={()=>setNoteOpen(false)} onNote={(t,ti,tx)=>{ onNote(t,ti,tx); setNoteOpen(false); }}/>}
       {recapOpen && <RecapModal lead={lead} onClose={()=>setRecapOpen(false)} onEditField={onEditField} onNote={onNote} onAdvanceStage={onAdvanceStage}/>}
       <div className="fiche-head">
         <button className="back" onClick={onBack}><I.back/>Mes leads</button>
@@ -1285,8 +1307,10 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
                 <span className="eyebrow">Contact</span>
                 <div className="val" style={{fontWeight:800,fontSize:18,letterSpacing:'-.02em',marginBottom:10}}>{lead.prenom} {lead.nom}</div>
                 <div className="fiche-contacts">
-                  <span className="contact copy phone" onClick={onCall} title="Cliquer pour appeler"><I.phone/><span className="mono">{lead.tel||'—'}</span></span>
-                  <CopyField value={lead.email} icon={I.mail}/>
+                  {lead.tel
+                    ? <CopyField value={fmtPhone(lead.tel)} copyVal={lead.tel} icon={I.phone} title="Copier le numéro"/>
+                    : <span className="contact"><I.phone/><span className="mono">—</span></span>}
+                  <CopyField value={lead.email} icon={I.mail} title="Copier l’email"/>
                 </div>
               </div>
               <div className="field">
@@ -1316,6 +1340,29 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
                 ))}
                 <button className="action-add" onClick={()=>onActions([...(lead.extraActions||[]), {label:'',done:false}], true)}>+ Ajouter une action</button>
               </div>
+              <div className="field">
+                <span className="eyebrow">Closer</span>
+                {!lead.owner ? (
+                  <div className="claim" onClick={onClaim} role="button" tabIndex={0}
+                    onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault(); onClaim();}}}
+                    title="S’approprier ce lead">
+                    <span className="claim-box">{I.check({})}</span>
+                    <span className="claim-tx"><b>S’approprier le lead</b><span>Le lead te sera attribué</span></span>
+                  </div>
+                ) : lead.owner===meId ? (
+                  <div className="claim done" onClick={onClaim} role="button" tabIndex={0}
+                    onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault(); onClaim();}}}
+                    title="Lead approprié — cliquer pour libérer">
+                    <span className="claim-box on">{I.check({})}</span>
+                    <span className="claim-tx"><b>Lead approprié</b><span>Toi</span></span>
+                  </div>
+                ) : (
+                  <div className="claim other" title="Lead approprié par un autre closer">
+                    <span className="claim-box on">{I.check({})}</span>
+                    <span className="claim-tx"><b>Approprié</b><span>Un autre closer</span></span>
+                  </div>
+                )}
+              </div>
             </>); })()}
           </div>
         </div>
@@ -1323,15 +1370,30 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
         {/* HISTORIQUE */}
         <div className="panel">
           <div className="panel-head">
-            <span className="eyebrow">Historique · {lead.timeline.length} événement{lead.timeline.length>1?'s':''}</span>
+            <span className="eyebrow">Historique</span>
             <div className="head-btns">
               <button className="btn btn-accent" style={{padding:'6px 11px',fontSize:12.5}} onClick={()=>setRecapOpen(true)}><I.spark style={{width:14,height:14}}/>Résumer le call</button>
-              <button className="btn btn-soft" style={{padding:'6px 11px',fontSize:12.5}} onClick={()=>setNoteOpen(true)}><I.plus style={{width:14,height:14}}/>Note</button>
+              <button className="btn btn-soft" style={{padding:'6px 11px',fontSize:12.5}} onClick={()=>{ setNoteMode('nrp'); setNoteOpen(true); }}>NRP</button>
+              <button className="btn btn-soft" style={{padding:'6px 11px',fontSize:12.5}} onClick={()=>{ setNoteMode('note'); setNoteOpen(true); }}><I.plus style={{width:14,height:14}}/>Note</button>
             </div>
           </div>
           <div className="panel-body">
+            {(()=>{ const steps=lead.timeline.filter(e=>e.title&&e.title.indexOf('Étape :')===0); if(steps.length===0) return null; return (
+              <div className="parcours">
+                <span className="eyebrow">Parcours du lead</span>
+                <div className="parcours-list">
+                  {steps.slice().reverse().map((s,i)=>(
+                    <div className="parcours-step" key={s.id||i}>
+                      <span className="parcours-dot"></span>
+                      <span className="parcours-lbl">{s.title.replace('Étape : ','')}</span>
+                      <span className="parcours-when">{s.when}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ); })()}
             <div className="tl">
-              {lead.timeline.map((ev,i)=>{
+              {lead.timeline.filter(ev=>!(ev.title&&ev.title.indexOf('Étape :')===0)).map((ev,i)=>{
                 if(ev.title && ev.title.indexOf('Récap')===0) return <RecapTl key={ev.id||i} ev={ev} onDelete={onDeleteNote}/>;
                 return (
                 <div className="tl-item" key={ev.id||i}>
@@ -1397,10 +1459,13 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
                 <span className="act-ic"><I.phone/></span>
                 <span className="act-tx"><b>Appeler</b><span className={lead.tel?'mono':''}>{lead.tel||'Pas de numéro'}</span></span>
               </button>
-              <button className="act" onClick={onPay}>
+              <button className="act" disabled title="Bientôt disponible">
+                <span className="act-ic"><I.mail/></span>
+                <span className="act-tx"><b>Envoyer un mail</b><span>Bientôt disponible</span></span>
+              </button>
+              <button className="act" disabled title="Bientôt disponible">
                 <span className="act-ic"><I.euro/></span>
                 <span className="act-tx"><b>Envoyer lien paiement</b><span className="mono">1 400 · 1 250</span></span>
-                <span className="chev"><I.chev/></span>
               </button>
             </div>
           </div>
@@ -1420,39 +1485,19 @@ async function callFn(name, body){
   if(!r.ok) throw new Error(j.error || ('Erreur '+name+' ('+r.status+')'));
   return j;
 }
-function NoteModal({ onClose, onNote }){
-  const [step,setStep]=useState('choose'); // choose | ecrite | appele
+function NoteModal({ mode, onClose, onNote }){
+  const nrp = mode==='nrp';
   const [text,setText]=useState('');
-  const commit=(type,title)=>{ onNote(type,title,text.trim()); };
+  const save=()=>{ if(nrp){ onNote('appel','NRP — ne répond pas', text.trim()); } else { onNote('note','Note', text.trim()); } };
   return (<>
     <div className="backdrop" onClick={onClose}></div>
     <div className="modal" onClick={e=>e.stopPropagation()}>
       <button className="x-btn" onClick={onClose}><I.x/></button>
-      <div className="m-fixhead"><span className="eyebrow m-eye">Historique</span><div style={{fontSize:20,fontWeight:800,letterSpacing:'-.02em',marginTop:6}}>Ajouter à l’historique</div></div>
+      <div className="m-fixhead"><span className="eyebrow m-eye">Historique</span><div style={{fontSize:20,fontWeight:800,letterSpacing:'-.02em',marginTop:6}}>{nrp?'NRP — note rapide':'Ajouter une note'}</div></div>
       <div className="note-body">
-        {step==='choose' && (<>
-          <button className="note-choice" onClick={()=>setStep('ecrite')}>
-            <span className="note-choice-ic">{I.note({})}</span>
-            <span className="note-choice-tx"><b>Note écrite</b><span>Écrire une note libre</span></span>
-            <span className="chev"><I.chev/></span>
-          </button>
-          <div className="note-callbox">
-            <div className="note-callbox-h"><span className="note-choice-ic">{I.phone({})}</span><b>Appel</b></div>
-            <div className="note-callbox-btns">
-              <button className="btn btn-soft" onClick={()=>commit('appel','NRP — ne répond pas')}>NRP</button>
-              <button className="btn btn-accent" onClick={()=>setStep('appele')}>{I.check({style:{width:14,height:14,strokeWidth:2.6}})} Appelé</button>
-            </div>
-          </div>
-        </>)}
-        {step==='ecrite' && (<>
-          <textarea className="note-ta" autoFocus placeholder="Ta note…" value={text} onChange={e=>setText(e.target.value)}/>
-          <div className="note-foot"><button className="btn btn-ghost" onClick={()=>setStep('choose')}>Retour</button><button className="btn btn-accent" disabled={!text.trim()} onClick={()=>commit('note','Note')}>Ajouter la note</button></div>
-        </>)}
-        {step==='appele' && (<>
-          <div className="note-sub">Appel passé — note rapide (optionnel) :</div>
-          <textarea className="note-ta" autoFocus placeholder="Résumé rapide de l’appel (optionnel)…" value={text} onChange={e=>setText(e.target.value)}/>
-          <div className="note-foot"><button className="btn btn-ghost" onClick={()=>setStep('choose')}>Retour</button><button className="btn btn-accent" onClick={()=>commit('appel','Appelé')}>Enregistrer l’appel</button></div>
-        </>)}
+        {nrp && <div className="note-sub">Ne répond pas — ajoute une note rapide si besoin (optionnel) :</div>}
+        <textarea className="note-ta" autoFocus placeholder={nrp?'Note rapide de l’appel (optionnel)…':'Ta note…'} value={text} onChange={e=>setText(e.target.value)}/>
+        <div className="note-foot"><button className="btn btn-ghost" onClick={onClose}>Annuler</button><button className="btn btn-accent" disabled={!nrp && !text.trim()} onClick={save}>{nrp?'Enregistrer le NRP':'Ajouter la note'}</button></div>
       </div>
     </div>
   </>);
@@ -1978,9 +2023,12 @@ function App({session, onLogout}){
     if(changedCol){
       const na = NEXT_BY_COL[col] || null;
       saveLead(id,{column:col, ...(na?{nextAction:na}:{})});
+      const stTitle='Étape : '+(COL_LABEL[col]||col);
+      const stActP=addActivite(id,'note',stTitle,null);
+      patch(id,prev=>({timeline:[{type:'note',when:'à l’instant',title:stTitle,text:''},...prev.timeline]}));
       if(!(opts && opts.silent)){
         const fromCol=l.column, fromNa=l.nextAction;
-        const entry=pushUndo(`Déplacement · ${(l.prenom||'')+' '+(l.nom||'')}`.trim(), async()=>{ patch(id,{column:fromCol, nextAction:fromNa}); await saveLead(id,{column:fromCol, nextAction:fromNa}); reload(); });
+        const entry=pushUndo(`Déplacement · ${(l.prenom||'')+' '+(l.nom||'')}`.trim(), async()=>{ patch(id,prev=>({column:fromCol, nextAction:fromNa, timeline:prev.timeline.filter(e=>!(e.title===stTitle && !e.id))})); try{ const stActId=await stActP; if(stActId) await deleteActivite(stActId); }catch(e){} await saveLead(id,{column:fromCol, nextAction:fromNa}); reload(); });
         toast(`${l.prenom} → ${COL_LABEL[col]}`,'Carte déplacée','accent',{label:'Annuler', fn:()=>runUndo(entry)});
       }
     }
@@ -1996,12 +2044,12 @@ function App({session, onLogout}){
     const a=document.createElement('a'); a.href='tel:'+num; document.body.appendChild(a); a.click(); a.remove();
     toast('Appel lancé', l.tel, 'accent'); // pas de pop-up : la trace d'appel se fait via « + Note » → Appel
   };
-  // entrée d'historique depuis la modale Note : note écrite OU appel (NRP / Appelé)
+  // entrée d'historique depuis la modale Note : note écrite OU NRP (appel sans réponse)
   const addNote=(type,title,text)=>{
     if(!sel) return;
     addActivite(sel.id, type, title, text||null);
     patch(sel.id,prev=>({timeline:[{type,when:'à l’instant',title,text:text||''},...prev.timeline]}));
-    toast(type==='appel'?'Appel enregistré':'Note ajoutée', title, 'ok');
+    toast(type==='appel'?(title&&title.indexOf('NRP')===0?'NRP enregistré':'Appel enregistré'):'Note ajoutée', title, 'ok');
   };
 
   // ajout manuel d'un lead — annulable (Ctrl+Z / Annuler → corbeille douce)
@@ -2030,6 +2078,9 @@ function App({session, onLogout}){
   const editField=(uiKey,saveKey,value)=>{ if(!sel) return; patch(sel.id,{[uiKey]:value}); saveLead(sel.id,{[saveKey]:value}); };
   const toggleAction=(checked)=>{ if(!sel) return; const v=checked?(sel.nextAction||null):null; patch(sel.id,{actionDoneFor:v}); saveLead(sel.id,{actionDoneFor:v}); };
   const setActions=(arr,persist)=>{ if(!sel) return; patch(sel.id,{extraActions:arr}); if(persist) saveLead(sel.id,{extraActions:arr}); };
+  // appropriation du lead par le closer connecté (toggle) — owner_closer_id = id de l'utilisateur auth
+  // 3 états : libre -> je m'approprie ; à moi -> je libère ; à un autre closer -> bloqué (pas de vol)
+  const claimLead=()=>{ if(!sel) return; const uid=session.user.id; if(sel.owner && sel.owner!==uid){ toast('Lead déjà approprié','Par un autre closer','info'); return; } const next=sel.owner?null:uid; patch(sel.id,{owner:next}); saveLead(sel.id,{owner:next}); toast(next?'Lead approprié':'Lead libéré', `${sel.prenom||''} ${sel.nom||''}`.trim()||null, next?'ok':'info'); };
 
   // payment send → À payer, then auto Payé (id capturé, transition garantie)
   const sendPayment=(amount,tag)=>{
@@ -2106,7 +2157,7 @@ function App({session, onLogout}){
         {screen==='leads' && <Board leads={leads} search={search} setSearch={setSearch}
             onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col)=>setAddTarget(col)} onDelete={deleteLead}/>}
         {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen('leads')} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
-            onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions}/>}
+            onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions} onClaim={claimLead} meId={session.user.id}/>}
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen('leads')}>Retour au board</button></div>}
         {screen==='agenda' && <Agenda leads={leads} onOpen={openLead}/>}
       </main>
