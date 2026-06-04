@@ -826,8 +826,8 @@ const SB = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 const DEV_ID = 'dev-local'; // mode developer : bypass login, lit quand même Supabase
 
 // pipeline : la table stocke 'a_contacter', l'UI utilise 'contacter'
-const COL_DB2UI = c => c==='a_contacter' ? 'contacter' : c;
-const COL_UI2DB = c => c==='contacter' ? 'a_contacter' : c;
+const COL_DB2UI = c => c || 'contacter';
+const COL_UI2DB = c => c;
 
 function fmtWhen(ts){
   if(!ts) return '';
@@ -969,23 +969,29 @@ const SOURCE_INFO = {
   MFF: {label:'MFF — MaFormation', via:'Vient de MaFormation (MFF)', angle:'Forte intention, ne connaît pas IQ → présenter IQ d’ABORD, jamais le prix.'},
   'pub insta': {label:'Pub Insta', via:'A opt-in via une pub Instagram', angle:'Lead froid social → qualifier l’intention, créer le manque.'},
   'référé':   {label:'Référé', via:'Recommandé par un ancien élève', angle:'Confiance pré-établie → capitaliser sur la recommandation.'},
+  perso:      {label:'Contact perso', via:'Contact personnel', angle:'Relation directe → approche personnalisée.'},
+  autre:      {label:'Autre source', via:'Origine non renseignée (migré depuis HubSpot)', angle:'Qualifier l\'intention pendant l\'appel.'},
 };
 
+// Colonnes = miroir du pipe HubSpot IQ Project (les stages d'entrée Lead gen/Webinaire/MFF
+// sont regroupés dans « Lead à contacter », distingués par le filtre source).
 const COLUMNS = [
   {id:'contacter', label:'Lead à contacter'},
-  {id:'atc', label:'ATC'},
-  {id:'r1', label:'R1 à faire'},
-  {id:'r2', label:'R2 à faire'},
-  {id:'apayer', label:'À payer'},
-  {id:'paye', label:'Payé'},
-  {id:'cpf', label:'CPF (Nour)'},
-  {id:'nonqualifie', label:'Lead non qualifié'},
-  {id:'perdu', label:'Prospect perdu'},
+  {id:'perso', label:'Contacts perso 👥'},
+  {id:'atc', label:'ATC ☎️'},
+  {id:'rdv1', label:'1er RDV pris 🗓️'},
+  {id:'contacte', label:'Lead contacté 🗣️'},
+  {id:'qualifie', label:'Lead qualifié 🔍'},
+  {id:'closing', label:'Closing 💸'},
+  {id:'encaisser', label:'À encaisser 💸'},
+  {id:'won', label:'Closed Won ✅'},
+  {id:'lost', label:'Lost ❌'},
+  {id:'desabonne', label:'Désabonné ❌'},
 ];
 const COL_LABEL = Object.fromEntries(COLUMNS.map(c=>[c.id,c.label]));
-const COL_COLOR = {contacter:'var(--accent)', atc:'var(--cold)', r1:'var(--warm)', r2:'var(--warm)', apayer:'var(--accent)', paye:'var(--ok)', cpf:'var(--accent)', nonqualifie:'var(--warm)', perdu:'var(--t4)'};
+const COL_COLOR = {contacter:'var(--accent)', perso:'var(--cold)', atc:'var(--cold)', rdv1:'var(--warm)', contacte:'var(--warm)', qualifie:'var(--warm)', closing:'var(--accent)', encaisser:'var(--accent)', won:'var(--ok)', lost:'var(--t4)', desabonne:'var(--t4)'};
 // libellé d'action par défaut quand un lead change de colonne
-const NEXT_BY_COL = {perdu:'Prospect perdu', cpf:'Transmis admission', nonqualifie:'Non qualifié — à retravailler', contacter:'À contacter', atc:'Sans réponse — à relancer', r1:'R1 à faire', r2:'R2 à faire', r3:'R3 à faire'};
+const NEXT_BY_COL = {contacter:'À contacter', perso:'Contact perso à traiter', atc:'Sans réponse — à relancer', rdv1:'R1 à faire', contacte:'À qualifier', qualifie:'À closer', closing:'Closing en cours', encaisser:'Paiement à encaisser', won:'Gagné', lost:'Perdu', desabonne:'Désabonné'};
 
 const OFFERS = [
   {id:'1400', amount:1400, tag:'Non chômeur (France Travail)'},
@@ -1313,7 +1319,7 @@ function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDel
                 <div className="val" style={{fontWeight:700}}>{si.label}</div>
                 <div className="val-sub">{si.via}</div>
               </div>
-              {lead.rdv_at && (()=>{ const type=lead.column==='r2'?'R2':'R1'; const lbl=fmtRdv(lead.rdv_at); const ok=lead.rdv_status==='accepted'; return (
+              {lead.rdv_at && (()=>{ const type='RDV'; const lbl=fmtRdv(lead.rdv_at); const ok=lead.rdv_status==='accepted'; return (
               <div className="field">
                 <span className="eyebrow">Rendez-vous du lead</span>
                 <div className="val" style={{fontWeight:700, display:'flex', alignItems:'center', gap:7, color: ok?'var(--ok)':'var(--t3)'}}>
@@ -1436,11 +1442,6 @@ function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDel
               <button className="act" onClick={onPay}>
                 <span className="act-ic"><I.euro/></span>
                 <span className="act-tx"><b>Envoyer lien paiement</b><span className="mono">1 400 · 1 250</span></span>
-                <span className="chev"><I.chev/></span>
-              </button>
-              <button className="act" onClick={()=>onAction('cpf')}>
-                <span className="act-ic"><I.doc/></span>
-                <span className="act-tx"><b>Passer à Nour (CPF)</b><span>caler le RDV admission</span></span>
                 <span className="chev"><I.chev/></span>
               </button>
             </div>
@@ -1712,12 +1713,10 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage }){
       // le passage en R2 (et toute avancée depuis un état déjà avancé) reste donc manuel.
       let stage={msg:''};
       const sg=out.suggested_stage;
-      const RANK={contacter:0, atc:1, r1:2, r2:3}, cur=RANK[lead.column];
-      if(sg==='r1' && (lead.column==='contacter' || lead.column==='atc')){
-        if(lead.rdv_at){ onAdvanceStage('r1'); stage={msg:'Étape → R1 à faire'}; }
-        else stage={msg:'Passage en R1 non appliqué : aucun RDV calé (à faire à la main).', warn:true};
-      } else if((sg==='r1'||sg==='r2') && cur!=null && RANK[sg]>cur){
-        stage={msg:'Avancée vers '+(sg==='r2'?'R2':'R1')+' suggérée — à confirmer à la main.', warn:true};
+      const earlyCols=['contacter','perso','atc'];
+      if((sg==='r1'||sg==='r2') && earlyCols.includes(lead.column)){
+        if(lead.rdv_at){ onAdvanceStage('rdv1'); stage={msg:'Étape → 1er RDV pris 🗓️'}; }
+        else stage={msg:'Avancée non appliquée : aucun RDV calé (à faire à la main).', warn:true};
       }
       setApplied({filled, stage});
       setResult(out); setPhase('result');
@@ -1884,7 +1883,7 @@ function SlotPicker({lead, mode, onClose, onConfirm}){
 function RappelerPanel({leads, onClose, onCall, onOpen}){
   const prio = useMemo(()=>{
     return leads
-      .filter(l=>l.owner==='Léo' && ['contacter','r1','r2','r3','apayer'].includes(l.column) && (l.heat==='chaud'||l.noShow))
+      .filter(l=>l.owner==='Léo' && ['contacter','perso','atc','rdv1','contacte','qualifie','closing','encaisser'].includes(l.column) && (l.heat==='chaud'||l.noShow))
       .sort((a,b)=> (b.noShow?2:0)+(b.heat==='chaud'?1:0) - ((a.noShow?2:0)+(a.heat==='chaud'?1:0)) );
   },[leads]);
   return (
@@ -2279,9 +2278,8 @@ function App({session, onLogout}){
       try{ const j=await callFn('rdv-status',{agenda:l.rdv_agenda, eventId:l.rdv_event_id, attendee:l.email});
         if(j && j.responseStatus && j.responseStatus!==l.rdv_status){
           if(j.responseStatus==='accepted'){
-            const type=l.column==='r2'?'R2':'R1';
             const lbl=l.rdv_at?fmtRdv(l.rdv_at):'';
-            await addActivite(l.id,'rdv_accepted',`${type} accepté${lbl?` — ${lbl}`:''}`,'Le lead a confirmé sa présence (Google Agenda).');
+            await addActivite(l.id,'rdv_accepted',`RDV accepté${lbl?` — ${lbl}`:''}`,'Le lead a confirmé sa présence (Google Agenda).');
           }
           await saveLead(l.id,{rdv_status:j.responseStatus});
         }
@@ -2393,14 +2391,13 @@ function App({session, onLogout}){
     if(!sel) return;
     if(type==='meet'){ window.open(sel.meet_link||'https://meet.google.com/new','_blank'); toast('Google Meet ouvert',null,'accent'); return; }
     if(type==='rdv'){ setSlotTarget({lead:sel, mode:'rdv'}); return; }
-    if(type==='cpf'){ setSlotTarget({lead:sel, mode:'cpf'}); return; }
   };
 
   // confirmation d'un créneau (RDV closing ou RDV admission CPF)
   // RDV calé via Google (R1/R2) : event réel créé par RdvPicker, ici on log + on classe la carte
   const bookRdv=({type,label,startISO,meet,eventId,agenda})=>{
     const l=slotTarget&&slotTarget.lead; setSlotTarget(null); if(!l) return;
-    const col = type==='R2' ? 'r2' : 'r1';
+    const col = ['contacter','perso','atc'].includes(l.column) ? 'rdv1' : l.column;
     patch(l.id,prev=>({column:col, nextAction:`${type} — ${label}`, rdv_at:startISO, meet_link:meet||prev.meet_link, rdv_event_id:eventId||null, rdv_agenda:agenda||null, rdv_status:'needsAction',
       timeline:[{type:'rdv',when:'à l’instant',title:`${type} calé — ${label}`,text: meet?('Invitation + Meet envoyés.'):'Invitation envoyée.'},...prev.timeline]}));
     saveLead(l.id,{column:col, nextAction:`${type} — ${label}`, rdv_at:startISO, ...(meet?{meet_link:meet}:{}), ...(eventId?{rdv_event_id:eventId, rdv_agenda:agenda, rdv_status:'needsAction'}:{})});
@@ -2411,7 +2408,7 @@ function App({session, onLogout}){
   const confirmSlot=(label)=>{
     const {lead:l, mode}=slotTarget; setSlotTarget(null);
     if(mode==='rdv'){
-      const col = l.column==='contacter'?'r1':l.column;
+      const col = ['contacter','perso','atc'].includes(l.column)?'rdv1':l.column;
       patch(l.id,prev=>({nextAction:`RDV ${label}`, column:col,
         timeline:[{type:'rdv',when:'à l’instant',title:`RDV calé — ${label}`,text:'Invitation envoyée au prospect.'},...prev.timeline]}));
       saveLead(l.id,{column:col, nextAction:`RDV ${label}`});
@@ -2429,9 +2426,9 @@ function App({session, onLogout}){
   // payment send → À payer, then auto Payé (id capturé, transition garantie)
   const sendPayment=(amount,tag)=>{
     const l=payTarget.lead; const id=l.id; setPayTarget(null);
-    patch(id,prev=>({column:'apayer', offer:amount, nextAction:`${eur(amount)} envoyé — en attente`,
+    patch(id,prev=>({column:'encaisser', offer:amount, nextAction:`${eur(amount)} envoyé — en attente`,
       timeline:[{type:'paiement',when:'à l’instant',title:`Lien de paiement envoyé — ${eur(amount)}`,text:`Email envoyé à ${l.email}. En attente de paiement.`},...prev.timeline]}));
-    saveLead(id,{column:'apayer', offer:amount, statut_paiement:'lien_envoye', nextAction:`${eur(amount)} envoyé — en attente`});
+    saveLead(id,{column:'encaisser', offer:amount, statut_paiement:'lien_envoye', nextAction:`${eur(amount)} envoyé — en attente`});
     addActivite(id,'paiement',`Lien de paiement envoyé — ${eur(amount)}`,`Email envoyé à ${l.email}. En attente de paiement.`,amount);
     toast(`Lien envoyé · ${eur(amount)}`,`Email parti à ${l.prenom}`,'accent');
   };
@@ -2466,7 +2463,7 @@ function App({session, onLogout}){
     toast('Données réinitialisées',null,'info');
   };
 
-  const rappelerCount = useMemo(()=> leads.filter(l=>l.owner==='Léo' && ['contacter','r1','r2','r3','apayer'].includes(l.column) && (l.heat==='chaud'||l.noShow)).length,[leads]);
+  const rappelerCount = useMemo(()=> leads.filter(l=>l.owner==='Léo' && ['contacter','perso','atc','rdv1','contacte','qualifie','closing','encaisser'].includes(l.column) && (l.heat==='chaud'||l.noShow)).length,[leads]);
   const admToValidate = useMemo(()=> leads.filter(l=>l.column==='cpf' && l.admStatus!=='secured').length,[leads]);
 
   const navItems=[
