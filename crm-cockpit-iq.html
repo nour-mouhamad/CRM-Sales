@@ -187,11 +187,9 @@ input,textarea{font-family:inherit; color:inherit}
   background:var(--surface-2); border:1px solid var(--b1); border-radius:var(--r-panel);
   transition:background var(--speed), border-color var(--speed), box-shadow var(--speed);
 }
-.col.special{background:var(--accent-tint); border-color:var(--accent-tint-2)}
 .col.drag-over{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-tint); background:var(--accent-tint)}
 .col-head{display:flex; align-items:center; gap:8px; padding:13px 14px 10px}
 .col-dot{width:8px; height:8px; border-radius:99px; background:var(--b3)}
-.col.special .col-dot{background:var(--accent)}
 .col-head h3{font-size:13px; font-weight:700; letter-spacing:-.01em}
 .col-count{font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; color:var(--t3); background:var(--surface); border:1px solid var(--b1); border-radius:6px; padding:1px 7px}
 .col-add{margin-left:auto; width:26px; height:26px; border-radius:7px; display:grid; place-items:center; color:var(--t3)}
@@ -825,7 +823,7 @@ const SB = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 // charge l'état CRM de l'utilisateur (crée la ligne avec les données de démo au 1er login)
 const DEV_ID = 'dev-local'; // mode developer : bypass login, lit quand même Supabase
 
-// pipeline : la table stocke 'a_contacter', l'UI utilise 'contacter'
+// pipeline : la DB stocke directement la clé de colonne (fallback null -> 'contacter')
 const COL_DB2UI = c => c || 'contacter';
 const COL_UI2DB = c => c;
 
@@ -843,7 +841,7 @@ function dbToLead(r, acts){
     source:r.source, heat:r.heat||null, column:COL_DB2UI(r.colonne), owner:r.owner_closer_id||null,
     nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, extraActions:Array.isArray(r.extra_actions)?r.extra_actions:[], live:false, noShow:false,
     offer:r.montant||0, paid:r.statut_paiement==='paye',
-    cpf:r.cpf_dispo||0, metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'', situation:r.situation||'',
+    cpf:r.cpf_dispo||0, metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'',
     rdv_at:r.rdv_at||null, meet_link:r.meet_link||null, hubspot_deal_id:r.hubspot_deal_id||null,
     rdv_event_id:r.rdv_event_id||null, rdv_agenda:r.rdv_agenda||null, rdv_status:r.rdv_status||'needsAction',
     timeline:(acts||[]).map(a=>({id:a.id, type:a.type, when:fmtWhen(a.created_at), title:a.titre||'', text:a.contenu||'', paid:a.type==='paiement'}))
@@ -882,7 +880,6 @@ async function saveLead(id, uiPatch){
   if('objectif' in uiPatch) m.objectif=uiPatch.objectif;
   if('budget' in uiPatch) m.budget=uiPatch.budget;
   if('cpf' in uiPatch) m.cpf_dispo=uiPatch.cpf;
-  if('situation' in uiPatch) m.situation=uiPatch.situation;
   try{ if(Object.keys(m).length) await SB.from('leads').update(m).eq('id',id); }catch(e){ console.warn('saveLead',e); }
 }
 
@@ -951,7 +948,7 @@ const I = {
 };
 
 /* ============================================================= HELPERS */
-const eur = (n)=> new Intl.NumberFormat('fr-FR').format(n).replace(/ /g,' ') + ' €';
+const eur = (n)=> new Intl.NumberFormat('fr-FR').format(n) + ' €';
 const initials = (l)=>{
   const a=((l.prenom||'').trim()[0]||''), b=((l.nom||'').trim()[0]||'');
   return ((a+b).toUpperCase()) || ((l.email||'?')[0].toUpperCase());
@@ -1202,7 +1199,7 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onRappeler, rap
             const items = (c.id==='contacter' && src!=='all' && !search.trim()) ? colItems.filter(l=>l.source===src) : colItems; // cartes affichées (filtre source ignoré pendant une recherche)
             return (
               <div key={c.id}
-                className={`col ${c.special?'special':''} ${overCol===c.id?'drag-over':''}`}
+                className={`col ${overCol===c.id?'drag-over':''}`}
                 onDragOver={e=>{e.preventDefault(); if(overCol!==c.id) setOverCol(c.id); setOver(null);}}
                 onDragLeave={e=>{ if(e.currentTarget===e.target){ setOverCol(null); setOver(null); } }}
                 onDrop={e=>dropOn(e,c.id)}>
@@ -1451,21 +1448,6 @@ function Fiche({lead, onBack, onCall, onPay, onAction, onMove, onEditNote, onDel
     </div>
   );
 }
-
-/* ============================================================= SLOT PICKER (agenda) */
-const SLOT_WEEK = [
-  {d:'Lun', n:'2 juin'}, {d:'Mar', n:'3 juin'}, {d:'Mer', n:'4 juin'},
-  {d:'Jeu', n:'5 juin'}, {d:'Ven', n:'6 juin'},
-];
-const RDV_TIMES = ['09:00','10:00','11:00','14:00','15:00','16:00','17:00'];
-const CPF_TIMES = ['09:00','09:30','10:00','10:30','11:00','11:30','14:00','14:30'];
-// Léo n'a que 2 matinées dispo/semaine (mardi + jeudi) ; quelques aprèm pris.
-const slotBusy = (di,t)=>{
-  const morning = parseInt(t,10) < 12;
-  if(morning) return ![1,3].includes(di);
-  const taken = {0:['15:00','14:00'],1:['16:00','17:00'],2:['14:00','15:00','14:30'],3:['17:00'],4:['14:00','16:00']};
-  return (taken[di]||[]).includes(t);
-};
 
 // appel d'une Edge Function avec le jeton Supabase de l'utilisateur connecté (validé côté serveur)
 const FN_URL = SUPABASE_URL + '/functions/v1';
@@ -1819,66 +1801,6 @@ function AddLeadModal({ column, onClose, onAdd }){
   </>);
 }
 
-function SlotPicker({lead, mode, onClose, onConfirm}){
-  const [sel,setSel]=useState(null); // {di,t}
-  const cpf = mode==='cpf';
-  const times = cpf?CPF_TIMES:RDV_TIMES;
-  const dur = cpf?'30 min':'1 h';
-  const selLabel = sel ? `${SLOT_WEEK[sel.di].d} ${SLOT_WEEK[sel.di].n} · ${sel.t}` : null;
-  return (
-    <>
-      <div className="backdrop" onClick={onClose}></div>
-      <div className="modal wide" onClick={e=>e.stopPropagation()}>
-        <button className="x-btn" onClick={onClose}><I.x/></button>
-        <div className="m-fixhead">
-          <span className="eyebrow m-eye">{cpf?'RDV admission CPF · agenda de Nour':'Caler un RDV · ton agenda'}</span>
-          <div style={{fontSize:20,fontWeight:800,letterSpacing:'-.02em',marginTop:6}}>{cpf?'Rendez-vous admission':'Prochain rendez-vous'} · {lead.prenom} {lead.nom}</div>
-        </div>
-        <div className="m-scroll">
-          <p className="slot-intro">
-            {cpf
-              ? <>Choisis un créneau <b>de 30 min</b> dans l’agenda admission. À la validation : <b>un mail part à toi ET au prospect</b> (message de bienvenue + ce que vous allez faire pour le dossier CPF).</>
-              : <>Choisis un créneau <b>d’1 h</b> parmi tes disponibilités. Tu as <b>2 matinées libres cette semaine</b> (mardi, jeudi). À la validation, l’invitation part au prospect.</>}
-          </p>
-          <div className="slot-week">
-            {SLOT_WEEK.map((day,di)=>(
-              <div className="slot-day" key={di}>
-                <h5>{day.d}<span>{day.n}</span></h5>
-                <div className="slot-col">
-                  {times.map((t,ti)=>{
-                    const prevAfternoon = ti>0 && parseInt(times[ti-1],10)<12 && parseInt(t,10)>=12;
-                    const busy = slotBusy(di,t);
-                    const isSel = sel && sel.di===di && sel.t===t;
-                    return (
-                      <React.Fragment key={t}>
-                        {prevAfternoon && <div className="slot-noon">après-midi</div>}
-                        <button className={`slot ${busy?'busy':''} ${isSel?'sel':''}`} disabled={busy}
-                          onClick={()=>setSel({di,t})}>{t}</button>
-                      </React.Fragment>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-          {sel && (
-            <div className="slot-sel-bar">
-              <span className="ssb-ic"><I.clock/></span>
-              <div><b>{selLabel}</b><span>{cpf?'RDV admission CPF · 30 min avec Nour':`Rendez-vous closing · ${dur}`}</span></div>
-            </div>
-          )}
-        </div>
-        <div className="m-fixfoot">
-          <button className="btn btn-ghost" onClick={onClose}>Annuler</button>
-          <button className="btn btn-accent" disabled={!sel} onClick={()=>onConfirm(selLabel)}>
-            <I.check/>{cpf?'Confirmer & envoyer les mails':'Confirmer le créneau'}
-          </button>
-        </div>
-      </div>
-    </>
-  );
-}
-
 /* ============================================================= RAPPELER PANEL */
 function RappelerPanel({leads, onClose, onCall, onOpen}){
   const prio = useMemo(()=>{
@@ -1981,49 +1903,6 @@ Léo Martin — IQ Project`;
         <div className="m-fixfoot">
           <button className="btn btn-ghost" onClick={onClose}>Annuler</button>
           <button className="btn btn-accent" disabled={!offer} onClick={()=>onSend(amount,offer.tag)}><I.send/>{offer?`Envoyer par email · ${eur(amount)}`:'Choisis une offre'}</button>
-        </div>
-      </div>
-    </>
-  );
-}
-
-/* ============================================================= ADMISSION */
-function Admission({leads, onValidate}){
-  const dossiers = leads.filter(l=>l.column==='cpf');
-  const toValidate = dossiers.filter(l=>l.admStatus!=='secured').length;
-  return (
-    <>
-      <div className="screen-head">
-        <div className="screen-title">
-          <h1>Admission · CPF</h1>
-          <p>Dossiers à traiter, déjà pré-remplis · espace de Nour</p>
-        </div>
-        <div className="head-tools"><span className="count-pill">{toValidate} à valider</span></div>
-      </div>
-      <div className="fiche">
-        <div className="adm-list">
-          {dossiers.length===0 && <div className="col-empty" style={{maxWidth:980}}>Aucun dossier transmis pour l’instant.</div>}
-          {dossiers.map(l=>{
-            const secured = l.admStatus==='secured';
-            return (
-              <div className={`adm-card ${secured?'secured':''}`} key={l.id}>
-                <div className="adm-top">
-                  <Avatar lead={l} size="sz-md" muted={secured}/>
-                  <div className="a-tx"><b>{l.prenom} {l.nom}</b><span>{l.metier} · transmis par le closer</span></div>
-                  <span className="tag tag-prefilled"><I.check style={{width:11,height:11,strokeWidth:2.4}}/> Pré-rempli</span>
-                  {secured
-                    ? <span className="btn-secured"><I.check/>Sécurisé</span>
-                    : <button className="btn-validate" onClick={()=>onValidate(l.id)}><I.check/>Valider</button>}
-                </div>
-                <div className="adm-grid">
-                  <div className="adm-cell"><span className="eyebrow">CPF</span><div className="v">{l.fullCpf?`${eur(l.cpf)} — full CPF`:`${eur(l.cpf)} dispo`}</div></div>
-                  <div className="adm-cell"><span className="eyebrow">Montant</span><div className="v">{eur(l.admMontant)} {l.fullCpf?'':'payé'}</div></div>
-                  <div className="adm-cell"><span className="eyebrow">Formation</span><div className="v txt">{l.formation}</div></div>
-                  <div className="adm-cell"><span className="eyebrow">Statut dossier</span><div className={`v txt ${secured?'secured':''}`}>{secured?'Vente sécurisée':'En attente validation'}</div></div>
-                </div>
-              </div>
-            );
-          })}
         </div>
       </div>
     </>
@@ -2233,7 +2112,6 @@ function persistedState(key,fallback){
 }
 
 function App({session, onLogout}){
-  const userId = session.user.id;
   const userEmail = session.user.email;
   const [leads,setLeads]=useState([]);
   const [loaded,setLoaded]=useState(false);
@@ -2405,24 +2283,6 @@ function App({session, onLogout}){
     toast(`${type} calé`,`${label} · invitation envoyée`,'ok');
   };
 
-  const confirmSlot=(label)=>{
-    const {lead:l, mode}=slotTarget; setSlotTarget(null);
-    if(mode==='rdv'){
-      const col = ['contacter','perso','atc'].includes(l.column)?'rdv1':l.column;
-      patch(l.id,prev=>({nextAction:`RDV ${label}`, column:col,
-        timeline:[{type:'rdv',when:'à l’instant',title:`RDV calé — ${label}`,text:'Invitation envoyée au prospect.'},...prev.timeline]}));
-      saveLead(l.id,{column:col, nextAction:`RDV ${label}`});
-      addActivite(l.id,'rdv',`RDV calé — ${label}`,'Invitation envoyée au prospect.');
-      toast('RDV calé',`${label} · invitation envoyée`,'accent');
-    } else {
-      patch(l.id,prev=>({column:'cpf', nextAction:`RDV admission ${label}`,
-        timeline:[{type:'rdv',when:'à l’instant',title:`RDV admission CPF calé — ${label}`,text:`Créneau 30 min avec Nour.`},...prev.timeline]}));
-      saveLead(l.id,{column:'cpf', nextAction:`RDV admission ${label}`});
-      addActivite(l.id,'rdv',`RDV admission CPF calé — ${label}`,'Créneau 30 min avec Nour.');
-      toast('RDV admission calé',`${label}`,'ok');
-    }
-  };
-
   // payment send → À payer, then auto Payé (id capturé, transition garantie)
   const sendPayment=(amount,tag)=>{
     const l=payTarget.lead; const id=l.id; setPayTarget(null);
@@ -2431,13 +2291,6 @@ function App({session, onLogout}){
     saveLead(id,{column:'encaisser', offer:amount, statut_paiement:'lien_envoye', nextAction:`${eur(amount)} envoyé — en attente`});
     addActivite(id,'paiement',`Lien de paiement envoyé — ${eur(amount)}`,`Email envoyé à ${l.email}. En attente de paiement.`,amount);
     toast(`Lien envoyé · ${eur(amount)}`,`Email parti à ${l.prenom}`,'accent');
-  };
-
-  const validateAdm=(id)=>{
-    patch(id,prev=>({admStatus:'secured', nextAction:'Vente sécurisée',
-      timeline:[{type:'doc',when:'à l’instant',title:'Dossier CPF validé',text:'CPF vérifié EDOF. Vente sécurisée.',paid:true},...prev.timeline]}));
-    const l=leads.find(x=>x.id===id);
-    toast('Dossier validé',`${l.prenom} ${l.nom} — Vente sécurisée`,'ok');
   };
 
   const takeIncoming=()=>{
@@ -2464,7 +2317,6 @@ function App({session, onLogout}){
   };
 
   const rappelerCount = useMemo(()=> leads.filter(l=>l.owner==='Léo' && ['contacter','perso','atc','rdv1','contacte','qualifie','closing','encaisser'].includes(l.column) && (l.heat==='chaud'||l.noShow)).length,[leads]);
-  const admToValidate = useMemo(()=> leads.filter(l=>l.column==='cpf' && l.admStatus!=='secured').length,[leads]);
 
   const navItems=[
     {id:'leads', label:'Mes leads', icon:I.leads, badge:rappelerCount},
@@ -2519,7 +2371,6 @@ function App({session, onLogout}){
       {payTarget && <PaymentModal lead={payTarget.lead} onClose={()=>setPayTarget(null)} onSend={sendPayment}/>}
       {slotTarget && slotTarget.mode==='rdv' && <RdvPicker lead={slotTarget.lead} agendas={agendas} onClose={()=>setSlotTarget(null)} onBooked={bookRdv}/>}
       {showAgendas && <ConnectAgendaModal agendas={agendas} onReload={loadAgendas} onClose={()=>setShowAgendas(false)}/>}
-      {slotTarget && slotTarget.mode!=='rdv' && <SlotPicker lead={slotTarget.lead} mode={slotTarget.mode} onClose={()=>setSlotTarget(null)} onConfirm={confirmSlot}/>}
       {incoming && <Incoming lead={incoming} onTake={takeIncoming} onDismiss={()=>{setIncoming(null); localStorage.setItem('iqcrm_sarahDone',JSON.stringify(true));}}/>}
 
       <Toasts toasts={toasts}/>
