@@ -1262,7 +1262,6 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
   const [editingField,setEditingField]=useState(null);
   const statusColor = COL_COLOR[lead.column];
   const actionDone = !!lead.nextAction && lead.actionDoneFor===lead.nextAction;
-  const QUALIF=[{label:'Métier',k:'metier',save:'metier'},{label:'Objectif',k:'veut',save:'objectif'},{label:'CPF dispo',k:'cpf',save:'cpf',num:true},{label:'Budget',k:'budget',save:'budget'}];
 
   return (
     <div className="fiche">
@@ -1272,11 +1271,6 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
         <button className="back" onClick={onBack}><I.back/>Mes leads</button>
         <div className="fiche-id">
           <h1>{lead.prenom} {lead.nom}</h1>
-          <div className="fiche-contacts">
-            <span className="contact copy phone" onClick={onCall} title="Cliquer pour appeler"><I.phone/><span className="mono">{lead.tel}</span></span>
-            <CopyField value={lead.email} icon={I.mail}/>
-            <span className="contact"><Src source={lead.source}/></span>
-          </div>
         </div>
         <div className="status-pill"><span className="sdot" style={{background:statusColor}}></span>{COL_LABEL[lead.column]}</div>
       </div>
@@ -1286,7 +1280,19 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
         <div className="panel">
           <div className="panel-head"><span className="eyebrow">Situation</span></div>
           <div className="panel-body">
-            {(()=>{ const si=SOURCE_INFO[lead.source]||{label:lead.source||'—',via:'Lead entrant',angle:'Qualifier l’intention pendant l’appel.'}; return (<>
+            {(()=>{ const si=SOURCE_INFO[lead.source]||{label:lead.source||'—'}; return (<>
+              <div className="field">
+                <span className="eyebrow">Contact</span>
+                <div className="val" style={{fontWeight:800,fontSize:18,letterSpacing:'-.02em',marginBottom:10}}>{lead.prenom} {lead.nom}</div>
+                <div className="fiche-contacts">
+                  <span className="contact copy phone" onClick={onCall} title="Cliquer pour appeler"><I.phone/><span className="mono">{lead.tel||'—'}</span></span>
+                  <CopyField value={lead.email} icon={I.mail}/>
+                </div>
+              </div>
+              <div className="field">
+                <span className="eyebrow">Source du lead</span>
+                <div className="val" style={{fontWeight:700}}>{si.label}</div>
+              </div>
               <div className="field">
                 <span className="eyebrow">Action</span>
                 <div className={`action-row ${actionDone?'done':''}`}>
@@ -1309,31 +1315,6 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
                   </div>
                 ))}
                 <button className="action-add" onClick={()=>onActions([...(lead.extraActions||[]), {label:'',done:false}], true)}>+ Ajouter une action</button>
-              </div>
-              <div className="field">
-                <span className="eyebrow">Source du lead</span>
-                <div className="val" style={{fontWeight:700}}>{si.label}</div>
-                <div className="val-sub">{si.via}</div>
-              </div>
-              <div className="field">
-                <span className="eyebrow">Angle d’ouverture</span>
-                <div className="val" style={{fontWeight:600,fontSize:14}}>{si.angle}</div>
-              </div>
-              <div className="field">
-                <span className="eyebrow">Qualification</span>
-                {QUALIF.map(f=> editingField===f.k ? (
-                  <div className="qline" key={f.k}>
-                    <span className="qk">{f.label}</span>
-                    <input className="qedit" type={f.num?'number':'text'} autoFocus defaultValue={lead[f.k]||''}
-                      onKeyDown={e=>{ if(e.key==='Enter') e.target.blur(); }}
-                      onBlur={e=>{ const raw=e.target.value; const v=f.num?(raw===''?null:Number(raw)):(raw.trim()||null); onEditField(f.k,f.save,v); setEditingField(null); }}/>
-                  </div>
-                ) : (
-                  <div className="qline" key={f.k}>
-                    <span className="qk">{f.label}</span>
-                    <span className="qv qv-edit" onClick={()=>setEditingField(f.k)} title="Cliquer pour modifier">{f.num?(lead[f.k]?eur(lead[f.k]):'—'):(lead[f.k]||'—')}</span>
-                  </div>
-                ))}
               </div>
             </>); })()}
           </div>
