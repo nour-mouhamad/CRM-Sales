@@ -1096,7 +1096,7 @@ function CopyField({value, icon}){
 }
 
 /* ============================================================= LEAD CARD */
-function LeadCard({lead, onOpen, onDragStart, onDragEnd, dragging, onCardDragOver, dropPos, onDelete}){
+const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDragEnd, dragging, onCardDragOver, dropPos, onDelete}){
   const col = lead.column;
   let actionEl;
   if(col==='apayer'){
@@ -1110,12 +1110,12 @@ function LeadCard({lead, onOpen, onDragStart, onDragEnd, dragging, onCardDragOve
   }
   return (
     <div className={`card ${dragging?'dragging':''} ${dropPos?('drop-'+dropPos):''}`} draggable
-         onDragStart={onDragStart} onDragEnd={onDragEnd}
+         onDragStart={()=>onDragStart(lead.id)} onDragEnd={onDragEnd}
          onDragOver={e=>{ e.preventDefault(); e.stopPropagation();
            const r=e.currentTarget.getBoundingClientRect();
            onCardDragOver(lead.id, (e.clientY-r.top)<r.height/2?'before':'after', col); }}
-         onClick={onOpen} tabIndex={0} role="button"
-         onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault(); onOpen();}}}>
+         onClick={()=>onOpen(lead.id)} tabIndex={0} role="button"
+         onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault(); onOpen(lead.id);}}}>
       <button className="card-del" title="Supprimer ce lead" aria-label="Supprimer ce lead" draggable={false}
               onClick={e=>{ e.stopPropagation(); onDelete(lead.id); }} onKeyDown={e=>e.stopPropagation()}>{I.trash({})}</button>
       <div className="card-top">
@@ -1130,10 +1130,10 @@ function LeadCard({lead, onOpen, onDragStart, onDragEnd, dragging, onCardDragOve
       {actionEl}
     </div>
   );
-}
+});
 
 /* ============================================================= KANBAN BOARD */
-function Board({leads, search, setSearch, onOpenLead, onReorder, onRappeler, rappelerCount, onAddLead, onDelete}){
+function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDelete}){
   const [dragId, setDragId] = useState(null);
   const [overCol, setOverCol] = useState(null);
   const [over, setOver] = useState(null); // {cardId, pos}
@@ -1160,7 +1160,13 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onRappeler, rap
     return true;
   }),[leads,search]);
 
-  const handleCardDragOver=(cardId,pos,colId)=>{ setOver({cardId,pos}); if(overCol!==colId) setOverCol(colId); };
+  // handlers STABLES (useCallback) + regroupement mémoïsé : avec ~949 cartes, seules
+  // les cartes réellement concernées (carte tirée / survolée) se re-rendent pendant un drag.
+  const handleCardDragOver=useCallback((cardId,pos,colId)=>{ setOver({cardId,pos}); setOverCol(c=>c!==colId?colId:c); },[]);
+  const startDrag=useCallback((id)=>setDragId(id),[]);
+  const endDrag=useCallback(()=>{ setDragId(null); setOverCol(null); setOver(null); },[]);
+  const openCard=useCallback((id)=>onOpenLead(id),[onOpenLead]);
+  const byCol=useMemo(()=>{ const m={}; for(const c of COLUMNS) m[c.id]=[]; visible.forEach(l=>{ (m[l.column]||(m[l.column]=[])).push(l); }); return m; },[visible]);
 
   const dropOn=(e,colId)=>{
     e.preventDefault();
@@ -1195,7 +1201,7 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onRappeler, rap
       <div className="board-wrap">
         <div className="board">
           {COLUMNS.map(c=>{
-            const colItems = visible.filter(l=>l.column===c.id);        // total colonne (compteur du titre — non filtré par source)
+            const colItems = byCol[c.id]||[];        // total colonne (compteur du titre — non filtré par source)
             const items = (c.id==='contacter' && src!=='all' && !search.trim()) ? colItems.filter(l=>l.source===src) : colItems; // cartes affichées (filtre source ignoré pendant une recherche)
             return (
               <div key={c.id}
@@ -1235,9 +1241,9 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onRappeler, rap
                     <LeadCard key={l.id} lead={l} dragging={dragId===l.id}
                       dropPos={dragId && over && over.cardId===l.id && over.cardId!==dragId ? over.pos : null}
                       onCardDragOver={handleCardDragOver}
-                      onOpen={()=>onOpenLead(l.id)}
-                      onDragStart={()=>setDragId(l.id)}
-                      onDragEnd={()=>{setDragId(null); setOverCol(null); setOver(null);}}
+                      onOpen={openCard}
+                      onDragStart={startDrag}
+                      onDragEnd={endDrag}
                       onDelete={onDelete}/>
                   ))}
                 </div>
@@ -1801,40 +1807,6 @@ function AddLeadModal({ column, onClose, onAdd }){
   </>);
 }
 
-/* ============================================================= RAPPELER PANEL */
-function RappelerPanel({leads, onClose, onCall, onOpen}){
-  const prio = useMemo(()=>{
-    return leads
-      .filter(l=>l.owner==='Léo' && ['contacter','perso','atc','rdv1','contacte','qualifie','closing','encaisser'].includes(l.column) && (l.heat==='chaud'||l.noShow))
-      .sort((a,b)=> (b.noShow?2:0)+(b.heat==='chaud'?1:0) - ((a.noShow?2:0)+(a.heat==='chaud'?1:0)) );
-  },[leads]);
-  return (
-    <div className="side" onClick={e=>e.stopPropagation()}>
-      <div className="side-head">
-        <span className="dot pulse-dot" style={{width:9,height:9,borderRadius:99,background:'var(--accent)',color:'var(--accent)'}}></span>
-        <h3>À rappeler maintenant</h3>
-        <span className="col-count mono">{prio.length}</span>
-        <button className="x-btn" style={{position:'static'}} onClick={onClose}><I.x/></button>
-      </div>
-      <div className="side-body">
-        <p style={{fontSize:12.5,color:'var(--t3)',marginBottom:14}}>File priorisée : no-show et leads chauds d’abord. Appel direct depuis la ligne.</p>
-        {prio.length===0 && <div className="col-empty">Rien à rappeler. 🎯</div>}
-        {prio.map((l,i)=>(
-          <div className="rap-row" key={l.id}>
-            <span className="rap-prio">{i+1}</span>
-            <Avatar lead={l} size="sz-sm"/>
-            <div className="rap-tx" onClick={()=>onOpen(l.id)} style={{cursor:'pointer'}}>
-              <b>{l.prenom} {l.nom}{l.noShow && <span className="tag tag-noshow">No-show</span>}</b>
-              <span><Src source={l.source}/> · {l.nextAction}</span>
-            </div>
-            <button className="btn btn-accent" style={{padding:'8px 13px'}} onClick={()=>onCall(l.id)}><I.phone/>Appeler</button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /* ============================================================= PAYMENT MODAL */
 function PaymentModal({lead, onClose, onSend}){
   const [offer,setOffer]=useState(null);
@@ -2123,7 +2095,6 @@ function App({session, onLogout}){
 
   const [payTarget,setPayTarget]=useState(null); // {lead}
   const [slotTarget,setSlotTarget]=useState(null); // {lead, mode}
-  const [showRappeler,setShowRappeler]=useState(false);
   const [showSettings,setShowSettings]=useState(false);
   const [addTarget,setAddTarget]=useState(null); // colonne où ajouter un lead manuellement
   const [incoming,setIncoming]=useState(null);
@@ -2357,7 +2328,7 @@ function App({session, onLogout}){
       {/* WORK */}
       <main className="work">
         {screen==='leads' && <Board leads={leads} search={search} setSearch={setSearch}
-            onOpenLead={openLead} onReorder={reorderLead} onRappeler={()=>setShowRappeler(true)} rappelerCount={rappelerCount} onAddLead={(col)=>setAddTarget(col)} onDelete={deleteLead}/>}
+            onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col)=>setAddTarget(col)} onDelete={deleteLead}/>}
         {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen('leads')} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
             onPay={()=>setPayTarget({lead:sel})} onAction={doAction} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions}/>}
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen('leads')}>Retour au board</button></div>}
@@ -2366,7 +2337,6 @@ function App({session, onLogout}){
 
       {/* OVERLAYS */}
       {addTarget && <AddLeadModal column={addTarget} onClose={()=>setAddTarget(null)} onAdd={addLead}/>}
-      {showRappeler && <div className="backdrop" onClick={()=>setShowRappeler(false)}><RappelerPanel leads={leads} onClose={()=>setShowRappeler(false)} onCall={(id)=>{setShowRappeler(false); placeCall(leads.find(l=>l.id===id));}} onOpen={(id)=>{setShowRappeler(false); openLead(id);}}/></div>}
       {showSettings && <div className="backdrop" onClick={()=>setShowSettings(false)}><Settings theme={theme} setTheme={setTheme} density={density} setDensity={setDensity} onSimulate={simulate} onReset={resetData} onClose={()=>setShowSettings(false)}/></div>}
       {payTarget && <PaymentModal lead={payTarget.lead} onClose={()=>setPayTarget(null)} onSend={sendPayment}/>}
       {slotTarget && slotTarget.mode==='rdv' && <RdvPicker lead={slotTarget.lead} agendas={agendas} onClose={()=>setSlotTarget(null)} onBooked={bookRdv}/>}
