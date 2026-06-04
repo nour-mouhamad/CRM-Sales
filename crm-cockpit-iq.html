@@ -305,35 +305,18 @@ input,textarea{font-family:inherit; color:inherit}
 .claim.other .claim-tx b{color:var(--t2)}
 
 /* timeline */
-.tl{position:relative; padding-left:6px}
-.tl-item{position:relative; padding:0 0 18px 26px}
-.tl-item:last-child{padding-bottom:4px}
-.tl-item::before{content:''; position:absolute; left:7px; top:18px; bottom:-2px; width:1.5px; background:var(--b1)}
-.tl-item:last-child::before{display:none}
-.tl-dot{position:absolute; left:0; top:1px; width:16px; height:16px; border-radius:99px; background:var(--surface); border:2px solid var(--b3); display:grid; place-items:center}
-.tl-dot svg{width:9px; height:9px; stroke-width:2.4; color:var(--t3)}
-.tl-dot.accent{border-color:var(--accent)} .tl-dot.accent svg{color:var(--accent)}
-.tl-dot.ok{border-color:var(--ok)} .tl-dot.ok svg{color:var(--ok)}
-.tl-dot.danger{border-color:var(--danger)} .tl-dot.danger svg{color:var(--danger)}
-.tl-row{display:flex; align-items:baseline; gap:8px; justify-content:space-between}
-.tl-title{font-weight:700; font-size:13.5px}
+.tl{display:flex; flex-direction:column; gap:10px}
+.tl-empty{font-size:12.5px; color:var(--t3); padding:4px 2px}
 .tl-when{font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--t3); flex:none}
-.tl-text{font-size:13px; color:var(--t2); margin-top:3px; line-height:1.5}
+.tl-card-text{font-size:13px; color:var(--t2); line-height:1.5; white-space:pre-wrap; word-break:break-word}
 .tl-granola{margin-top:8px; background:var(--surface-2); border:1px solid var(--b1); border-radius:9px; padding:10px 11px}
 .tl-granola .g-head{display:flex; align-items:center; gap:7px; margin-bottom:6px}
 .tl-granola .g-head .eyebrow{color:var(--accent)}
 .tl-granola .g-line{font-size:12.5px; color:var(--t2); display:flex; gap:7px; padding:2px 0}
 .tl-granola .g-line b{color:var(--t1); font-weight:600}
-/* ---- modifier / supprimer une entrée d'historique ---- */
-.tl-right{display:inline-flex; align-items:center; gap:6px; flex:none}
-.tl-actions{display:inline-flex; gap:3px; opacity:0; transition:opacity var(--speed)}
-.tl-item:hover .tl-actions{opacity:1}
-.tl-actions button{width:23px; height:23px; border-radius:6px; display:grid; place-items:center; color:var(--t3); background:none; cursor:pointer}
-.tl-actions button:hover{background:var(--surface-2); color:var(--t1)}
-.tl-actions button.del:hover{color:var(--danger)}
-.tl-actions svg{width:13.5px; height:13.5px; stroke-width:2}
-.tl-edit{margin-top:6px}
-.tl-edit textarea{width:100%; min-height:58px; resize:vertical; background:var(--surface-2); border:1.5px solid var(--b2); border-radius:9px; padding:9px 11px; color:var(--t1); font-size:13px; font-family:inherit; line-height:1.5; box-sizing:border-box}
+/* ---- édition inline d'une entrée d'historique ---- */
+.tl-edit{margin-top:2px}
+.tl-edit textarea{width:100%; min-height:58px; resize:vertical; background:var(--surface); border:1.5px solid var(--b2); border-radius:9px; padding:9px 11px; color:var(--t1); font-size:13px; font-family:inherit; line-height:1.5; box-sizing:border-box}
 .tl-edit textarea:focus{border-color:var(--accent); outline:none}
 .tl-edit-actions{display:flex; gap:8px; margin-top:8px}
 .tl-edit-actions .btn{padding:7px 13px; font-size:12.5px}
@@ -465,20 +448,27 @@ input,textarea{font-family:inherit; color:inherit}
 .recap-stage.warn{color:var(--warm)}
 
 /* récap dans l'historique : accordéon repliable (carte autonome, pas de point de timeline) */
-.tl-recap{margin:0 0 14px; border:1px solid var(--b2); border-radius:11px; overflow:hidden; background:var(--surface-2)}
-.tl-recap:last-child{margin-bottom:0}
+.tl-recap{border:1px solid var(--b2); border-radius:11px; overflow:hidden; background:var(--surface-2)}
 .tl-recap-head{display:flex; align-items:center; gap:9px; padding:11px 13px; cursor:pointer; user-select:none; transition:background var(--speed)}
 .tl-recap-head:hover{background:var(--surface-3)}
+.tl-recap-head.nochev{cursor:default}
+.tl-recap-head.nochev:hover{background:transparent}
+.tl-recap-head.nochev .tl-recap-chev{visibility:hidden}
 .tl-recap-chev{flex:none; color:var(--t3); transition:transform .2s ease}
 .tl-recap-head.open .tl-recap-chev{transform:rotate(90deg)}
-.tl-recap-ic{flex:none; display:grid; place-items:center; color:var(--accent)}
+.tl-recap-ic{flex:none; display:grid; place-items:center; color:var(--t3)}
 .tl-recap-ic svg{width:14px; height:14px}
+.tl-recap.accent .tl-recap-ic{color:var(--accent)}
+.tl-recap.ok .tl-recap-ic{color:var(--ok)}
+.tl-recap.danger .tl-recap-ic{color:var(--danger)}
 .tl-recap-title{font-weight:700; font-size:13px; color:var(--t1); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .tl-recap-right{display:flex; align-items:center; gap:8px; flex:none}
-.tl-recap-del{width:23px; height:23px; border-radius:6px; display:grid; place-items:center; color:var(--t3); background:none; cursor:pointer; opacity:0; transition:opacity var(--speed)}
-.tl-recap:hover .tl-recap-del{opacity:1}
-.tl-recap-del:hover{color:var(--danger); background:var(--surface)}
-.tl-recap-del svg{width:13.5px; height:13.5px}
+.tl-recap-actions{display:inline-flex; gap:3px; opacity:0; transition:opacity var(--speed)}
+.tl-recap:hover .tl-recap-actions{opacity:1}
+.tl-recap-actions button{width:23px; height:23px; border-radius:6px; display:grid; place-items:center; color:var(--t3); background:none; cursor:pointer}
+.tl-recap-actions button:hover{background:var(--surface); color:var(--t1)}
+.tl-recap-actions button.del:hover{color:var(--danger)}
+.tl-recap-actions svg{width:13.5px; height:13.5px; stroke-width:2}
 .tl-recap-body{padding:11px 14px 13px; border-top:1px solid var(--b1)}
 .tl-recap-body .recap-md{font-size:12.5px}
 
@@ -1279,8 +1269,6 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
   const moveBtnRef=useRef(null);
   const [movePos,setMovePos]=useState(null);
   const toggleMove=()=>{ if(moveOpen){ setMoveOpen(false); return; } const r=moveBtnRef.current.getBoundingClientRect(); setMovePos({top:r.bottom+4, left:r.left, width:r.width, maxH:Math.max(200, window.innerHeight-r.bottom-16)}); setMoveOpen(true); };
-  const [editId,setEditId]=useState(null);
-  const [draft,setDraft]=useState('');
   const [editingField,setEditingField]=useState(null);
   const statusColor = COL_COLOR[lead.column];
   const actionDone = !!lead.nextAction && lead.actionDoneFor===lead.nextAction;
@@ -1393,41 +1381,12 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
               </div>
             ); })()}
             <div className="tl">
-              {lead.timeline.filter(ev=>!(ev.title&&ev.title.indexOf('Étape :')===0)).map((ev,i)=>{
-                if(ev.title && ev.title.indexOf('Récap')===0) return <RecapTl key={ev.id||i} ev={ev} onDelete={onDeleteNote}/>;
-                return (
-                <div className="tl-item" key={ev.id||i}>
-                  <span className={`tl-dot ${tlTone[ev.type]||''} ${ev.paid?'ok':''}`}>{(tlIcon[ev.type]||I.note)({})}</span>
-                  <div className="tl-row">
-                    <span className="tl-title">{ev.title}</span>
-                    <span className="tl-right">
-                      <span className="tl-when">{ev.when}</span>
-                      {ev.id && editId!==ev.id && <span className="tl-actions">
-                        <button title="Modifier" onClick={()=>{ setEditId(ev.id); setDraft(ev.text||''); }}>{I.pencil({})}</button>
-                        <button className="del" title="Supprimer" onClick={()=>onDeleteNote(ev.id)}>{I.trash({})}</button>
-                      </span>}
-                    </span>
-                  </div>
-                  {editId===ev.id ? (
-                    <div className="tl-edit">
-                      <textarea value={draft} onChange={e=>setDraft(e.target.value)} autoFocus/>
-                      <div className="tl-edit-actions">
-                        <button className="btn btn-accent" onClick={()=>{ onEditNote(ev.id, draft.trim()); setEditId(null); }}>Enregistrer</button>
-                        <button className="btn btn-ghost" onClick={()=>setEditId(null)}>Annuler</button>
-                      </div>
-                    </div>
-                  ) : (ev.text && <div className="tl-text">{ev.text}</div>)}
-                  {ev.granola && (
-                    <div className="tl-granola">
-                      <div className="g-head"><I.spark style={{width:13,height:13,strokeWidth:2,color:'var(--accent)'}}/><span className="eyebrow">Recap Granola</span></div>
-                      <div className="g-line"><b>Contexte —</b> {ev.granola.contexte}</div>
-                      <div className="g-line"><b>Pain point —</b> {ev.granola.pain}</div>
-                      <div className="g-line"><b>Angle —</b> {ev.granola.angle}</div>
-                    </div>
-                  )}
-                </div>
-                );
-              })}
+              {lead.timeline.filter(ev=>!(ev.title&&ev.title.indexOf('Étape :')===0)).map((ev,i)=>(
+                <TlCard key={ev.id||i} ev={ev} onEditNote={onEditNote} onDeleteNote={onDeleteNote}/>
+              ))}
+              {lead.timeline.filter(ev=>!(ev.title&&ev.title.indexOf('Étape :')===0)).length===0 && (
+                <div className="tl-empty">Aucune note pour l’instant.</div>
+              )}
             </div>
           </div>
         </div>
@@ -1625,20 +1584,59 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage }){
 }
 
 // Entrée d'historique "Récap IA" : accordéon repliable, rendu markdown structuré (via MdText).
-function RecapTl({ ev, onDelete }){
+// carte d'historique unifiée : MÊME structure pour tous les types (note, NRP/appel, récap, paiement…).
+// En-tête toujours = chevron (si contenu) + icône + titre + heure + actions. Corps pliable si contenu.
+function TlCard({ ev, onEditNote, onDeleteNote }){
+  const isRecap = !!ev.title && ev.title.indexOf('Récap')===0;
+  const hasBody = isRecap || !!ev.text || !!ev.granola;
   const [open,setOpen]=useState(false);
+  const [editing,setEditing]=useState(false);
+  const [draft,setDraft]=useState('');
+  const tone = isRecap ? 'accent' : (tlTone[ev.type] || (ev.paid?'ok':''));
+  const Icon = isRecap ? I.spark : (tlIcon[ev.type] || I.note);
+  const canEdit = !!ev.id && !isRecap;
+  const startEdit=(e)=>{ e.stopPropagation(); setDraft(ev.text||''); setEditing(true); setOpen(true); };
+  const save=()=>{ onEditNote(ev.id, draft.trim()); setEditing(false); };
+  const toggle=()=>{ if(editing) return; if(hasBody) setOpen(o=>!o); };
   return (
-    <div className="tl-recap">
-      <div className={`tl-recap-head ${open?'open':''}`} onClick={()=>setOpen(o=>!o)}>
+    <div className={`tl-recap ${tone}`}>
+      <div className={`tl-recap-head ${open?'open':''} ${hasBody?'':'nochev'}`} onClick={toggle}>
         <svg className="tl-recap-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6"><path d="m9 18 6-6-6-6"/></svg>
-        <span className="tl-recap-ic">{I.spark({})}</span>
+        <span className="tl-recap-ic">{Icon({})}</span>
         <span className="tl-recap-title">{ev.title}</span>
         <span className="tl-recap-right">
           <span className="tl-when">{ev.when}</span>
-          {ev.id && <button className="tl-recap-del" title="Supprimer" onClick={e=>{ e.stopPropagation(); onDelete(ev.id); }}>{I.trash({})}</button>}
+          {ev.id && <span className="tl-recap-actions">
+            {canEdit && <button title="Modifier" onClick={startEdit}>{I.pencil({})}</button>}
+            <button className="del" title="Supprimer" onClick={e=>{ e.stopPropagation(); onDeleteNote(ev.id); }}>{I.trash({})}</button>
+          </span>}
         </span>
       </div>
-      {open && <div className="tl-recap-body"><MdText text={ev.text}/></div>}
+      {(editing || (open && hasBody)) && (
+        <div className="tl-recap-body">
+          {editing ? (
+            <div className="tl-edit">
+              <textarea value={draft} onChange={e=>setDraft(e.target.value)} autoFocus placeholder="Ta note…"/>
+              <div className="tl-edit-actions">
+                <button className="btn btn-accent" onClick={save}>Enregistrer</button>
+                <button className="btn btn-ghost" onClick={()=>setEditing(false)}>Annuler</button>
+              </div>
+            </div>
+          ) : isRecap ? (
+            <MdText text={ev.text}/>
+          ) : (<>
+            {ev.text && <div className="tl-card-text">{ev.text}</div>}
+            {ev.granola && (
+              <div className="tl-granola">
+                <div className="g-head"><I.spark style={{width:13,height:13,strokeWidth:2,color:'var(--accent)'}}/><span className="eyebrow">Recap Granola</span></div>
+                <div className="g-line"><b>Contexte —</b> {ev.granola.contexte}</div>
+                <div className="g-line"><b>Pain point —</b> {ev.granola.pain}</div>
+                <div className="g-line"><b>Angle —</b> {ev.granola.angle}</div>
+              </div>
+            )}
+          </>)}
+        </div>
+      )}
     </div>
   );
 }
