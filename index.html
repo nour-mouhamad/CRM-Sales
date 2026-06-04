@@ -303,6 +303,21 @@ input,textarea{font-family:inherit; color:inherit}
 .claim.other:hover{background:none; border-color:transparent}
 .claim.other .claim-box.on{background:var(--t3); border-color:var(--t3)}
 .claim.other .claim-tx b{color:var(--t2)}
+/* Rendez-vous (saisie manuelle) */
+.rdv-set{display:flex; align-items:center; gap:9px; flex-wrap:wrap}
+.rdv-badge{flex:none; font-size:11px; font-weight:800; letter-spacing:.04em; color:#fff; background:var(--accent); border-radius:6px; padding:3px 8px}
+.rdv-when{font-size:14px; font-weight:600; color:var(--t1)}
+.rdv-link{font-size:12px; color:var(--t3); background:none; cursor:pointer; font-weight:600; padding:2px}
+.rdv-link:hover{color:var(--accent); text-decoration:underline}
+.rdv-link.del:hover{color:var(--danger)}
+.rdv-edit{display:flex; flex-direction:column; gap:9px}
+.rdv-types{display:inline-flex; gap:6px}
+.rdv-types button{flex:1; padding:7px 0; border-radius:8px; border:1.5px solid var(--b2); background:var(--surface); color:var(--t2); font-weight:700; font-size:13px; cursor:pointer; transition:all var(--speed)}
+.rdv-types button.on{border-color:var(--accent); background:var(--accent); color:#fff}
+.rdv-input{width:100%; box-sizing:border-box; background:var(--surface); border:1.5px solid var(--b2); border-radius:9px; padding:9px 11px; color:var(--t1); font-size:14px; font-family:inherit; outline:none}
+.rdv-input:focus{border-color:var(--accent)}
+.rdv-foot{display:flex; gap:8px}
+.rdv-foot .btn{padding:7px 13px; font-size:12.5px}
 
 /* timeline */
 .tl{display:flex; flex-direction:column; gap:10px}
@@ -843,7 +858,7 @@ function dbToLead(r, acts){
     nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, extraActions:Array.isArray(r.extra_actions)?r.extra_actions:[], live:false, noShow:false,
     offer:r.montant||0, paid:r.statut_paiement==='paye',
     cpf:r.cpf_dispo||0, metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'',
-    rdv_at:r.rdv_at||null, hubspot_deal_id:r.hubspot_deal_id||null,
+    rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, hubspot_deal_id:r.hubspot_deal_id||null,
     timeline:(acts||[]).map(a=>({id:a.id, type:a.type, when:fmtWhen(a.created_at), title:a.titre||'', text:a.contenu||'', paid:a.type==='paiement'}))
   };
 }
@@ -875,6 +890,8 @@ async function saveLead(id, uiPatch){
   if('objectif' in uiPatch) m.objectif=uiPatch.objectif;
   if('budget' in uiPatch) m.budget=uiPatch.budget;
   if('cpf' in uiPatch) m.cpf_dispo=uiPatch.cpf;
+  if('rdv_at' in uiPatch) m.rdv_at=uiPatch.rdv_at;
+  if('rdvType' in uiPatch) m.rdv_type=uiPatch.rdvType;
   try{ if(Object.keys(m).length) await SB.from('leads').update(m).eq('id',id); }catch(e){ console.warn('saveLead',e); }
 }
 
@@ -1099,6 +1116,46 @@ function CopyField({value, icon, copyVal, title}){
   );
 }
 
+// ISO -> valeur d'un <input type="datetime-local"> (heure locale)
+function toLocalInput(iso){ const d=new Date(iso); if(isNaN(d)) return ''; const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }
+function fmtRdv(iso){ try{ const s=new Date(iso).toLocaleString('fr-FR',{weekday:'short',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}); return s.replace(':',' h '); }catch(e){ return ''; } }
+
+// Champ « Rendez-vous » de la fiche : ajout/édition rapide via le sélecteur natif date+heure + type R1/R2.
+function RdvField({ lead, onSet }){
+  const [editing,setEditing]=useState(false);
+  const [dt,setDt]=useState('');
+  const [type,setType]=useState('r1');
+  const open=()=>{ setDt(lead.rdv_at?toLocalInput(lead.rdv_at):''); setType(lead.rdvType||'r1'); setEditing(true); };
+  const save=()=>{ if(!dt) return; onSet(new Date(dt).toISOString(), type); setEditing(false); };
+  return (
+    <div className="field">
+      <span className="eyebrow">Rendez-vous</span>
+      {editing ? (
+        <div className="rdv-edit">
+          <div className="rdv-types">
+            <button className={type==='r1'?'on':''} onClick={()=>setType('r1')}>R1</button>
+            <button className={type==='r2'?'on':''} onClick={()=>setType('r2')}>R2</button>
+          </div>
+          <input type="datetime-local" className="rdv-input" value={dt} autoFocus onChange={e=>setDt(e.target.value)}/>
+          <div className="rdv-foot">
+            <button className="btn btn-accent" disabled={!dt} onClick={save}>Enregistrer</button>
+            <button className="btn btn-ghost" onClick={()=>setEditing(false)}>Annuler</button>
+          </div>
+        </div>
+      ) : lead.rdv_at ? (
+        <div className="rdv-set">
+          <span className="rdv-badge">{(lead.rdvType||'r1').toUpperCase()}</span>
+          <span className="rdv-when">{fmtRdv(lead.rdv_at)}</span>
+          <button className="rdv-link" onClick={open} title="Modifier le rendez-vous">Modifier</button>
+          <button className="rdv-link del" onClick={()=>onSet(null,null)} title="Retirer le rendez-vous">Retirer</button>
+        </div>
+      ) : (
+        <button className="action-add" onClick={open}>+ Ajouter un rendez-vous</button>
+      )}
+    </div>
+  );
+}
+
 /* ============================================================= LEAD CARD */
 const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDragEnd, dragging, onCardDragOver, dropPos, onDelete}){
   const col = lead.column;
@@ -1261,7 +1318,7 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
 }
 
 /* ============================================================= FICHE LEAD */
-function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onToggleAction, onActions, onClaim, meId}){
+function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onToggleAction, onActions, onClaim, meId, onSetRdv}){
   const [moveOpen,setMoveOpen]=useState(false);
   const [noteOpen,setNoteOpen]=useState(false);
   const [noteMode,setNoteMode]=useState('note'); // 'note' = note écrite | 'nrp' = appel sans réponse
@@ -1305,6 +1362,7 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
                 <span className="eyebrow">Source du lead</span>
                 <div className="val" style={{fontWeight:700}}>{si.label}</div>
               </div>
+              <RdvField lead={lead} onSet={onSetRdv}/>
               <div className="field">
                 <span className="eyebrow">Action</span>
                 <div className={`action-row ${actionDone?'done':''}`}>
@@ -2079,6 +2137,8 @@ function App({session, onLogout}){
   // appropriation du lead par le closer connecté (toggle) — owner_closer_id = id de l'utilisateur auth
   // 3 états : libre -> je m'approprie ; à moi -> je libère ; à un autre closer -> bloqué (pas de vol)
   const claimLead=()=>{ if(!sel) return; const uid=session.user.id; if(sel.owner && sel.owner!==uid){ toast('Lead déjà approprié','Par un autre closer','info'); return; } const next=sel.owner?null:uid; patch(sel.id,{owner:next}); saveLead(sel.id,{owner:next}); toast(next?'Lead approprié':'Lead libéré', `${sel.prenom||''} ${sel.nom||''}`.trim()||null, next?'ok':'info'); };
+  // ajout/édition/suppression d'un rendez-vous saisi à la main (rdv_at + rdv_type R1/R2)
+  const setRdv=(at,type)=>{ if(!sel) return; patch(sel.id,{rdv_at:at, rdvType:type}); saveLead(sel.id,{rdv_at:at, rdvType:type}); toast(at?'Rendez-vous enregistré':'Rendez-vous retiré', at?((type||'r1').toUpperCase()+' · '+fmtRdv(at)):null, at?'ok':'info'); };
 
   // payment send → À payer, then auto Payé (id capturé, transition garantie)
   const sendPayment=(amount,tag)=>{
@@ -2155,7 +2215,7 @@ function App({session, onLogout}){
         {screen==='leads' && <Board leads={leads} search={search} setSearch={setSearch}
             onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col)=>setAddTarget(col)} onDelete={deleteLead}/>}
         {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen('leads')} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
-            onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions} onClaim={claimLead} meId={session.user.id}/>}
+            onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions} onClaim={claimLead} meId={session.user.id} onSetRdv={setRdv}/>}
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen('leads')}>Retour au board</button></div>}
         {screen==='agenda' && <Agenda leads={leads} onOpen={openLead}/>}
       </main>
