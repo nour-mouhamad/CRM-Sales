@@ -318,6 +318,16 @@ input,textarea{font-family:inherit; color:inherit}
 .rdv-input:focus{border-color:var(--accent)}
 .rdv-foot{display:flex; gap:8px}
 .rdv-foot .btn{padding:7px 13px; font-size:12.5px}
+/* Écran Closers (admin) */
+.team-pad{padding:26px 30px; max-width:1080px; width:100%; box-sizing:border-box; height:100%; overflow:auto}
+.team-head{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:20px}
+.team-head h1{font-size:24px; font-weight:800; letter-spacing:-.02em}
+.team-grid{display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start}
+@media(max-width:900px){.team-grid{grid-template-columns:1fr}}
+.team-row{display:flex; align-items:center; gap:11px; padding:10px 2px; border-bottom:1px solid var(--b1)}
+.team-row:last-child{border-bottom:none}
+.team-tag{font-size:11px; font-weight:700; color:var(--t3); background:var(--surface); border:1px solid var(--b1); border-radius:6px; padding:2px 8px}
+.team-tok{font-size:12px; color:var(--t3); flex:1; min-width:0}
 
 /* timeline */
 .tl{display:flex; flex-direction:column; gap:10px}
@@ -1248,7 +1258,7 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
       <div className="screen-head">
         <div className="screen-title">
           <h1>Mes leads</h1>
-          <p>Vue filtrée sur vos leads · Léo Martin</p>
+          <p>Pipeline de closing</p>
         </div>
         <div className="head-tools">
           <div className="search">
@@ -2005,9 +2015,14 @@ function persistedState(key,fallback){
 
 function App({session, onLogout}){
   const userEmail = session.user.email;
+  const userId = session.user.id;
+  const isDev = userId===DEV_ID;
+  const [profile,setProfile]=useState(isDev?{role:'admin',name:'Manager (dev)'}:null);
+  useEffect(()=>{ if(isDev) return; let alive=true; SB.from('profiles').select('role,name').eq('id',userId).single().then(({data})=>{ if(alive&&data) setProfile(data); }); return ()=>{alive=false;}; },[userId,isDev]);
+  const isAdmin = (profile?.role||'closer')==='admin';
   const [leads,setLeads]=useState([]);
   const [loaded,setLoaded]=useState(false);
-  const [screen,setScreen]=useState(()=>{ const s=persistedState('iqcrm_screen','leads'); return ['leads','fiche','agenda'].includes(s)?s:'leads'; });
+  const [screen,setScreen]=useState(()=>{ const s=persistedState('iqcrm_screen','leads'); return ['leads','fiche','agenda','team'].includes(s)?s:'leads'; });
   const [selId,setSelId]=useState(()=>persistedState('iqcrm_sel',null));
   const [theme,setTheme]=useState(()=>persistedState('iqcrm_theme_v2','dark'));
   const [density,setDensity]=useState(()=>persistedState('iqcrm_density','standard'));
@@ -2078,13 +2093,15 @@ function App({session, onLogout}){
     });
     if(changedCol){
       const na = NEXT_BY_COL[col] || null;
-      saveLead(id,{column:col, ...(na?{nextAction:na}:{})});
+      const claim = (col==='rdv1' && !l.owner && !isAdmin);
+      saveLead(id,{column:col, ...(na?{nextAction:na}:{}), ...(claim?{owner:userId}:{})});
+      if(claim) patch(id,{owner:userId});
       const stTitle='Étape : '+(COL_LABEL[col]||col);
       const stActP=addActivite(id,'note',stTitle,null);
       patch(id,prev=>({timeline:[{type:'note',when:'à l’instant',title:stTitle,text:''},...prev.timeline]}));
       if(!(opts && opts.silent)){
-        const fromCol=l.column, fromNa=l.nextAction;
-        const entry=pushUndo(`Déplacement · ${(l.prenom||'')+' '+(l.nom||'')}`.trim(), async()=>{ patch(id,prev=>({column:fromCol, nextAction:fromNa, timeline:prev.timeline.filter(e=>!(e.title===stTitle && !e.id))})); try{ const stActId=await stActP; if(stActId) await deleteActivite(stActId); }catch(e){} await saveLead(id,{column:fromCol, nextAction:fromNa}); reload(); });
+        const fromCol=l.column, fromNa=l.nextAction, fromOwner=l.owner;
+        const entry=pushUndo(`Déplacement · ${(l.prenom||'')+' '+(l.nom||'')}`.trim(), async()=>{ patch(id,prev=>({column:fromCol, nextAction:fromNa, owner:fromOwner, timeline:prev.timeline.filter(e=>!(e.title===stTitle && !e.id))})); try{ const stActId=await stActP; if(stActId) await deleteActivite(stActId); }catch(e){} await saveLead(id,{column:fromCol, nextAction:fromNa, owner:fromOwner}); reload(); });
         toast(`${l.prenom} → ${COL_LABEL[col]}`,'Carte déplacée','accent',{label:'Annuler', fn:()=>runUndo(entry)});
       }
     }
@@ -2138,7 +2155,7 @@ function App({session, onLogout}){
   // 3 états : libre -> je m'approprie ; à moi -> je libère ; à un autre closer -> bloqué (pas de vol)
   const claimLead=()=>{ if(!sel) return; const uid=session.user.id; if(sel.owner && sel.owner!==uid){ toast('Lead déjà approprié','Par un autre closer','info'); return; } const next=sel.owner?null:uid; patch(sel.id,{owner:next}); saveLead(sel.id,{owner:next}); toast(next?'Lead approprié':'Lead libéré', `${sel.prenom||''} ${sel.nom||''}`.trim()||null, next?'ok':'info'); };
   // ajout/édition/suppression d'un rendez-vous saisi à la main (rdv_at + rdv_type R1/R2)
-  const setRdv=(at,type)=>{ if(!sel) return; patch(sel.id,{rdv_at:at, rdvType:type}); saveLead(sel.id,{rdv_at:at, rdvType:type}); toast(at?'Rendez-vous enregistré':'Rendez-vous retiré', at?((type||'r1').toUpperCase()+' · '+fmtRdv(at)):null, at?'ok':'info'); };
+  const setRdv=(at,type)=>{ if(!sel) return; const p={rdv_at:at, rdvType:type}; const claim = at && type==='r1' && !sel.owner && !isAdmin; if(claim) p.owner=userId; patch(sel.id,p); saveLead(sel.id,p); toast(at?(claim?'R1 calé — lead approprié':'Rendez-vous enregistré'):'Rendez-vous retiré', at?((type||'r1').toUpperCase()+' · '+fmtRdv(at)):null, at?'ok':'info'); };
 
   // payment send → À payer, then auto Payé (id capturé, transition garantie)
   const sendPayment=(amount,tag)=>{
@@ -2173,12 +2190,14 @@ function App({session, onLogout}){
     toast('Données réinitialisées',null,'info');
   };
 
-  const rappelerCount = useMemo(()=> leads.filter(l=>l.owner==='Léo' && ['contacter','perso','atc','rdv1','contacte','qualifie','closing','encaisser'].includes(l.column) && (l.heat==='chaud'||l.noShow)).length,[leads]);
+  const rappelerCount = useMemo(()=> leads.filter(l=>l.owner===userId && ['contacter','perso','atc','rdv1','contacte','qualifie','closing','encaisser'].includes(l.column) && (l.heat==='chaud'||l.noShow)).length,[leads,userId]);
 
   const navItems=[
     {id:'leads', label:'Mes leads', icon:I.leads, badge:rappelerCount},
     {id:'agenda', label:'Agenda', icon:I.agenda},
+    ...(isAdmin?[{id:'team', label:'Closers', icon:I.users}]:[]),
   ];
+  useEffect(()=>{ if(!isAdmin && screen==='team') setScreen('leads'); },[isAdmin,screen]);
   const navActive = screen==='fiche'?'leads':screen;
 
   return (
@@ -2205,7 +2224,7 @@ function App({session, onLogout}){
         </div>
         <div className="profile">
           <div className="avatar sz-sm">{(userEmail[0]||'L').toUpperCase()}</div>
-          <div className="profile-meta" style={{flex:1,minWidth:0}}><b style={{whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{userEmail}</b><span>Closer</span></div>
+          <div className="profile-meta" style={{flex:1,minWidth:0}}><b style={{whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{userEmail}</b><span>{profile?(isAdmin?'Admin':'Closer'):'…'}</span></div>
           <button className="icon-btn" title="Déconnexion" onClick={onLogout} style={{width:30,height:30}}>{I.logout({})}</button>
         </div>
       </nav>
@@ -2218,6 +2237,7 @@ function App({session, onLogout}){
             onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions} onClaim={claimLead} meId={session.user.id} onSetRdv={setRdv}/>}
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen('leads')}>Retour au board</button></div>}
         {screen==='agenda' && <Agenda leads={leads} onOpen={openLead}/>}
+        {screen==='team' && isAdmin && <TeamScreen userId={userId} toast={toast}/>}
       </main>
 
       {/* OVERLAYS */}
@@ -2231,31 +2251,93 @@ function App({session, onLogout}){
   );
 }
 
+/* ====================== ÉCRAN ADMIN : CLOSERS / INVITATIONS ====================== */
+function TeamScreen({ userId, toast }){
+  const [closers,setClosers]=useState([]);
+  const [invites,setInvites]=useState([]);
+  const [busy,setBusy]=useState(false);
+  const base = (typeof location!=='undefined') ? (location.origin+location.pathname) : '';
+  const linkFor = t => base+'?invite='+t;
+  const load=()=>{
+    SB.from('profiles').select('id,name,role,created_at').order('created_at').then(({data})=>setClosers((data||[]).filter(p=>p.role==='closer')));
+    SB.from('invites').select('token,email,name,used_at,created_at').order('created_at',{ascending:false}).then(({data})=>setInvites(data||[]));
+  };
+  useEffect(load,[]);
+  const gen=async()=>{ setBusy(true); try{
+    const {data,error}=await SB.from('invites').insert({created_by:userId}).select('token').single();
+    if(error) throw error;
+    try{ await navigator.clipboard.writeText(linkFor(data.token)); }catch(e){}
+    toast('Lien d’invitation créé','Copié — envoie-le au closer','ok'); load();
+  }catch(e){ toast('Erreur', e.message, 'info'); } finally{ setBusy(false); } };
+  const copy=t=>{ try{ navigator.clipboard.writeText(linkFor(t)); toast('Lien copié',null,'ok'); }catch(e){} };
+  const pending = invites.filter(i=>!i.used_at);
+  return (
+    <div className="team-pad">
+      <div className="team-head"><h1>Closers</h1><button className="btn btn-accent" disabled={busy} onClick={gen}><I.plus style={{width:15,height:15}}/>Inviter un closer</button></div>
+      <div className="team-grid">
+        <div className="panel">
+          <div className="panel-head"><span className="eyebrow">Équipe · {closers.length}</span></div>
+          <div className="panel-body">
+            {closers.length===0 ? <div className="tl-empty">Aucun closer connecté pour l’instant.</div>
+              : closers.map(c=>(
+                <div key={c.id} className="team-row">
+                  <span className="avatar sz-sm">{((c.name||'?')[0]||'?').toUpperCase()}</span>
+                  <b style={{flex:1,minWidth:0}}>{c.name||'—'}</b>
+                  <span className="team-tag">Closer</span>
+                </div>
+              ))}
+          </div>
+        </div>
+        <div className="panel">
+          <div className="panel-head"><span className="eyebrow">Liens en attente · {pending.length}</span></div>
+          <div className="panel-body">
+            {pending.length===0 ? <div className="tl-empty">Aucun lien en attente. Clique « Inviter un closer ».</div>
+              : pending.map(i=>(
+                <div key={i.token} className="team-row">
+                  <span className="mono team-tok">invite …{String(i.token).slice(-6)}</span>
+                  <button className="btn btn-soft" style={{padding:'5px 11px',fontSize:12}} onClick={()=>copy(i.token)}>Copier le lien</button>
+                </div>
+              ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ====================== LOGIN ====================== */
-function LoginScreen(){
-  const [mode,setMode]=useState('login'); // login | signup
+function LoginScreen({ inviteToken }){
   const [email,setEmail]=useState('');
   const [pwd,setPwd]=useState('');
+  const [name,setName]=useState('');
   const [msg,setMsg]=useState(null);
   const [busy,setBusy]=useState(false);
+  const [invite,setInvite]=useState(inviteToken?{state:'loading'}:null); // null = connexion normale
+  useEffect(()=>{ if(!inviteToken) return; SB.rpc('invite_info',{p_token:inviteToken}).then(({data,error})=>{
+    const row=Array.isArray(data)?data[0]:data;
+    if(error||!row){ setInvite({state:'invalid'}); }
+    else if(!row.valid){ setInvite({state:'used'}); }
+    else { setInvite({state:'valid'}); if(row.email) setEmail(row.email); if(row.name) setName(row.name); }
+  }); },[inviteToken]);
+  const isSignup = !!invite && invite.state==='valid';
   const submit=async(e)=>{
     e.preventDefault(); setMsg(null); setBusy(true);
     try{
-      if(mode==='signup'){
-        const {error}=await SB.auth.signUp({email,password:pwd});
+      if(isSignup){
+        const {data,error}=await SB.auth.signUp({email,password:pwd,options:{data:{name, invite:inviteToken}}});
         if(error) throw error;
-        setMsg({t:'ok',m:'Compte créé. Vérifie ta boîte mail pour confirmer, puis connecte-toi.'});
-        setMode('login');
+        if(!data.session) setMsg({t:'ok',m:'Compte créé. Confirme ton email puis reviens te connecter.'});
+        // si session → onAuthStateChange (Root) prend le relais
       } else {
         const {error}=await SB.auth.signInWithPassword({email,password:pwd});
         if(error) throw error;
-        // onAuthStateChange (Root) prend le relais
       }
     }catch(err){
       const m=err.message||'Erreur';
-      setMsg({t:'err', m: /confirm/i.test(m)?'Email non confirmé — clique le lien reçu par mail.': /credential/i.test(m)?'Email ou mot de passe incorrect.':m});
+      setMsg({t:'err', m: /confirm/i.test(m)?'Email non confirmé — clique le lien reçu par mail.': /credential/i.test(m)?'Email ou mot de passe incorrect.': /registered/i.test(m)?'Cet email a déjà un compte — connecte-toi.':m});
     }finally{ setBusy(false); }
   };
+  const badInvite = invite && invite.state!=='valid' && invite.state!=='loading';
   return (
     <div className="login-wrap">
       <form className="login-card" onSubmit={submit}>
@@ -2264,17 +2346,22 @@ function LoginScreen(){
           <text x="30" y="40" textAnchor="middle" fill="#fff" fontFamily="Gabarito, system-ui, sans-serif" fontWeight="900" fontSize="30" letterSpacing="-1">IQ</text>
           <text x="69" y="40" fill="var(--t1)" fontFamily="Gabarito, system-ui, sans-serif" fontWeight="800" fontSize="30" letterSpacing="-1">Project.</text>
         </svg>
-        <h2>{mode==='login'?'Connexion':'Créer un compte'}</h2>
-        <p className="login-sub">Cockpit closing · accès closers</p>
-        <input className="login-input" type="email" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} autoFocus required/>
-        <input className="login-input" type="password" placeholder="Mot de passe" value={pwd} onChange={e=>setPwd(e.target.value)} required minLength={6}/>
-        {msg && <div className={`login-msg ${msg.t}`}>{msg.m}</div>}
-        <button className="btn btn-accent" type="submit" disabled={busy} style={{width:'100%',justifyContent:'center',padding:'12px'}}>
-          {busy?'…':(mode==='login'?'Se connecter':'Créer mon compte')}
-        </button>
-        <button type="button" className="login-switch" onClick={()=>{setMode(m=>m==='login'?'signup':'login'); setMsg(null);}}>
-          {mode==='login'?'Pas encore de compte ? Créer un compte':'Déjà un compte ? Se connecter'}
-        </button>
+        {invite && invite.state==='loading' ? (
+          <><h2>Invitation</h2><p className="login-sub">Vérification du lien…</p></>
+        ) : badInvite ? (
+          <><h2>Invitation</h2><p className="login-sub">{invite.state==='used'?'Ce lien a déjà été utilisé.':'Lien d’invitation invalide.'}</p>
+          <a className="login-switch" href={typeof location!=='undefined'?location.pathname:'#'}>Aller à la connexion</a></>
+        ) : (<>
+          <h2>{isSignup?'Crée ton compte closer':'Connexion'}</h2>
+          <p className="login-sub">{isSignup?'Tu as été invité — choisis ton mot de passe':'Cockpit closing'}</p>
+          {isSignup && <input className="login-input" type="text" placeholder="Ton nom" value={name} onChange={e=>setName(e.target.value)} autoFocus required/>}
+          <input className="login-input" type="email" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} autoFocus={!isSignup} required/>
+          <input className="login-input" type="password" placeholder="Mot de passe" value={pwd} onChange={e=>setPwd(e.target.value)} required minLength={6}/>
+          {msg && <div className={`login-msg ${msg.t}`}>{msg.m}</div>}
+          <button className="btn btn-accent" type="submit" disabled={busy} style={{width:'100%',justifyContent:'center',padding:'12px'}}>
+            {busy?'…':(isSignup?'Créer mon compte':'Se connecter')}
+          </button>
+        </>)}
       </form>
     </div>
   );
@@ -2290,8 +2377,9 @@ function Root(){
     const {data:sub}=SB.auth.onAuthStateChange((_e,s)=>setSession(s||null));
     return ()=>sub.subscription.unsubscribe();
   },[]);
+  const inviteToken = (typeof location!=='undefined') ? new URLSearchParams(location.search).get('invite') : null;
   if(session===undefined) return <div className="login-wrap"><div className="login-card" style={{textAlign:'center'}}>Chargement…</div></div>;
-  if(session===null) return <LoginScreen/>;
+  if(session===null) return <LoginScreen inviteToken={inviteToken}/>;
   return <App session={session} onLogout={()=>SB.auth.signOut()}/>;
 }
 
