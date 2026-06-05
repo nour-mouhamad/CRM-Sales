@@ -2415,9 +2415,18 @@ function App({session, onLogout}){
 
   // pile d'annulation invisible + Ctrl/Cmd+Z
   const undoRef=useRef([]);
-  const pushUndo=useCallback((label,fn)=>{ const e={label,fn}; undoRef.current.push(e); if(undoRef.current.length>25) undoRef.current.shift(); return e; },[]);
+  const pushUndo=useCallback((label,fn,leadId)=>{ const e={label,fn,leadId:leadId||null,t:Date.now()}; undoRef.current.push(e); if(undoRef.current.length>25) undoRef.current.shift(); return e; },[]);
   const runUndo=useCallback((entry)=>{ const arr=undoRef.current; const i=entry?arr.indexOf(entry):arr.length-1; if(i<0){ toast('Rien à annuler',null,'info'); return; } const e=arr.splice(i,1)[0]; Promise.resolve(e.fn()).catch(()=>{}); toast('Action annulée',e.label,'ok'); },[toast]);
-  useEffect(()=>{ const h=(e)=>{ if((e.metaKey||e.ctrlKey)&&(e.key==='z'||e.key==='Z')){ const tg=e.target; if(tg&&(tg.tagName==='INPUT'||tg.tagName==='TEXTAREA'||tg.isContentEditable)) return; e.preventDefault(); runUndo(); } }; window.addEventListener('keydown',h); return ()=>window.removeEventListener('keydown',h); },[runUndo]);
+  // Cmd/Ctrl+Z : n'annule qu'une action TRÈS récente (≤15 s) ET du contexte affiché — sur une fiche : seulement
+  // CE lead ; sur le board : la dernière action. Jamais une vieille action, jamais un autre lead (modèle Google).
+  const undoHotkey=useCallback(()=>{
+    const arr=undoRef.current, now=Date.now(), WINDOW=15000;
+    let target=null;
+    for(let k=arr.length-1;k>=0;k--){ const e=arr[k]; if(now-(e.t||0)>WINDOW) break; if(screen==='fiche' ? e.leadId===selId : true){ target=e; break; } }
+    if(!target){ toast('Rien à annuler', screen==='fiche'?'Aucune action récente sur ce lead':'Aucune action récente (15 s)','info'); return; }
+    runUndo(target);
+  },[screen,selId,toast,runUndo]);
+  useEffect(()=>{ const h=(e)=>{ if((e.metaKey||e.ctrlKey)&&(e.key==='z'||e.key==='Z')){ const tg=e.target; if(tg&&(tg.tagName==='INPUT'||tg.tagName==='TEXTAREA'||tg.isContentEditable)) return; e.preventDefault(); undoHotkey(); } }; window.addEventListener('keydown',h); return ()=>window.removeEventListener('keydown',h); },[undoHotkey]);
 
   const patch=useCallback((id,fn)=>setLeads(ls=>ls.map(l=>l.id===id?{...l,...(typeof fn==='function'?fn(l):fn)}:l)),[]);
 
@@ -2545,7 +2554,7 @@ function App({session, onLogout}){
       patch(id,prev=>({timeline:[{type:'note',when:'à l’instant',title:stTitle,text:''},...prev.timeline]}));
       if(!(opts && opts.silent)){
         const fromCol=l.column, fromNa=l.nextAction, fromOwner=l.owner;
-        const entry=pushUndo(`Déplacement · ${(l.prenom||'')+' '+(l.nom||'')}`.trim(), async()=>{ patch(id,prev=>({column:fromCol, nextAction:fromNa, owner:fromOwner, timeline:prev.timeline.filter(e=>!(e.title===stTitle && !e.id))})); try{ const stActId=await stActP; if(stActId) await deleteActivite(stActId); }catch(e){} await saveLead(id,{column:fromCol, nextAction:fromNa, owner:fromOwner}); reload(); });
+        const entry=pushUndo(`Déplacement · ${(l.prenom||'')+' '+(l.nom||'')}`.trim(), async()=>{ patch(id,prev=>({column:fromCol, nextAction:fromNa, owner:fromOwner, timeline:prev.timeline.filter(e=>!(e.title===stTitle && !e.id))})); try{ const stActId=await stActP; if(stActId) await deleteActivite(stActId); }catch(e){} await saveLead(id,{column:fromCol, nextAction:fromNa, owner:fromOwner}); reload(); }, id);
         toast(`${l.prenom} → ${COL_LABEL[col]}`,'Carte déplacée','accent',{label:'Annuler', fn:()=>runUndo(entry)});
       }
     }
@@ -2573,7 +2582,7 @@ function App({session, onLogout}){
   const addLead=async(fields)=>{
     const lead=await createLead(fields); setLeads(ls=>[lead,...ls]); setAddTarget(null);
     const name=(lead.prenom||lead.nom||lead.email||'').toString().trim();
-    const entry=pushUndo(`Ajout · ${name}`, async()=>{ setLeads(ls=>ls.filter(x=>x.id!==lead.id)); await SB.from('leads').update({deleted_at:new Date().toISOString()}).eq('id',lead.id); });
+    const entry=pushUndo(`Ajout · ${name}`, async()=>{ setLeads(ls=>ls.filter(x=>x.id!==lead.id)); await SB.from('leads').update({deleted_at:new Date().toISOString()}).eq('id',lead.id); }, lead.id);
     toast('Lead ajouté', name, 'ok', {label:'Annuler', fn:()=>runUndo(entry)});
   };
   // suppression d'un lead en 1 clic — corbeille DOUCE (deleted_at) → récupérable via Annuler / Ctrl+Z
@@ -2584,7 +2593,7 @@ function App({session, onLogout}){
     try{ const { error }=await SB.from('leads').update({deleted_at:new Date().toISOString()}).eq('id',id); if(error) throw error; }
     catch(e){ toast('Échec suppression', e.message, 'info'); reload(); return; }
     const name = l?(`${l.prenom||''} ${l.nom||''}`.trim()||l.email||''):'';
-    const entry=pushUndo(`Suppression · ${name}`, async()=>{ if(l) setLeads(ls=> ls.some(x=>x.id===id)?ls:[l,...ls]); await SB.from('leads').update({deleted_at:null}).eq('id',id); reload(); });
+    const entry=pushUndo(`Suppression · ${name}`, async()=>{ if(l) setLeads(ls=> ls.some(x=>x.id===id)?ls:[l,...ls]); await SB.from('leads').update({deleted_at:null}).eq('id',id); reload(); }, id);
     toast('Lead supprimé', name, 'info', { label:'Annuler', fn:()=>runUndo(entry) });
   };
 
