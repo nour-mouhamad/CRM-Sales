@@ -943,6 +943,34 @@ async function cqCreateMeeting(organizerId, m){
   if(!r.ok){ let t=''; try{ const j=await r.json(); t=j.message||j.hint||''; }catch(e){} throw new Error(t||('CalendIQ '+r.status)); }
   const rows=await r.json(); return Array.isArray(rows)?rows[0]:rows;
 }
+// appelle une edge function CalendIQ (même chemin que la page de booking publique, clé anon)
+async function cqInvoke(name, body){
+  const r=await fetch(CALENDIQ.api+'/functions/v1/'+name,{ method:'POST',
+    headers:{ apikey:CALENDIQ.anon, Authorization:'Bearer '+CALENDIQ.anon, 'Content-Type':'application/json' },
+    body: JSON.stringify(body) });
+  if(!r.ok){ let t=''; try{ t=await r.text(); }catch(e){} throw new Error(t||('fn '+name+' '+r.status)); }
+  try{ return await r.json(); }catch(e){ return {}; }
+}
+async function cqUpdateMeeting(id, patch){
+  await fetch(CALENDIQ.api+'/rest/v1/meetings?id=eq.'+id,{ method:'PATCH',
+    headers:{ apikey:CALENDIQ.anon, Authorization:'Bearer '+CALENDIQ.anon, 'Content-Type':'application/json', Prefer:'return=minimal' },
+    body: JSON.stringify(patch) });
+}
+// crée un RDV CalendIQ COMPLET : insert + event Google (lien Meet) + email au prospect — comme la page de booking.
+// Renvoie { id, meet_link }. Les étapes Google/email sont best-effort (si l'organizer n'a pas connecté Google, pas de Meet).
+async function cqBookMeeting(organizerId, m){
+  const row=await cqCreateMeeting(organizerId, m);
+  let meetLink=null;
+  try{
+    const res=await cqInvoke('google-calendar-create-event', { organizer_id:organizerId, meeting_id:row.id, title:m.title, description:m.description||null, start_at:m.start_at, duration_minutes:m.duration_minutes, attendee_email:m.booker_email||null, organizer_timezone:m.booker_timezone||'Europe/Paris' });
+    meetLink=(res&&res.meetLink)||null;
+    if(meetLink) await cqUpdateMeeting(row.id, { meet_link:meetLink });
+  }catch(e){ console.warn('GCal create-event', e); }
+  if(m.booker_email){
+    cqInvoke('send-booking-emails', { organizer_id:organizerId, booker_name:m.booker_name||'', booker_email:m.booker_email, title:m.title, description:m.description||null, start_at:m.start_at, duration_minutes:m.duration_minutes, total_cost:0, participant_count:1, meet_link:meetLink, booker_timezone:m.booker_timezone||'Europe/Paris', organizer_timezone:m.booker_timezone||'Europe/Paris' }).catch(()=>{});
+  }
+  return { id:row.id, meet_link:meetLink };
+}
 // helpers d'affichage agenda
 function cqDayKey(iso){ const d=new Date(iso); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function cqSameDay(a,b){ return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate(); }
@@ -1296,7 +1324,7 @@ function CqRdvField({ rdv }){
           <b>{cqDayLabel(rdv.start_at)} · {cqTime(rdv.start_at)}</b>
           <span>{rdv.title||'Rendez-vous'} · {rdv.duration_minutes||30} min{past?' · passé':''}</span>
         </div>
-        {rdv.meet_link && <a className="cq-pill" href={rdv.meet_link} target="_blank" rel="noreferrer" title="Ouvrir le lien visio">{I.video({})}Meet</a>}
+        {rdv.meet_link && <a className="cq-pill lead" href={rdv.meet_link} target="_blank" rel="noreferrer" title="Rejoindre le Google Meet">{I.video({})}Rejoindre</a>}
       </div>
     </div>
   );
@@ -2432,16 +2460,19 @@ function App({session, onLogout}){
     const orgId = profile && profile.calendiq_organizer_id;
     if(!orgId){ toast('Connecte ton CalendIQ d’abord','Onglet Agenda','info'); throw new Error('CalendIQ non connecté'); }
     const name=`${sel.prenom||''} ${sel.nom||''}`.trim()||sel.email||'Lead';
-    await cqCreateMeeting(orgId, { title:'IQ Project × '+(sel.prenom||name), start_at:startIso, duration_minutes:durationMin,
-      booker_name:name, booker_email:sel.email||null, booker_phone:sel.tel||null });
+    // insert + event Google (lien Meet) + email au prospect — comme la page de booking CalendIQ
+    const booked=await cqBookMeeting(orgId, { title:'IQ Project × '+(sel.prenom||name), description:null, start_at:startIso, duration_minutes:durationMin,
+      booker_name:name, booker_email:sel.email||null, booker_phone:sel.tel||null, booker_timezone:'Europe/Paris' });
     const claim = type==='r1' && !sel.owner && !isAdmin;
     const p={ rdv_at:startIso, rdvType:type, ...(claim?{owner:userId}:{}) };
-    patch(sel.id,p); saveLead(sel.id,p);
+    // reflet immédiat du RDV (avec le lien Meet s'il a été créé) sur la fiche, sans attendre le refetch
+    patch(sel.id,prev=>({ ...p, calendiqRdv:{ id:booked.id, title:'IQ Project × '+(sel.prenom||name), start_at:startIso, duration_minutes:durationMin, status:'confirmed', meet_link:booked.meet_link||null } }));
+    saveLead(sel.id,p);
     const title='RDV CalendIQ — '+(type||'r1').toUpperCase()+' · '+fmtRdv(startIso);
     const actP=addActivite(sel.id,'rdv',title,null);
     patch(sel.id,prev=>({timeline:[{type:'rdv',when:'à l’instant',title,text:''},...prev.timeline]}));
     loadCalendiq();
-    toast(claim?((type).toUpperCase()+' calé — lead approprié'):((type||'r1').toUpperCase()+' calé dans CalendIQ'), fmtRdv(startIso),'ok');
+    toast(claim?((type).toUpperCase()+' calé — lead approprié'):((type||'r1').toUpperCase()+(booked.meet_link?' calé + Meet créé':' calé dans CalendIQ')), fmtRdv(startIso),'ok');
     return actP;
   },[sel,profile,isAdmin,userId,toast,patch,loadCalendiq]);
 
