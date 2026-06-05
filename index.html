@@ -641,36 +641,67 @@ input,textarea{font-family:inherit; color:inherit}
 .ag-tx span{font-size:12px; color:var(--t3)}
 .ag-day{padding:11px 18px; background:var(--surface-2); font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--t3); border-bottom:1px solid var(--b1)}
 
-/* ----- agenda vue semaine (type Google Calendar) ----- */
-.cal{border:1px solid var(--b1); border-radius:var(--r-panel); overflow-y:auto; overflow-x:hidden; max-height:660px; background:var(--surface); max-width:1040px; box-shadow:var(--sh-card)}
-.cal-head{display:grid; grid-template-columns:60px repeat(5,1fr); border-bottom:1px solid var(--b1); position:sticky; top:0; z-index:2; background:var(--surface)}
-.cal-corner{border-right:1px solid var(--b1)}
-.cal-dh{padding:9px 8px 8px; text-align:center; border-right:1px solid var(--b1); display:flex; flex-direction:column; align-items:center; gap:2px}
-.cal-dh:last-child{border-right:none}
-.cal-dh .dname{font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.12em; color:var(--t3)}
-.cal-dh .dnum{font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; color:var(--t1); width:30px; height:30px; display:grid; place-items:center; border-radius:99px}
-.cal-dh.today .dname{color:var(--accent)}
-.cal-dh.today .dnum{background:var(--accent); color:var(--on-accent)}
-.cal-grid{display:grid; grid-template-columns:60px repeat(5,1fr); position:relative}
-.cal-gutter{border-right:1px solid var(--b1)}
-.cal-hr{position:relative; border-bottom:1px solid var(--b1)}
-.cal-hl{position:absolute; top:-7px; right:7px; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--t3)}
-.cal-hr:first-child .cal-hl{top:4px}
-.cal-col{position:relative; border-right:1px solid var(--b1)}
-.cal-col:last-child{border-right:none}
-.cal-cell{border-bottom:1px solid var(--b1)}
-.cal-ev{position:absolute; left:4px; right:4px; border-radius:8px; padding:5px 8px; text-align:left; overflow:hidden; cursor:pointer; display:flex; flex-direction:column; gap:1px; transition:transform var(--speed), box-shadow var(--speed); border-left:3px solid var(--accent); background:var(--accent-tint); z-index:1}
-.cal-ev:hover{transform:translateY(-1px); box-shadow:var(--sh-lift); z-index:3}
-.cal-ev b{font-size:12px; font-weight:700; color:var(--t1); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.cal-ev-meta{font-size:10px; color:var(--t2)}
-.cal-ev-kind{font-size:10px; color:var(--t3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.cal-ev.k-r1{border-left-color:var(--accent); background:var(--accent-tint)}
-.cal-ev.k-r2{border-left-color:var(--warm); background:rgba(255,155,64,.14)}
-.cal-ev.k-r3{border-left-color:var(--warm); background:rgba(255,155,64,.14)}
-.cal-ev.k-close{border-left-color:var(--ok); background:var(--ok-tint)}
-.cal-ev.k-cpf{border-left-color:var(--accent); background:var(--accent-tint-2)}
-.cal-now{position:absolute; left:0; right:0; height:0; border-top:2px solid var(--accent); z-index:4; pointer-events:none}
-.cal-now span{position:absolute; left:-5px; top:-5px; width:9px; height:9px; border-radius:99px; background:var(--accent)}
+/* ----- agenda CalendIQ ----- */
+.cq-tools{display:flex; align-items:center; gap:10px}
+.cq-banner{font-size:12.5px; font-weight:600; padding:10px 14px; border-radius:10px; margin-bottom:14px}
+.cq-banner.err{background:var(--danger-tint); color:var(--danger)}
+.cq-wrap{flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; padding:8px 26px 24px}
+.cq-hero{flex:1; display:grid; place-items:center; padding:40px 16px}
+.cq-connect{width:100%; max-width:480px; background:var(--surface); border:1px solid var(--b1); border-radius:var(--r-panel); padding:26px 26px 22px; text-align:center; box-shadow:var(--sh-card)}
+.cq-connect.hero{box-shadow:var(--sh-pop)}
+.cq-connect-ic{width:52px; height:52px; border-radius:14px; background:var(--accent-tint); color:var(--accent); display:grid; place-items:center; margin:0 auto 14px}
+.cq-connect-ic svg{width:26px; height:26px}
+.cq-connect h3{font-size:18px; font-weight:800; letter-spacing:-.01em; margin-bottom:6px}
+.cq-connect p{font-size:13px; color:var(--t3); line-height:1.55; margin:0 auto 16px; max-width:380px}
+.cq-connect .ag-input{text-align:center}
+.cq-connect-foot{display:flex; gap:10px; margin-top:14px}
+.cq-connect-foot .btn{flex:1; justify-content:center; padding:11px}
+.cq-manage{background:var(--surface); border:1px solid var(--b1); border-radius:var(--r-panel); padding:16px 18px; margin-bottom:16px; box-shadow:var(--sh-card)}
+.cq-manage-row{display:flex; align-items:center; gap:10px}
+.cq-manage .cq-connect{max-width:none; box-shadow:none; border:none; padding:0; text-align:left}
+.cq-manage .cq-connect-ic, .cq-manage .cq-connect h3{display:none}
+.cq-manage .cq-connect p{margin:0 0 12px; text-align:left}
+.cq-manage .cq-connect .ag-input{text-align:left}
+.cq-manage .cq-connect-foot{justify-content:flex-start}
+.cq-manage .cq-connect-foot .btn{flex:none; padding:10px 18px}
+.cq-frame{display:flex; flex-direction:column; gap:12px}
+.cq-frame-note{display:flex; align-items:center; gap:9px; font-size:12.5px; color:var(--t2); background:var(--surface-2); border:1px solid var(--b1); border-radius:10px; padding:10px 13px}
+.cq-frame-note svg{width:16px; height:16px; color:var(--accent); flex:none}
+.cq-iframe{width:100%; height:calc(100vh - 230px); min-height:520px; border:1px solid var(--b1); border-radius:var(--r-panel); background:var(--surface); box-shadow:var(--sh-card)}
+.cq-agenda{display:flex; flex-direction:column; gap:18px; max-width:780px}
+.cq-closers{display:flex; flex-wrap:wrap; gap:8px}
+.cq-closer-chip{display:inline-flex; align-items:center; gap:8px; padding:7px 12px; border:1px solid var(--b1); border-radius:99px; background:var(--surface); font-size:12.5px; font-weight:700}
+.cq-closer-n{font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; color:var(--accent); background:var(--accent-tint); border-radius:6px; padding:1px 7px}
+.cq-empty{font-size:13px; color:var(--t3); padding:30px 4px; text-align:center; border:1px dashed var(--b2); border-radius:var(--r-panel)}
+.cq-day{display:flex; flex-direction:column; gap:8px}
+.cq-day-h{display:flex; align-items:baseline; gap:10px; font-size:13.5px; font-weight:800; color:var(--t1); text-transform:capitalize; padding-bottom:4px}
+.cq-day-h span{font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; color:var(--t3); text-transform:none}
+.cq-ev{display:flex; align-items:center; gap:14px; padding:12px 14px; border:1px solid var(--b1); border-radius:12px; background:var(--surface); transition:border var(--speed),box-shadow var(--speed),transform var(--speed)}
+.cq-ev.has-lead{cursor:pointer}
+.cq-ev.has-lead:hover{border-color:var(--accent); box-shadow:var(--sh-lift); transform:translateY(-1px)}
+.cq-ev.past{opacity:.55}
+.cq-ev-time{flex:none; width:62px; display:flex; flex-direction:column; line-height:1.2}
+.cq-ev-time b{font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:700; color:var(--accent)}
+.cq-ev-time span{font-size:10.5px; color:var(--t3)}
+.cq-ev-main{flex:1; min-width:0}
+.cq-ev-main b{display:block; font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.cq-ev-main span{display:block; font-size:12px; color:var(--t3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.cq-ev-act{display:flex; align-items:center; gap:7px; flex:none}
+.cq-pill{display:inline-flex; align-items:center; gap:4px; font-size:11.5px; font-weight:700; padding:6px 10px; border-radius:8px; border:1px solid var(--b1); background:var(--surface-2); color:var(--t2); text-decoration:none; cursor:pointer; white-space:nowrap}
+.cq-pill svg{width:13px; height:13px}
+.cq-pill.lead{color:var(--accent); border-color:var(--accent); background:var(--accent-tint)}
+.cq-pill.ghost{color:var(--t4); cursor:default}
+a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
+/* RDV CalendIQ sur la fiche + badge carte */
+.cq-rdv{display:flex; align-items:center; gap:11px; padding:10px 12px; border:1px solid var(--b1); border-radius:11px; background:var(--accent-tint)}
+.cq-rdv.past{background:var(--surface-2); opacity:.7}
+.cq-rdv-ic{width:34px; height:34px; flex:none; border-radius:9px; background:var(--surface); display:grid; place-items:center; color:var(--accent)}
+.cq-rdv-ic svg{width:17px; height:17px}
+.cq-rdv-tx{flex:1; min-width:0}
+.cq-rdv-tx b{display:block; font-size:13.5px; font-weight:700; text-transform:capitalize}
+.cq-rdv-tx span{display:block; font-size:11.5px; color:var(--t3)}
+.card-rdv{display:inline-flex; align-items:center; gap:5px; margin-top:8px; font-size:11px; font-weight:700; color:var(--accent); background:var(--accent-tint); border-radius:7px; padding:3px 8px}
+.card-rdv svg{width:12px; height:12px}
 
 /* admission */
 .adm-list{display:flex; flex-direction:column; gap:14px; max-width:980px}
@@ -849,6 +880,63 @@ const SUPABASE_ANON = 'sb_publishable_QvLoHEJ5XpH16YKA8JJgUg_a3ys4GM4';
 const SB = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 // charge l'état CRM de l'utilisateur (crée la ligne avec les données de démo au 1er login)
 const DEV_ID = 'dev-local'; // mode developer : bypass login, lit quand même Supabase
+
+/* ====================== CALENDIQ (agenda externe, par closer) ======================
+   CalendIQ est une app indépendante (Lovable + Supabase). Chaque closer = un « organizer »
+   identifié par un slug public (…/cal/<slug>). On lit son agenda en LECTURE SEULE via la
+   clé anon publique de CalendIQ (présente dans son bundle). L'écriture (prise / replanif /
+   annulation / dispos) se fait dans le dashboard CalendIQ embarqué en iframe. */
+const CALENDIQ = {
+  app:'https://calendiq.lovable.app',
+  api:'https://bmqzavwqbvxxdhgvsxms.supabase.co',
+  anon:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJtcXphdndxYnZ4eGRoZ3ZzeG1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyNzEzNTYsImV4cCI6MjA4Njg0NzM1Nn0.sApN8hlehCw9zYOQaiAJ7iVtCSjEtIRHot6mxci-qo8'
+};
+async function cqGet(path){
+  const r = await fetch(CALENDIQ.api+'/rest/v1/'+path, { headers:{ apikey:CALENDIQ.anon, Authorization:'Bearer '+CALENDIQ.anon } });
+  if(!r.ok) throw new Error('CalendIQ '+r.status);
+  return r.json();
+}
+// extrait le slug d'un lien public CalendIQ (…/cal/<slug>) ou accepte un slug brut
+function cqParseSlug(input){
+  let s=(input||'').trim();
+  if(!s) return '';
+  if(s.indexOf('/cal/')>=0){ s=s.split('/cal/')[1]; }
+  else if(/^https?:\/\//i.test(s) || s.indexOf('calendiq')>=0){
+    try{ const u=new URL(s.startsWith('http')?s:'https://'+s); const parts=u.pathname.split('/').filter(Boolean); s=parts[parts.length-1]||''; }catch(e){}
+  }
+  s=s.split('?')[0].split('#')[0].split('/')[0];
+  try{ s=decodeURIComponent(s); }catch(e){}
+  return s.trim().toLowerCase();
+}
+// slug -> profil organisateur CalendIQ ({id, full_name, slug, timezone, avatar_url})
+async function cqResolveSlug(slug){
+  if(!slug) return null;
+  const rows=await cqGet('profiles?slug=eq.'+encodeURIComponent(slug)+'&select=id,full_name,slug,timezone,avatar_url&limit=1');
+  return (rows&&rows[0])||null;
+}
+// rendez-vous d'un organisateur (lecture seule, triés)
+async function cqMeetingsFor(organizerId){
+  if(!organizerId) return [];
+  const cols='id,title,start_at,duration_minutes,booker_name,booker_email,booker_phone,status,meet_link,payment_status';
+  return cqGet('meetings?organizer_id=eq.'+encodeURIComponent(organizerId)+'&select='+cols+'&order=start_at.asc');
+}
+// helpers d'affichage agenda
+function cqDayKey(iso){ const d=new Date(iso); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function cqSameDay(a,b){ return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate(); }
+function cqDayLabel(iso){
+  const d=new Date(iso), now=new Date(), tom=new Date(); tom.setDate(now.getDate()+1);
+  if(cqSameDay(d,now)) return "Aujourd'hui";
+  if(cqSameDay(d,tom)) return 'Demain';
+  return d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+}
+function cqTime(iso){ try{ return new Date(iso).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+// téléphone -> 9 derniers chiffres (matche +33 6… et 06…)
+function cqPhoneKey(p){ const d=(p||'').replace(/\D/g,''); return d.length>=9?d.slice(-9):''; }
+function cqGroupByDay(list){
+  const g=[], idx={};
+  list.forEach(m=>{ const k=cqDayKey(m.start_at); if(idx[k]===undefined){ idx[k]=g.length; g.push({key:k,label:cqDayLabel(m.start_at),items:[]}); } g[idx[k]].items.push(m); });
+  return g;
+}
 
 // pipeline : la DB stocke directement la clé de colonne (fallback null -> 'contacter')
 const COL_DB2UI = c => c || 'contacter';
@@ -1166,6 +1254,24 @@ function RdvField({ lead, onSet }){
   );
 }
 
+/* RDV synchronisé depuis CalendIQ (lecture seule) — affiché sur la fiche si un RDV matche le lead */
+function CqRdvField({ rdv }){
+  const past = new Date(rdv.start_at).getTime() < Date.now();
+  return (
+    <div className="field">
+      <span className="eyebrow">RDV CalendIQ</span>
+      <div className={'cq-rdv'+(past?' past':'')}>
+        <span className="cq-rdv-ic">{I.agenda({})}</span>
+        <div className="cq-rdv-tx">
+          <b>{cqDayLabel(rdv.start_at)} · {cqTime(rdv.start_at)}</b>
+          <span>{rdv.title||'Rendez-vous'} · {rdv.duration_minutes||30} min{past?' · passé':''}</span>
+        </div>
+        {rdv.meet_link && <a className="cq-pill" href={rdv.meet_link} target="_blank" rel="noreferrer" title="Ouvrir le lien visio">{I.video({})}Meet</a>}
+      </div>
+    </div>
+  );
+}
+
 /* ============================================================= LEAD CARD */
 const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDragEnd, dragging, onCardDragOver, dropPos, onDelete}){
   const col = lead.column;
@@ -1199,6 +1305,9 @@ const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDrag
         </div>
       </div>
       {actionEl}
+      {lead.calendiqRdv && new Date(lead.calendiqRdv.start_at).getTime()>=Date.now()-3600000 && (
+        <div className="card-rdv">{I.agenda({})}<span>{cqDayLabel(lead.calendiqRdv.start_at)} · {cqTime(lead.calendiqRdv.start_at)}</span></div>
+      )}
     </div>
   );
 });
@@ -1373,6 +1482,7 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
                 <div className="val" style={{fontWeight:700}}>{si.label}</div>
               </div>
               <RdvField lead={lead} onSet={onSetRdv}/>
+              {lead.calendiqRdv && <CqRdvField rdv={lead.calendiqRdv}/>}
               <div className="field">
                 <span className="eyebrow">Action</span>
                 <div className={`action-row ${actionDone?'done':''}`}>
@@ -1843,81 +1953,131 @@ function Recherche({leads, onOpen}){
 }
 
 /* ============================================================= AGENDA */
-/* ============================================================= AGENDA (vue semaine) */
-const CAL_DAYS = [
-  {d:'LUN', n:2, today:true},
-  {d:'MAR', n:3},
-  {d:'MER', n:4},
-  {d:'JEU', n:5},
-  {d:'VEN', n:6},
-];
-const CAL_H0 = 8, CAL_H1 = 20, CAL_PXH = 56; // 08:00 -> 20:00, 56px/heure
-const CAL_HOURS = Array.from({length:CAL_H1-CAL_H0}, (_,i)=>CAL_H0+i);
-const toMin = (t)=>{ const [h,m]=t.split(':').map(Number); return h*60+m; };
-const CAL_EVENTS = [
-  {day:0, start:'09:00', end:'10:00', lead:'karim',  title:'R1 — Karim Benali',   kind:'r1'},
-  {day:0, start:'14:00', end:'15:00', lead:'mehdi',  title:'R2 — Mehdi Ouattara', kind:'r2'},
-  {day:0, start:'16:30', end:'17:00', lead:'etienne',title:'Admission CPF',       kind:'cpf'},
-  {day:1, start:'10:00', end:'11:00', lead:'manon',  title:'R1 — Manon Lopez',    kind:'r1'},
-  {day:1, start:'11:30', end:'12:30', lead:'sophie', title:'R1 — Sophie Marchand',kind:'r1'},
-  {day:2, start:'15:00', end:'16:00', lead:'thomas', title:'R3 — Thomas Girard',  kind:'r3'},
-  {day:3, start:'09:30', end:'10:30', lead:'ines',   title:'R2 — Inès Lefèvre',   kind:'r2'},
-  {day:3, start:'16:00', end:'17:00', lead:'lucas',  title:'Close — Lucas Perret',kind:'close'},
-  {day:4, start:'11:00', end:'12:00', lead:'awa',    title:'R3 — Awa Diallo',     kind:'r3'},
-];
-const KIND_LABEL = {r1:'Diagnostic R1', r2:'Transformation R2', r3:'Closing R3', close:'Encaissement', cpf:'Admission CPF'};
+/* formulaire de connexion : le closer colle son lien public CalendIQ */
+function CalendiqConnect({ onConnect, onCancel, hero }){
+  const [v,setV]=useState(''); const [busy,setBusy]=useState(false); const [err,setErr]=useState(null);
+  const go=async()=>{ if(!v.trim()||busy) return; setBusy(true); setErr(null);
+    try{ await onConnect(v); setV(''); if(onCancel) onCancel(); }
+    catch(e){ setErr(e.message||'Connexion impossible'); } finally{ setBusy(false); } };
+  return (
+    <div className={'cq-connect'+(hero?' hero':'')}>
+      <div className="cq-connect-ic">{I.calPlus({})}</div>
+      <h3>Connecte ton CalendIQ</h3>
+      <p>Colle ton lien public CalendIQ. Tes rendez-vous remontent automatiquement dans le CRM, rattachés à tes leads.</p>
+      <input className="ag-input" placeholder="https://calendiq.lovable.app/cal/ton-nom" value={v} autoFocus
+        onChange={e=>setV(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') go(); }}/>
+      {err && <div className="rdv-err">{err}</div>}
+      <div className="cq-connect-foot">
+        <button className="btn btn-accent" disabled={busy||!v.trim()} onClick={go}>{busy?'Connexion…':'Connecter'}</button>
+        {onCancel && <button className="btn btn-ghost" onClick={onCancel}>Annuler</button>}
+      </div>
+    </div>
+  );
+}
+/* une ligne de rendez-vous CalendIQ — cliquable vers la fiche du lead si matché */
+function CqMeetingRow({ m, isAdmin, onOpenLead, meetingLeadId }){
+  const leadId = meetingLeadId ? meetingLeadId(m) : null;
+  const past = new Date(m.start_at).getTime() < Date.now();
+  const open=()=>{ if(leadId) onOpenLead(leadId); };
+  return (
+    <div className={'cq-ev'+(past?' past':'')+(leadId?' has-lead':'')} onClick={open} role={leadId?'button':undefined} tabIndex={leadId?0:undefined}
+      onKeyDown={e=>{ if(leadId&&(e.key==='Enter'||e.key===' ')){ e.preventDefault(); open(); } }}>
+      <div className="cq-ev-time"><b>{cqTime(m.start_at)}</b><span>{m.duration_minutes||30} min</span></div>
+      <div className="cq-ev-main">
+        <b>{m.booker_name||'Sans nom'}</b>
+        <span>{m.title||'Rendez-vous'}{isAdmin&&m._closerName?(' · '+m._closerName):''}</span>
+      </div>
+      <div className="cq-ev-act" onClick={e=>e.stopPropagation()}>
+        {m.meet_link && <a className="cq-pill" href={m.meet_link} target="_blank" rel="noreferrer" title="Ouvrir le lien visio">{I.video({})}Meet</a>}
+        {leadId ? <span className="cq-pill lead">Fiche{I.arrowR({})}</span> : <span className="cq-pill ghost" title="Aucun lead CRM correspondant">Hors CRM</span>}
+      </div>
+    </div>
+  );
+}
 
-function Agenda({leads, onOpen}){
-  const NOW_DAY = 0, NOW_MIN = toMin('13:10'); // indicateur "maintenant" (lundi)
+function Agenda({ meetings, sources, loading, error, isAdmin, profile, onConnect, onDisconnect, onRefresh, onOpenLead, meetingLeadId }){
+  const connected = !!(sources && sources.length);
+  const ownConnected = !!(profile && profile.calendiq_organizer_id);
+  const [tab,setTab]=useState('rdv');   // 'rdv' = liste CRM | 'cal' = dashboard CalendIQ (closer)
+  const [manage,setManage]=useState(false);
+  const now=Date.now();
+  const upcoming = meetings.filter(m=>m.status==='confirmed' && new Date(m.start_at).getTime()>=now-3600000)
+                           .sort((a,b)=>new Date(a.start_at)-new Date(b.start_at));
+  const days = cqGroupByDay(upcoming);
+  const sub = isAdmin
+    ? ('Agenda de l’équipe · '+sources.length+' closer'+(sources.length>1?'s':'')+' connecté'+(sources.length>1?'s':''))
+    : (ownConnected ? 'Tes rendez-vous CalendIQ' : 'Connecte ton agenda CalendIQ');
+
   return (
     <>
       <div className="screen-head">
-        <div className="screen-title"><h1>Agenda</h1><p>Semaine du 2 au 6 juin · tes RDV closing</p></div>
-        <div className="head-tools">
-          <div className="seg"><button className="on">Semaine</button></div>
+        <div className="screen-title"><h1>Agenda</h1><p>{sub}</p></div>
+        <div className="head-tools cq-tools">
+          {connected && !isAdmin && (
+            <div className="seg">
+              <button className={tab==='rdv'?'on':''} onClick={()=>setTab('rdv')}>Mes RDV</button>
+              <button className={tab==='cal'?'on':''} onClick={()=>setTab('cal')}>CalendIQ</button>
+            </div>
+          )}
+          {connected && <button className="btn btn-soft" onClick={onRefresh} disabled={loading}>{loading?'…':'Rafraîchir'}</button>}
+          {ownConnected && <button className="icon-btn" title="Gérer la connexion CalendIQ" onClick={()=>setManage(m=>!m)}>{I.gear({})}</button>}
         </div>
       </div>
-      <div className="fiche">
-        <div className="cal">
-          <div className="cal-head">
-            <div className="cal-corner"></div>
-            {CAL_DAYS.map((d,i)=>(
-              <div className={`cal-dh ${d.today?'today':''}`} key={i}>
-                <span className="dname">{d.d}</span>
-                <span className="dnum">{d.n}</span>
-              </div>
-            ))}
+
+      <div className="cq-wrap">
+      {error && <div className="cq-banner err">CalendIQ indisponible : {error}</div>}
+
+      {manage && ownConnected && (
+        <div className="cq-manage">
+          <div className="cq-manage-row">
+            <span className="ag-dot"></span>
+            <div className="ag-meta"><b>{profile.calendiq_name||profile.calendiq_slug}</b><span>{CALENDIQ.app+'/cal/'+profile.calendiq_slug}</span></div>
+            <button className="btn btn-ghost" onClick={async()=>{ await onDisconnect(); setManage(false); }}>Déconnecter</button>
           </div>
-          <div className="cal-grid">
-            <div className="cal-gutter">
-              {CAL_HOURS.map(h=>(
-                <div className="cal-hr" key={h} style={{height:CAL_PXH}}>
-                  <span className="cal-hl">{String(h).padStart(2,'0')}:00</span>
-                </div>
-              ))}
-            </div>
-            {CAL_DAYS.map((d,di)=>(
-              <div className="cal-col" key={di}>
-                {CAL_HOURS.map(h=><div className="cal-cell" key={h} style={{height:CAL_PXH}}></div>)}
-                {di===NOW_DAY && (
-                  <div className="cal-now" style={{top:((NOW_MIN-CAL_H0*60)/60)*CAL_PXH}}><span></span></div>
-                )}
-                {CAL_EVENTS.filter(e=>e.day===di).map((e,j)=>{
-                  const top=((toMin(e.start)-CAL_H0*60)/60)*CAL_PXH;
-                  const h=Math.max(28,((toMin(e.end)-toMin(e.start))/60)*CAL_PXH);
-                  return (
-                    <button className={`cal-ev k-${e.kind}`} key={j} style={{top:top, height:h-4}}
-                      onClick={()=>e.lead && onOpen(e.lead)}>
-                      <b>{e.title}</b>
-                      <span className="cal-ev-meta mono">{e.start}–{e.end}</span>
-                      <span className="cal-ev-kind">{KIND_LABEL[e.kind]}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
+          <div className="ag-sep"></div>
+          <CalendiqConnect onConnect={onConnect} onCancel={()=>setManage(false)}/>
         </div>
+      )}
+
+      {/* pas encore connecté */}
+      {!connected && !isAdmin && !manage && (
+        <div className="cq-hero"><CalendiqConnect onConnect={onConnect} hero/></div>
+      )}
+      {!connected && isAdmin && (
+        <div className="empty-screen"><I.agenda/><p>Aucun closer n’a connecté son CalendIQ.</p>
+          <span style={{fontSize:13,color:'var(--t3)',maxWidth:400,textAlign:'center',lineHeight:1.5}}>Chaque closer connecte son agenda depuis son onglet Agenda. Leurs rendez-vous s’afficheront ici, agrégés et reliés aux leads.</span></div>
+      )}
+
+      {/* connecté · closer · dashboard CalendIQ embarqué */}
+      {connected && !isAdmin && tab==='cal' && (
+        <div className="cq-frame">
+          <div className="cq-frame-note">{I.spark({})}<span>Gère tes créneaux, replanifie ou annule directement ici. Première fois ? Connecte-toi à CalendIQ dans le cadre — une seule fois.</span></div>
+          <iframe className="cq-iframe" src={CALENDIQ.app+'/dashboard'} title="CalendIQ" allow="clipboard-read; clipboard-write"></iframe>
+        </div>
+      )}
+
+      {/* connecté · liste des RDV (closer onglet RDV + admin agrégé) */}
+      {connected && (isAdmin || tab==='rdv') && (
+        <div className="cq-agenda">
+          {isAdmin && (
+            <div className="cq-closers">
+              {sources.map(s=>{ const n=upcoming.filter(m=>m._closerId===s.id).length; return (
+                <div className="cq-closer-chip" key={s.id}><span className="ag-dot"></span><b>{s.name}</b><span className="cq-closer-n">{n}</span></div>
+              ); })}
+            </div>
+          )}
+          {loading && !meetings.length ? <div className="cq-empty">Chargement de l’agenda…</div>
+            : days.length===0 ? <div className="cq-empty">Aucun rendez-vous à venir.</div>
+            : days.map(d=>(
+              <div className="cq-day" key={d.key}>
+                <div className="cq-day-h">{d.label}<span>{d.items.length} RDV</span></div>
+                {d.items.map(m=>(
+                  <CqMeetingRow key={m.id} m={m} isAdmin={isAdmin} onOpenLead={onOpenLead} meetingLeadId={meetingLeadId}/>
+                ))}
+              </div>
+            ))}
+        </div>
+      )}
       </div>
     </>
   );
@@ -2018,7 +2178,7 @@ function App({session, onLogout}){
   const userId = session.user.id;
   const isDev = userId===DEV_ID;
   const [profile,setProfile]=useState(isDev?{role:'admin',name:'Manager (dev)'}:null);
-  useEffect(()=>{ if(isDev) return; let alive=true; SB.from('profiles').select('role,name').eq('id',userId).single().then(({data})=>{ if(alive&&data) setProfile(data); }); return ()=>{alive=false;}; },[userId,isDev]);
+  useEffect(()=>{ if(isDev) return; let alive=true; SB.from('profiles').select('role,name,calendiq_slug,calendiq_organizer_id,calendiq_name').eq('id',userId).single().then(({data})=>{ if(alive&&data) setProfile(data); }); return ()=>{alive=false;}; },[userId,isDev]);
   const isAdmin = (profile?.role||'closer')==='admin';
   const [leads,setLeads]=useState([]);
   const [loaded,setLoaded]=useState(false);
@@ -2065,7 +2225,83 @@ function App({session, onLogout}){
   useEffect(()=>{ const h=(e)=>{ if((e.metaKey||e.ctrlKey)&&(e.key==='z'||e.key==='Z')){ const tg=e.target; if(tg&&(tg.tagName==='INPUT'||tg.tagName==='TEXTAREA'||tg.isContentEditable)) return; e.preventDefault(); runUndo(); } }; window.addEventListener('keydown',h); return ()=>window.removeEventListener('keydown',h); },[runUndo]);
 
   const patch=useCallback((id,fn)=>setLeads(ls=>ls.map(l=>l.id===id?{...l,...(typeof fn==='function'?fn(l):fn)}:l)),[]);
-  const sel = leads.find(l=>l.id===selId);
+
+  /* ---------- CalendIQ : agendas externes des closers ---------- */
+  const [cqMeetings,setCqMeetings]=useState([]);   // RDV (closer = les siens ; admin = tous, agrégés)
+  const [cqSources,setCqSources]=useState([]);     // [{id,name,organizer,slug}]
+  const [cqLoading,setCqLoading]=useState(false);
+  const [cqError,setCqError]=useState(null);
+  const loadCalendiq=useCallback(async()=>{
+    let sources=[];
+    try{
+      if(isAdmin){
+        const { data } = await SB.from('profiles').select('id,name,calendiq_name,calendiq_slug,calendiq_organizer_id').not('calendiq_organizer_id','is',null);
+        sources=(data||[]).map(p=>({ id:p.id, name:p.name||p.calendiq_name||'Closer', organizer:p.calendiq_organizer_id, slug:p.calendiq_slug }));
+      } else if(profile && profile.calendiq_organizer_id){
+        sources=[{ id:userId, name:profile.name||profile.calendiq_name||'Moi', organizer:profile.calendiq_organizer_id, slug:profile.calendiq_slug }];
+      }
+    }catch(e){ /* admin sans droit / réseau : on retombe sur vide */ }
+    setCqSources(sources);
+    if(!sources.length){ setCqMeetings([]); setCqError(null); return; }
+    setCqLoading(true);
+    try{
+      const arrs=await Promise.all(sources.map(s=>cqMeetingsFor(s.organizer).then(ms=>(ms||[]).map(m=>({...m,_closerName:s.name,_closerId:s.id}))).catch(()=>[])));
+      setCqMeetings(arrs.flat()); setCqError(null);
+    }catch(e){ setCqError(e.message||'lecture impossible'); }
+    finally{ setCqLoading(false); }
+  },[isAdmin,profile,userId]);
+  useEffect(()=>{ loadCalendiq(); },[loadCalendiq]);
+  // rafraîchit l'agenda tant qu'on le regarde (RDV pris/déplacés dans CalendIQ)
+  useEffect(()=>{ if(screen!=='agenda') return; const t=setInterval(loadCalendiq,90000); return ()=>clearInterval(t); },[screen,loadCalendiq]);
+
+  const connectCalendiq=useCallback(async(input)=>{
+    const slug=cqParseSlug(input);
+    if(!slug) throw new Error('Colle ton lien CalendIQ (…/cal/ton-nom)');
+    const org=await cqResolveSlug(slug);
+    if(!org) throw new Error('Agenda introuvable pour « '+slug+' »');
+    const p={ calendiq_slug:org.slug, calendiq_organizer_id:org.id, calendiq_name:org.full_name||null, calendiq_connected_at:new Date().toISOString() };
+    const { error }=await SB.from('profiles').update(p).eq('id',userId);
+    if(error) throw new Error(error.message||'Sauvegarde impossible');
+    setProfile(prev=>({ ...(prev||{}), ...p }));
+    toast('CalendIQ connecté', org.full_name||org.slug, 'ok');
+    return org;
+  },[userId,toast]);
+  const disconnectCalendiq=useCallback(async()=>{
+    const p={ calendiq_slug:null, calendiq_organizer_id:null, calendiq_name:null, calendiq_connected_at:null };
+    const { error }=await SB.from('profiles').update(p).eq('id',userId);
+    if(error){ toast('Déconnexion impossible', error.message, 'info'); return; }
+    setProfile(prev=>({ ...(prev||{}), ...p }));
+    setCqMeetings([]); setCqSources([]);
+    toast('CalendIQ déconnecté',null,'info');
+  },[userId,toast]);
+
+  // index leads par email/téléphone -> id (pour relier un RDV CalendIQ à sa fiche)
+  const leadIndex=useMemo(()=>{
+    const em=new Map(), ph=new Map();
+    for(const l of leads){ const e=(l.email||'').trim().toLowerCase(); if(e&&!em.has(e)) em.set(e,l.id); const k=cqPhoneKey(l.tel); if(k&&!ph.has(k)) ph.set(k,l.id); }
+    return { em, ph };
+  },[leads]);
+  const meetingLeadId=useCallback((m)=>{ const e=(m.booker_email||'').trim().toLowerCase(); if(e&&leadIndex.em.has(e)) return leadIndex.em.get(e); const k=cqPhoneKey(m.booker_phone); if(k&&leadIndex.ph.has(k)) return leadIndex.ph.get(k); return null; },[leadIndex]);
+
+  // leads enrichis du prochain RDV CalendIQ (par email/tél) — sans toucher la DB
+  const leadsCq=useMemo(()=>{
+    if(!cqMeetings.length) return leads;
+    const tnow=Date.now();
+    const emM=new Map(), phM=new Map();
+    for(const m of cqMeetings){ if(m.status!=='confirmed') continue;
+      const e=(m.booker_email||'').trim().toLowerCase(); if(e){ if(!emM.has(e)) emM.set(e,[]); emM.get(e).push(m); }
+      const k=cqPhoneKey(m.booker_phone); if(k){ if(!phM.has(k)) phM.set(k,[]); phM.get(k).push(m); }
+    }
+    const pick=arr=>{ const up=arr.filter(m=>new Date(m.start_at).getTime()>=tnow-3600000).sort((a,b)=>new Date(a.start_at)-new Date(b.start_at)); if(up.length) return up[0]; return arr.slice().sort((a,b)=>new Date(b.start_at)-new Date(a.start_at))[0]; };
+    return leads.map(l=>{
+      let cand=[]; const e=(l.email||'').trim().toLowerCase(); if(e&&emM.has(e)) cand=cand.concat(emM.get(e));
+      const k=cqPhoneKey(l.tel); if(k&&phM.has(k)) cand=cand.concat(phM.get(k));
+      if(!cand.length) return l;
+      const seen=new Set(); cand=cand.filter(m=>seen.has(m.id)?false:(seen.add(m.id),true));
+      return { ...l, calendiqRdv:pick(cand) };
+    });
+  },[leads,cqMeetings]);
+  const sel = leadsCq.find(l=>l.id===selId);
 
   // (faux lead entrant de démo désactivé — on n'affiche que la vraie donnée)
 
@@ -2231,12 +2467,14 @@ function App({session, onLogout}){
 
       {/* WORK */}
       <main className="work">
-        {screen==='leads' && <Board leads={leads} search={search} setSearch={setSearch}
+        {screen==='leads' && <Board leads={leadsCq} search={search} setSearch={setSearch}
             onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col)=>setAddTarget(col)} onDelete={deleteLead}/>}
         {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen('leads')} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
             onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions} onClaim={claimLead} meId={session.user.id} onSetRdv={setRdv}/>}
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen('leads')}>Retour au board</button></div>}
-        {screen==='agenda' && <Agenda leads={leads} onOpen={openLead}/>}
+        {screen==='agenda' && <Agenda meetings={cqMeetings} sources={cqSources} loading={cqLoading} error={cqError}
+            isAdmin={isAdmin} profile={profile} onConnect={connectCalendiq} onDisconnect={disconnectCalendiq}
+            onRefresh={loadCalendiq} onOpenLead={openLead} meetingLeadId={meetingLeadId}/>}
         {screen==='team' && isAdmin && <TeamScreen userId={userId} toast={toast}/>}
       </main>
 
