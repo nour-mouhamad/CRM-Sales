@@ -695,6 +695,7 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 /* RDV CalendIQ sur la fiche + badge carte */
 .cq-rdv{display:flex; align-items:center; gap:11px; padding:10px 12px; border:1px solid var(--b1); border-radius:11px; background:var(--accent-tint)}
 .cq-rdv.past{background:var(--surface-2); opacity:.7}
+.cq-rdv.empty{background:var(--surface-2); color:var(--t3); font-weight:600; font-size:13px}
 .cq-rdv-ic{width:34px; height:34px; flex:none; border-radius:9px; background:var(--surface); display:grid; place-items:center; color:var(--accent)}
 .cq-rdv-ic svg{width:17px; height:17px}
 .cq-rdv-tx{flex:1; min-width:0}
@@ -1435,15 +1436,23 @@ function AddRdvModal({ lead, initial, organizerId, onClose, onAdd }){
 }
 
 /* RDV synchronisé depuis CalendIQ — affiché sur la fiche ; modif/annulation passent par CalendIQ */
-function CqRdvField({ rdv, onModify, onCancel }){
+function CqRdvField({ rdv, type, onModify, onCancel }){
+  if(!rdv){
+    return (
+      <div className="field">
+        <span className="eyebrow">Rendez-vous</span>
+        <div className="cq-rdv empty">Pas de rendez-vous</div>
+      </div>
+    );
+  }
   const past = new Date(rdv.start_at).getTime() < Date.now();
   return (
     <div className="field">
-      <span className="eyebrow">RDV CalendIQ</span>
+      <span className="eyebrow">Rendez-vous</span>
       <div className={'cq-rdv'+(past?' past':'')}>
         <span className="cq-rdv-ic">{I.agenda({})}</span>
         <div className="cq-rdv-tx">
-          <b>{cqDayLabel(rdv.start_at)} · {cqTime(rdv.start_at)}</b>
+          <b>{type?(type.toUpperCase()+' · '):''}{cqDayLabel(rdv.start_at)} · {cqTime(rdv.start_at)}</b>
           <span>{rdv.title||'Rendez-vous'} · {rdv.duration_minutes||30} min{past?' · passé':''}</span>
         </div>
         {rdv.meet_link && <a className="cq-pill lead" href={rdv.meet_link} target="_blank" rel="noreferrer" title="Rejoindre le Google Meet">{I.video({})}Rejoindre</a>}
@@ -1673,7 +1682,7 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
                 <span className="eyebrow">Source du lead</span>
                 <div className="val" style={{fontWeight:700}}>{si.label}</div>
               </div>
-              {lead.calendiqRdv && <CqRdvField rdv={lead.calendiqRdv} onModify={calendiqReady?openEditRdv:null} onCancel={calendiqReady?(rdv=>{ if(window.confirm('Annuler ce RDV dans CalendIQ ? Le créneau Google + l’email d’annulation seront gérés par CalendIQ.')) onCancelRdv(rdv.id); }):null}/>}
+              <CqRdvField rdv={lead.calendiqRdv} type={lead.rdvType} onModify={calendiqReady?openEditRdv:null} onCancel={calendiqReady?(rdv=>{ if(window.confirm('Annuler ce RDV dans CalendIQ ? Le créneau Google + l’email d’annulation seront gérés par CalendIQ.')) onCancelRdv(rdv.id); }):null}/>
               <div className="field">
                 <span className="eyebrow">Action</span>
                 <div className={`action-row ${actionDone?'done':''}`}>
