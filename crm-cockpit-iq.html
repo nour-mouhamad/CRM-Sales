@@ -986,16 +986,16 @@ async function cqUpdateMeeting(id, patch){
 // Renvoie { id, meet_link }. Les étapes Google/email sont best-effort (si l'organizer n'a pas connecté Google, pas de Meet).
 async function cqBookMeeting(organizerId, m){
   const row=await cqCreateMeeting(organizerId, m);
-  let meetLink=null;
+  let meetLink=null, meetError=null;
   try{
     const res=await cqInvoke('google-calendar-create-event', { organizer_id:organizerId, meeting_id:row.id, title:m.title, description:m.description||null, start_at:m.start_at, duration_minutes:m.duration_minutes, attendee_email:m.booker_email||null, organizer_timezone:m.booker_timezone||'Europe/Paris' });
     meetLink=(res&&res.meetLink)||null;
-    if(meetLink) await cqUpdateMeeting(row.id, { meet_link:meetLink });
-  }catch(e){ console.warn('GCal create-event', e); }
+    cqUpdateMeeting(row.id, { meet_link:meetLink }).catch(()=>{}); // best-effort (l'UPDATE anon est souvent bloqué par RLS CalendIQ ; le lien est stocké côté CRM)
+  }catch(e){ meetError=e.message||'Meet non généré'; console.warn('GCal create-event', e); }
   if(m.booker_email){
     cqInvoke('send-booking-emails', { organizer_id:organizerId, booker_name:m.booker_name||'', booker_email:m.booker_email, title:m.title, description:m.description||null, start_at:m.start_at, duration_minutes:m.duration_minutes, total_cost:0, participant_count:1, meet_link:meetLink, booker_timezone:m.booker_timezone||'Europe/Paris', organizer_timezone:m.booker_timezone||'Europe/Paris' }).catch(()=>{});
   }
-  return { id:row.id, meet_link:meetLink };
+  return { id:row.id, meet_link:meetLink, meetError };
 }
 // helpers d'affichage agenda
 function cqDayKey(iso){ const d=new Date(iso); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
@@ -1033,7 +1033,7 @@ function dbToLead(r, acts){
     nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, extraActions:Array.isArray(r.extra_actions)?r.extra_actions:[], live:false, noShow:false,
     offer:r.montant||0, paid:r.statut_paiement==='paye',
     cpf:r.cpf_dispo||0, metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'',
-    rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, hubspot_deal_id:r.hubspot_deal_id||null,
+    rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, rdvMeetLink:r.rdv_meet_link||null, hubspot_deal_id:r.hubspot_deal_id||null,
     timeline:(acts||[]).map(a=>({id:a.id, type:a.type, when:fmtWhen(a.created_at), title:a.titre||'', text:a.contenu||'', paid:a.type==='paiement'}))
   };
 }
@@ -1067,6 +1067,7 @@ async function saveLead(id, uiPatch){
   if('cpf' in uiPatch) m.cpf_dispo=uiPatch.cpf;
   if('rdv_at' in uiPatch) m.rdv_at=uiPatch.rdv_at;
   if('rdvType' in uiPatch) m.rdv_type=uiPatch.rdvType;
+  if('rdvMeetLink' in uiPatch) m.rdv_meet_link=uiPatch.rdvMeetLink;
   try{ if(Object.keys(m).length) await SB.from('leads').update(m).eq('id',id); }catch(e){ console.warn('saveLead',e); }
 }
 
@@ -2450,7 +2451,9 @@ function App({session, onLogout}){
       const k=cqPhoneKey(l.tel); if(k&&phM.has(k)) cand=cand.concat(phM.get(k));
       if(!cand.length) return l;
       const seen=new Set(); cand=cand.filter(m=>seen.has(m.id)?false:(seen.add(m.id),true));
-      return { ...l, calendiqRdv:pick(cand) };
+      const m=pick(cand);
+      // le lien Meet vit dans crm-sales (l'UPDATE anon sur la base CalendIQ est bloqué par leur RLS)
+      return { ...l, calendiqRdv:{ ...m, meet_link: m.meet_link || l.rdvMeetLink || null } };
     });
   },[leads,cqMeetings]);
   const sel = leadsCq.find(l=>l.id===selId);
@@ -2556,8 +2559,9 @@ function App({session, onLogout}){
     // 2) reprogrammation : annule l'ancien RDV via CalendIQ (supprime event Google + email d'annulation)
     if(replaceMeetingId){ try{ await cqInvoke('cancel-meeting',{ meeting_id:replaceMeetingId }); }catch(e){ console.warn('cancel old',e); } setCqMeetings(ms=>ms.filter(m=>m.id!==replaceMeetingId)); }
     const claim = type==='r1' && !sel.owner && !isAdmin;
-    const p={ rdv_at:startIso, rdvType:type, ...(claim?{owner:userId}:{}) };
-    // reflet immédiat du RDV (avec le lien Meet s'il a été créé) sur la fiche, sans attendre le refetch
+    // le lien Meet est stocké dans crm-sales (rdvMeetLink) car l'UPDATE anon sur la base CalendIQ est bloqué
+    const p={ rdv_at:startIso, rdvType:type, rdvMeetLink:booked.meet_link||null, ...(claim?{owner:userId}:{}) };
+    // reflet immédiat du RDV (avec le lien Meet) sur la fiche, sans attendre le refetch
     patch(sel.id,prev=>({ ...p, calendiqRdv:{ id:booked.id, title:'IQ Project × '+(sel.prenom||name), start_at:startIso, duration_minutes:durationMin, status:'confirmed', meet_link:booked.meet_link||null } }));
     saveLead(sel.id,p);
     const verb=replaceMeetingId?'reprogrammé':'calé';
@@ -2565,7 +2569,8 @@ function App({session, onLogout}){
     const actP=addActivite(sel.id,'rdv',title,null);
     patch(sel.id,prev=>({timeline:[{type:'rdv',when:'à l’instant',title,text:''},...prev.timeline]}));
     loadCalendiq();
-    toast(claim?((type).toUpperCase()+' calé — lead approprié'):((type||'r1').toUpperCase()+' '+verb+(booked.meet_link?' + Meet':'')), fmtRdv(startIso),'ok');
+    if(booked.meet_link) toast((type||'r1').toUpperCase()+' '+verb+' + Meet'+(claim?' — lead approprié':''), fmtRdv(startIso),'ok');
+    else toast((type||'r1').toUpperCase()+' '+verb+' (sans Meet)', booked.meetError?('CalendIQ : '+booked.meetError):'Connecte Google dans CalendIQ pour le lien Meet','info');
     return actP;
   },[sel,profile,isAdmin,userId,toast,patch,loadCalendiq]);
   // Annuler un RDV : passe par CalendIQ (cancel-meeting → supprime l'event Google + email), puis nettoie le CRM.
@@ -2574,8 +2579,8 @@ function App({session, onLogout}){
     try{ await cqInvoke('cancel-meeting',{ meeting_id:meetingId }); }
     catch(e){ toast('Annulation impossible', e.message, 'info'); return; }
     setCqMeetings(ms=>ms.filter(m=>m.id!==meetingId));
-    patch(sel.id,{ rdv_at:null, rdvType:null, calendiqRdv:null });
-    saveLead(sel.id,{ rdv_at:null, rdvType:null });
+    patch(sel.id,{ rdv_at:null, rdvType:null, rdvMeetLink:null, calendiqRdv:null });
+    saveLead(sel.id,{ rdv_at:null, rdvType:null, rdvMeetLink:null });
     const title='RDV CalendIQ annulé';
     addActivite(sel.id,'rdv',title,null);
     patch(sel.id,prev=>({timeline:[{type:'rdv',when:'à l’instant',title,text:''},...prev.timeline]}));
