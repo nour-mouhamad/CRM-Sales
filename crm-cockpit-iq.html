@@ -695,24 +695,26 @@ input,textarea{font-family:inherit; color:inherit}
 .cq-pill.ghost{color:var(--t4); cursor:default}
 a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 /* RDV CalendIQ sur la fiche + badge carte */
-.cq-rdv{display:flex; flex-direction:column; align-items:stretch; gap:10px; padding:11px 12px; border:1px solid var(--b1); border-radius:11px; background:var(--accent-tint)}
-.cq-rdv.past{background:var(--surface-2); opacity:.7}
-.cq-rdv.empty{flex-direction:row; align-items:center; background:var(--surface-2); color:var(--t3); font-weight:600; font-size:13px}
-.cq-rdv-main{display:flex; align-items:center; gap:11px}
-.cq-rdv-actions{display:flex; align-items:center; justify-content:flex-end; gap:7px}
-.cq-join{display:inline-flex; align-items:center; gap:5px; flex:none; color:var(--accent); font-size:12.5px; font-weight:700; text-decoration:none; white-space:nowrap; cursor:pointer}
-.cq-join svg{width:14px; height:14px}
-.cq-join:hover{text-decoration:underline}
-.cq-edit{width:26px; height:26px; flex:none; border-radius:7px; display:grid; place-items:center; color:var(--t3); background:var(--surface); border:1px solid var(--b1); cursor:pointer; transition:color var(--speed),border-color var(--speed)}
-.cq-edit:hover{color:var(--t1); border-color:var(--b3)}
-.cq-edit.del:hover{color:var(--danger); border-color:var(--danger)}
-.cq-edit svg{width:14px; height:14px; stroke-width:2}
-.cq-rdv-ic{width:34px; height:34px; flex:none; border-radius:9px; background:var(--surface); display:grid; place-items:center; color:var(--accent)}
-.cq-rdv-ic svg{width:17px; height:17px}
-.cq-rdv-tx{flex:1; min-width:0}
-.cq-rdv-tx b{display:block; font-size:13.5px; font-weight:700; text-transform:capitalize; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.cq-rdv-tx span{display:block; font-size:11.5px; color:var(--t3)}
-.cq-rdv-acts{display:flex; gap:14px; margin-top:8px; padding-left:2px}
+/* carte rendez-vous (design) */
+.rdvcard{background:var(--surface-2); border:1px solid var(--b1); border-left:3px solid var(--accent); border-radius:12px; padding:12px 13px; display:flex; flex-direction:column; gap:11px}
+.rdvcard.past{border-left-color:var(--b3); opacity:.6}
+.rdvcard.empty{flex-direction:row; align-items:center; gap:10px; border-left-color:var(--b2); color:var(--t3); font-size:13px; font-weight:600}
+.rdvcard-top{display:flex; align-items:center; gap:11px}
+.rdvcard-ic{width:38px; height:38px; flex:none; border-radius:10px; background:var(--accent-tint); color:var(--accent); display:grid; place-items:center}
+.rdvcard-ic svg{width:18px; height:18px; stroke-width:2}
+.rdvcard-info{min-width:0; display:flex; flex-direction:column; gap:3px}
+.rdvcard-info b{font-size:14px; font-weight:700; letter-spacing:-.01em; color:var(--t1); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-transform:capitalize}
+.rdvcard-info > span{display:inline-flex; align-items:center; gap:5px; font-size:12px; color:var(--t2); font-variant-numeric:tabular-nums}
+.rdvcard-info > span svg{width:13px; height:13px; opacity:.7}
+.rdvcard-actions{display:flex; align-items:center; gap:8px}
+.rdvcard-join{display:inline-flex; align-items:center; justify-content:center; gap:6px; height:34px; padding:0 16px; border-radius:9px; background:var(--accent-tint); color:var(--accent); font-size:13px; font-weight:700; text-decoration:none; cursor:pointer; transition:background var(--speed),color var(--speed)}
+.rdvcard-join:hover{background:var(--accent); color:var(--on-accent)}
+.rdvcard-join svg{width:15px; height:15px}
+.rdvcard-tools{display:flex; gap:8px; margin-left:auto}
+.rdvcard-btn{width:34px; height:34px; flex:none; border-radius:9px; display:grid; place-items:center; color:var(--t3); background:var(--surface); border:1px solid var(--b1); cursor:pointer; transition:color var(--speed),border-color var(--speed)}
+.rdvcard-btn:hover{color:var(--t1); border-color:var(--b3)}
+.rdvcard-btn.del:hover{color:var(--danger); border-color:var(--danger)}
+.rdvcard-btn svg{width:15px; height:15px; stroke-width:2}
 .card-rdv{display:inline-flex; align-items:center; gap:5px; margin-top:8px; font-size:11px; font-weight:700; color:var(--accent); background:var(--accent-tint); border-radius:7px; padding:3px 8px}
 .card-rdv svg{width:12px; height:12px}
 
@@ -1452,7 +1454,7 @@ function CqRdvField({ rdv, type, onModify, onCancel }){
     return (
       <div className="field">
         <span className="eyebrow">Rendez-vous</span>
-        <div className="cq-rdv empty">Pas de rendez-vous</div>
+        <div className="rdvcard empty">Pas de rendez-vous</div>
       </div>
     );
   }
@@ -1460,19 +1462,23 @@ function CqRdvField({ rdv, type, onModify, onCancel }){
   return (
     <div className="field">
       <span className="eyebrow">Rendez-vous</span>
-      <div className={'cq-rdv'+(past?' past':'')}>
-        <div className="cq-rdv-main">
-          <span className="cq-rdv-ic">{I.agenda({})}</span>
-          <div className="cq-rdv-tx">
+      <div className={'rdvcard'+(past?' past':'')}>
+        <div className="rdvcard-top">
+          <span className="rdvcard-ic">{I.agenda({})}</span>
+          <div className="rdvcard-info">
             <b>{type?(type.toUpperCase()+' · '):''}{cqDayLabel(rdv.start_at)}</b>
-            <span>{cqTime(rdv.start_at)}{past?' · passé':''}</span>
+            <span>{I.clock({})}{cqTime(rdv.start_at)}{rdv.duration_minutes?(' · '+rdv.duration_minutes+' min'):''}{past?' · passé':''}</span>
           </div>
-          {rdv.meet_link && <a className="cq-join" href={rdv.meet_link} target="_blank" rel="noreferrer" title="Rejoindre le Google Meet">{I.video({})}Rejoindre</a>}
         </div>
-        {!past && (onModify||onCancel) && (
-          <div className="cq-rdv-actions">
-            {onModify && <button className="cq-edit" title="Modifier (reprogrammer dans CalendIQ)" onClick={()=>onModify(rdv)}>{I.pencil({})}</button>}
-            {onCancel && <button className="cq-edit del" title="Annuler dans CalendIQ" onClick={()=>onCancel(rdv)}>{I.trash({})}</button>}
+        {(rdv.meet_link || (!past && (onModify||onCancel))) && (
+          <div className="rdvcard-actions">
+            {rdv.meet_link && <a className="rdvcard-join" href={rdv.meet_link} target="_blank" rel="noreferrer" title="Rejoindre le Google Meet">{I.video({})}Rejoindre</a>}
+            {!past && (onModify||onCancel) && (
+              <div className="rdvcard-tools">
+                {onModify && <button className="rdvcard-btn" title="Modifier (reprogrammer dans CalendIQ)" onClick={()=>onModify(rdv)}>{I.pencil({})}</button>}
+                {onCancel && <button className="rdvcard-btn del" title="Annuler dans CalendIQ" onClick={()=>onCancel(rdv)}>{I.trash({})}</button>}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1514,24 +1520,26 @@ function ManualRdvField({ lead, onSave, onRemove }){
     <div className="field">
       <span className="eyebrow">Rendez-vous</span>
       {has ? (
-        <div className={'cq-rdv'+(past?' past':'')}>
-          <div className="cq-rdv-main">
-            <span className="cq-rdv-ic">{I.agenda({})}</span>
-            <div className="cq-rdv-tx">
+        <div className={'rdvcard'+(past?' past':'')}>
+          <div className="rdvcard-top">
+            <span className="rdvcard-ic">{I.agenda({})}</span>
+            <div className="rdvcard-info">
               <b>{(lead.rdvType||'r1').toUpperCase()} · {cqDayLabel(lead.rdv_at)}</b>
-              <span>{cqTime(lead.rdv_at)}{past?' · passé':''}</span>
+              <span>{I.clock({})}{cqTime(lead.rdv_at)} · {RDV_DUR[lead.rdvType||'r1']} min{past?' · passé':''}</span>
             </div>
-            {lead.rdvMeetLink && <a className="cq-join" href={lead.rdvMeetLink} target="_blank" rel="noreferrer" title="Rejoindre le Google Meet">{I.video({})}Rejoindre</a>}
           </div>
-          <div className="cq-rdv-actions">
-            <button className="cq-edit" title="Modifier" onClick={open}>{I.pencil({})}</button>
-            <button className="cq-edit del" title="Retirer" onClick={onRemove}>{I.trash({})}</button>
+          <div className="rdvcard-actions">
+            {lead.rdvMeetLink && <a className="rdvcard-join" href={lead.rdvMeetLink} target="_blank" rel="noreferrer" title="Rejoindre le Google Meet">{I.video({})}Rejoindre</a>}
+            <div className="rdvcard-tools">
+              <button className="rdvcard-btn" title="Modifier" onClick={open}>{I.pencil({})}</button>
+              <button className="rdvcard-btn del" title="Retirer" onClick={onRemove}>{I.trash({})}</button>
+            </div>
           </div>
         </div>
       ) : (
-        <div className="cq-rdv empty">
+        <div className="rdvcard empty">
           <span>Pas de rendez-vous</span>
-          <button className="cq-edit" style={{marginLeft:'auto'}} title="Indiquer un rendez-vous" onClick={open}>{I.pencil({})}</button>
+          <button className="rdvcard-btn" style={{marginLeft:'auto'}} title="Indiquer un rendez-vous" onClick={open}>{I.pencil({})}</button>
         </div>
       )}
     </div>
