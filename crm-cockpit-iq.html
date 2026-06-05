@@ -281,7 +281,7 @@ input,textarea{font-family:inherit; color:inherit}
 .action-add{margin-top:6px; font-size:12.5px; color:var(--accent); background:none; cursor:pointer; font-weight:600; padding:4px 2px}
 .action-add:hover{text-decoration:underline}
 /* Parcours — historique des étapes du lead */
-.parcours{padding:2px 0 12px; border-bottom:1px solid var(--b1); margin-bottom:12px}
+.parcours{padding:14px 0 2px; border-top:1px solid var(--b1); margin-top:14px}
 .parcours .eyebrow{display:block; margin-bottom:9px}
 .parcours-list{display:flex; flex-direction:column; gap:7px}
 .parcours-step{display:flex; align-items:center; gap:10px}
@@ -1806,9 +1806,17 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
             </div>
           </div>
           <div className="panel-body">
+            <div className="tl">
+              {lead.timeline.filter(ev=>!(ev.title&&ev.title.indexOf('Étape :')===0)).map((ev,i)=>(
+                <TlCard key={ev.id||i} ev={ev} onEditNote={onEditNote} onDeleteNote={onDeleteNote}/>
+              ))}
+              {lead.timeline.filter(ev=>!(ev.title&&ev.title.indexOf('Étape :')===0)).length===0 && (
+                <div className="tl-empty">Aucune note pour l’instant.</div>
+              )}
+            </div>
             {(()=>{
               // Parcours = origine (source + date de création) → étapes loguées (chaque move logue une étape dans la DB) → étape actuelle.
-              // Toujours affiché, pour TOUS les leads (même importés sans historique de moves).
+              // Toujours affiché, EN BAS de l'historique, pour TOUS les leads (même importés sans historique de moves).
               const steps=lead.timeline.filter(e=>e.title&&e.title.indexOf('Étape :')===0).slice().reverse();
               const si=SOURCE_INFO[lead.source]||{label:lead.source||'Entrée'};
               const fmtD=(d)=>{ try{ return new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}); }catch(e){ return ''; } };
@@ -1830,14 +1838,6 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
                 </div>
               </div>
             ); })()}
-            <div className="tl">
-              {lead.timeline.filter(ev=>!(ev.title&&ev.title.indexOf('Étape :')===0)).map((ev,i)=>(
-                <TlCard key={ev.id||i} ev={ev} onEditNote={onEditNote} onDeleteNote={onDeleteNote}/>
-              ))}
-              {lead.timeline.filter(ev=>!(ev.title&&ev.title.indexOf('Étape :')===0)).length===0 && (
-                <div className="tl-empty">Aucune note pour l’instant.</div>
-              )}
-            </div>
           </div>
         </div>
 
