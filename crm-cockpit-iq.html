@@ -695,9 +695,12 @@ input,textarea{font-family:inherit; color:inherit}
 .cq-pill.ghost{color:var(--t4); cursor:default}
 a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 /* RDV CalendIQ sur la fiche + badge carte */
-.cq-rdv{display:flex; align-items:center; gap:11px; padding:10px 12px; border:1px solid var(--b1); border-radius:11px; background:var(--accent-tint)}
+.cq-rdv{display:flex; flex-direction:column; align-items:stretch; gap:10px; padding:11px 12px; border:1px solid var(--b1); border-radius:11px; background:var(--accent-tint)}
 .cq-rdv.past{background:var(--surface-2); opacity:.7}
-.cq-rdv.empty{background:var(--surface-2); color:var(--t3); font-weight:600; font-size:13px}
+.cq-rdv.empty{flex-direction:row; align-items:center; background:var(--surface-2); color:var(--t3); font-weight:600; font-size:13px}
+.cq-rdv-main{display:flex; align-items:center; gap:11px}
+.cq-rdv-actions{display:flex; align-items:center; gap:7px}
+.cq-rdv-actions .cq-pill.lead{flex:1; justify-content:center; padding:9px 10px}
 .cq-edit{width:26px; height:26px; flex:none; border-radius:7px; display:grid; place-items:center; color:var(--t3); background:var(--surface); border:1px solid var(--b1); cursor:pointer; transition:color var(--speed),border-color var(--speed)}
 .cq-edit:hover{color:var(--t1); border-color:var(--b3)}
 .cq-edit.del:hover{color:var(--danger); border-color:var(--danger)}
@@ -1456,19 +1459,21 @@ function CqRdvField({ rdv, type, onModify, onCancel }){
     <div className="field">
       <span className="eyebrow">Rendez-vous</span>
       <div className={'cq-rdv'+(past?' past':'')}>
-        <span className="cq-rdv-ic">{I.agenda({})}</span>
-        <div className="cq-rdv-tx">
-          <b>{type?(type.toUpperCase()+' · '):''}{cqDayLabel(rdv.start_at)} · {cqTime(rdv.start_at)}</b>
-          <span>{rdv.title||'Rendez-vous'} · {rdv.duration_minutes||30} min{past?' · passé':''}</span>
+        <div className="cq-rdv-main">
+          <span className="cq-rdv-ic">{I.agenda({})}</span>
+          <div className="cq-rdv-tx">
+            <b>{type?(type.toUpperCase()+' · '):''}{cqDayLabel(rdv.start_at)}</b>
+            <span>{cqTime(rdv.start_at)}{past?' · passé':''}</span>
+          </div>
         </div>
-        {rdv.meet_link && <a className="cq-pill lead" href={rdv.meet_link} target="_blank" rel="noreferrer" title="Rejoindre le Google Meet">{I.video({})}Rejoindre</a>}
+        {(rdv.meet_link || (!past && (onModify||onCancel))) && (
+          <div className="cq-rdv-actions">
+            {rdv.meet_link && <a className="cq-pill lead" href={rdv.meet_link} target="_blank" rel="noreferrer" title="Rejoindre le Google Meet">{I.video({})}Rejoindre</a>}
+            {!past && onModify && <button className="cq-edit" title="Modifier (reprogrammer dans CalendIQ)" onClick={()=>onModify(rdv)}>{I.pencil({})}</button>}
+            {!past && onCancel && <button className="cq-edit del" title="Annuler dans CalendIQ" onClick={()=>onCancel(rdv)}>{I.trash({})}</button>}
+          </div>
+        )}
       </div>
-      {!past && (onModify||onCancel) && (
-        <div className="cq-rdv-acts">
-          {onModify && <button className="rdv-link" onClick={()=>onModify(rdv)} title="Reprogrammer (annule + rebooke dans CalendIQ)">Modifier la date</button>}
-          {onCancel && <button className="rdv-link del" onClick={()=>onCancel(rdv)} title="Annuler le RDV dans CalendIQ">Annuler</button>}
-        </div>
-      )}
     </div>
   );
 }
@@ -1508,14 +1513,18 @@ function ManualRdvField({ lead, onSave, onRemove }){
       <span className="eyebrow">Rendez-vous</span>
       {has ? (
         <div className={'cq-rdv'+(past?' past':'')}>
-          <span className="cq-rdv-ic">{I.agenda({})}</span>
-          <div className="cq-rdv-tx">
-            <b>{(lead.rdvType||'r1').toUpperCase()} · {cqDayLabel(lead.rdv_at)} · {cqTime(lead.rdv_at)}</b>
-            <span>Rendez-vous · saisi manuellement{past?' · passé':''}</span>
+          <div className="cq-rdv-main">
+            <span className="cq-rdv-ic">{I.agenda({})}</span>
+            <div className="cq-rdv-tx">
+              <b>{(lead.rdvType||'r1').toUpperCase()} · {cqDayLabel(lead.rdv_at)}</b>
+              <span>{cqTime(lead.rdv_at)}{past?' · passé':''}</span>
+            </div>
           </div>
-          {lead.rdvMeetLink && <a className="cq-pill lead" href={lead.rdvMeetLink} target="_blank" rel="noreferrer" title="Rejoindre le Google Meet">{I.video({})}Rejoindre</a>}
-          <button className="cq-edit" title="Modifier" onClick={open}>{I.pencil({})}</button>
-          <button className="cq-edit del" title="Retirer" onClick={onRemove}>{I.trash({})}</button>
+          <div className="cq-rdv-actions">
+            {lead.rdvMeetLink && <a className="cq-pill lead" href={lead.rdvMeetLink} target="_blank" rel="noreferrer" title="Rejoindre le Google Meet">{I.video({})}Rejoindre</a>}
+            <button className="cq-edit" title="Modifier" onClick={open}>{I.pencil({})}</button>
+            <button className="cq-edit del" title="Retirer" onClick={onRemove}>{I.trash({})}</button>
+          </div>
         </div>
       ) : (
         <div className="cq-rdv empty">
