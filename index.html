@@ -280,6 +280,25 @@ input,textarea{font-family:inherit; color:inherit}
 .action-del svg{width:13px; height:13px}
 .action-add{margin-top:6px; font-size:12.5px; color:var(--accent); background:none; cursor:pointer; font-weight:600; padding:4px 2px}
 .action-add:hover{text-decoration:underline}
+/* cartes action (format rectangle, comme les notes Historique) */
+.actlist{display:flex; flex-direction:column; gap:8px}
+.actcard{display:flex; align-items:center; gap:10px; padding:9px 11px; border:1px solid var(--b1); border-radius:10px; background:var(--surface-2); transition:border-color var(--speed)}
+.actcard:hover{border-color:var(--b3)}
+.actcard.done{opacity:.6}
+.actcard.done .actcard-tx{text-decoration:line-through; color:var(--t3)}
+.actcard-box{width:22px; height:22px; flex:none; border-radius:7px; border:1.8px solid var(--b3); display:grid; place-items:center; color:transparent; cursor:pointer; transition:background var(--speed),border-color var(--speed)}
+.actcard-box svg{width:13px; height:13px; stroke-width:3}
+.actcard:hover .actcard-box{border-color:var(--accent)}
+.actcard.done .actcard-box{background:var(--accent); border-color:var(--accent); color:var(--on-accent)}
+.actcard-tx{flex:1; min-width:0; font-size:13.5px; font-weight:600; color:var(--t1); line-height:1.4; cursor:text; word-break:break-word}
+.actcard-btn{width:26px; height:26px; flex:none; border-radius:7px; display:grid; place-items:center; color:var(--t3); background:none; cursor:pointer; opacity:0; transition:opacity var(--speed),color var(--speed),background var(--speed)}
+.actcard:hover .actcard-btn{opacity:1}
+.actcard-btn:hover{color:var(--t1); background:var(--surface)}
+.actcard-btn.del:hover{color:var(--danger)}
+.actcard-btn.ok{opacity:1; color:var(--accent)}
+.actcard-btn svg{width:14px; height:14px; stroke-width:2}
+.actcard.editing{padding:7px 9px; gap:7px}
+.actcard-input{flex:1; min-width:0; background:var(--surface); border:1.5px solid var(--accent); border-radius:7px; padding:6px 9px; color:var(--t1); font-size:13.5px; font-weight:600; font-family:inherit; outline:none}
 /* Parcours — historique des étapes du lead */
 .parcours{padding:14px 0 2px; border-top:1px solid var(--b1); margin-top:14px}
 .parcours .eyebrow{display:block; margin-bottom:9px}
@@ -1546,6 +1565,31 @@ function ManualRdvField({ lead, onSave, onRemove }){
   );
 }
 
+/* Carte action (format rectangle, comme les notes Historique) : cocher (réalisée) + éditer + supprimer */
+function ActionCard({ label, done, editing, onToggle, onEditStart, onEditCancel, onEditSave, onDelete, placeholder }){
+  const [v,setV]=useState(label||'');
+  useEffect(()=>{ if(editing) setV(label||''); },[editing]);
+  if(editing){
+    return (
+      <div className="actcard editing">
+        <input className="actcard-input" autoFocus value={v} placeholder={placeholder}
+          onChange={e=>setV(e.target.value)}
+          onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); onEditSave(v.trim()); } if(e.key==='Escape') onEditCancel(); }}/>
+        <button className="actcard-btn ok" title="Valider" onClick={()=>onEditSave(v.trim())}>{I.check({})}</button>
+        <button className="actcard-btn" title="Annuler" onClick={onEditCancel}>{I.x({})}</button>
+      </div>
+    );
+  }
+  return (
+    <div className={'actcard'+(done?' done':'')}>
+      <span className="actcard-box" onClick={onToggle} role="checkbox" aria-checked={done} title={done?'Marquer non fait':'Marquer comme fait'}>{I.check({})}</span>
+      <span className="actcard-tx" onClick={onEditStart} title="Cliquer pour modifier">{label||placeholder}</span>
+      <button className="actcard-btn" title="Modifier" onClick={onEditStart}>{I.pencil({})}</button>
+      <button className="actcard-btn del" title="Supprimer" onClick={onDelete}>{I.trash({})}</button>
+    </div>
+  );
+}
+
 /* ============================================================= LEAD CARD */
 const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDragEnd, dragging, onCardDragOver, dropPos, onDelete}){
   const col = lead.column;
@@ -1725,6 +1769,7 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
   const [movePos,setMovePos]=useState(null);
   const toggleMove=()=>{ if(moveOpen){ setMoveOpen(false); return; } const r=moveBtnRef.current.getBoundingClientRect(); setMovePos({top:r.bottom+4, left:r.left, width:r.width, maxH:Math.max(200, window.innerHeight-r.bottom-16)}); setMoveOpen(true); };
   const [editingField,setEditingField]=useState(null);
+  const [editAct,setEditAct]=useState(null); // 'main' | index extraAction | null
   const statusColor = COL_COLOR[lead.column];
   const actionDone = !!lead.nextAction && lead.actionDoneFor===lead.nextAction;
 
@@ -1766,26 +1811,23 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
                 : <ManualRdvField lead={lead} onSave={onManualRdv} onRemove={onManualRemoveRdv}/>}
               <div className="field">
                 <span className="eyebrow">Action</span>
-                <div className={`action-row ${actionDone?'done':''}`}>
-                  <span className="action-box" onClick={()=>lead.nextAction && onToggleAction(!actionDone)} title={actionDone?'Marquer non fait':'Marquer comme fait'}>{I.check({})}</span>
-                  {editingField==='action' ? (
-                    <input className="action-edit" autoFocus defaultValue={lead.nextAction||''} placeholder="Action à réaliser…"
-                      onKeyDown={e=>{ if(e.key==='Enter') e.target.blur(); if(e.key==='Escape') setEditingField(null); }}
-                      onBlur={e=>{ onEditField('nextAction','nextAction', e.target.value.trim()||null); setEditingField(null); }}/>
-                  ) : (
-                    <span className="action-tx" onClick={()=>setEditingField('action')} title="Cliquer pour modifier">{lead.nextAction||'Définir une action'}</span>
-                  )}
+                <div className="actlist">
+                  <ActionCard label={lead.nextAction} done={actionDone} editing={editAct==='main'}
+                    onToggle={()=>lead.nextAction && onToggleAction(!actionDone)}
+                    onEditStart={()=>setEditAct('main')} onEditCancel={()=>setEditAct(null)}
+                    onEditSave={(v)=>{ onEditField('nextAction','nextAction', v||null); setEditAct(null); }}
+                    onDelete={()=>{ onEditField('nextAction','nextAction', null); setEditAct(null); }}
+                    placeholder="Définir une action"/>
+                  {(lead.extraActions||[]).map((a,i)=>(
+                    <ActionCard key={i} label={a.label} done={a.done} editing={editAct===i}
+                      onToggle={()=>onActions(lead.extraActions.map((x,j)=>j===i?{...x,done:!x.done}:x), true)}
+                      onEditStart={()=>setEditAct(i)} onEditCancel={()=>setEditAct(null)}
+                      onEditSave={(v)=>{ onActions(lead.extraActions.map((x,j)=>j===i?{...x,label:v}:x).filter(x=>x.label.trim()), true); setEditAct(null); }}
+                      onDelete={()=>{ onActions(lead.extraActions.filter((_,j)=>j!==i), true); setEditAct(null); }}
+                      placeholder="Action à réaliser…"/>
+                  ))}
                 </div>
-                {(lead.extraActions||[]).map((a,i)=>(
-                  <div key={i} className={`action-row ${a.done?'done':''}`}>
-                    <span className="action-box" onClick={()=>onActions(lead.extraActions.map((x,j)=>j===i?{...x,done:!x.done}:x), true)} title={a.done?'Marquer non fait':'Marquer comme fait'}>{I.check({})}</span>
-                    <input className="action-edit-li" value={a.label} placeholder="Action à réaliser…"
-                      onChange={e=>onActions(lead.extraActions.map((x,j)=>j===i?{...x,label:e.target.value}:x), false)}
-                      onBlur={()=>onActions(lead.extraActions, true)}/>
-                    <button className="action-del" title="Retirer" onClick={()=>onActions(lead.extraActions.filter((_,j)=>j!==i), true)}><I.x/></button>
-                  </div>
-                ))}
-                <button className="action-add" onClick={()=>onActions([...(lead.extraActions||[]), {label:'',done:false}], true)}>+ Ajouter une action</button>
+                <button className="action-add" onClick={()=>{ const n=(lead.extraActions||[]).length; onActions([...(lead.extraActions||[]), {label:'',done:false}], false); setEditAct(n); }}>+ Ajouter une action</button>
               </div>
               <div className="field">
                 <span className="eyebrow">Closer</span>
