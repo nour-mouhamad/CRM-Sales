@@ -861,12 +861,12 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .rdv-connect p{color:var(--t2); font-size:14px; line-height:1.55; margin-bottom:16px; max-width:440px; margin:0 auto 16px}
 .rdv-err{margin-top:12px; background:var(--danger-tint); color:var(--danger); font-size:12.5px; padding:9px 12px; border-radius:9px}
 /* ---- modale Ajouter un RDV CalendIQ ---- */
-.rdvm{position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:90; width:min(460px,94vw); max-height:92vh; display:flex; flex-direction:column; background:var(--surface); border:1px solid var(--b1); border-radius:18px; box-shadow:0 24px 60px rgba(0,0,0,.42); animation:fade .2s ease; overflow:hidden}
+.rdvm{position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:90; width:min(600px,95vw); max-height:92vh; display:flex; flex-direction:column; background:var(--surface); border:1px solid var(--b1); border-radius:18px; box-shadow:0 24px 60px rgba(0,0,0,.42); animation:fade .2s ease; overflow:hidden}
 .rdvm-head{display:flex; align-items:center; justify-content:space-between; padding:18px 20px 4px; flex:none}
 .rdvm-head h3{font-size:17px; font-weight:800}
 .rdvm-body{padding:14px 20px 18px; display:flex; flex-direction:column; gap:8px; overflow-y:auto}
-/* sélecteur date/heure */
-.dtp{display:flex; flex-direction:column; gap:10px}
+/* sélecteur date/heure — 2 colonnes (calendrier | créneaux) comme CalendIQ */
+.dtp{display:grid; grid-template-columns:1fr 168px; gap:14px; align-items:start}
 .dtp-cal{background:var(--surface-2); border:1px solid var(--b1); border-radius:12px; padding:11px 12px}
 .dtp-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px}
 .dtp-title{font-size:14px; font-weight:800; text-transform:capitalize}
@@ -882,12 +882,12 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .dtp-day.today{box-shadow:inset 0 0 0 1.5px var(--b3)}
 .dtp-day.sel{background:var(--accent); color:var(--on-accent); font-weight:800; box-shadow:none}
 .dtp-day:disabled{opacity:.26; cursor:default}
-.dtp-times{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; max-height:148px; overflow-y:auto; padding:2px}
-.dtp-time{padding:10px 0; border-radius:8px; border:1.5px solid var(--b1); background:var(--surface); color:var(--t1); font-size:13px; font-weight:700; font-variant-numeric:tabular-nums; cursor:pointer; transition:background var(--speed),border-color var(--speed),color var(--speed)}
-.dtp-time:hover:not(:disabled):not(.sel){border-color:var(--accent); color:var(--accent)}
+.dtp-times{display:flex; flex-direction:column; gap:8px; max-height:312px; overflow-y:auto; padding:2px 4px 2px 0}
+.dtp-time{width:100%; padding:11px 0; border-radius:9px; border:1.5px solid var(--b1); background:var(--surface); color:var(--t1); font-size:13.5px; font-weight:700; font-variant-numeric:tabular-nums; cursor:pointer; transition:background var(--speed),border-color var(--speed),color var(--speed)}
+.dtp-time:hover:not(.sel){border-color:var(--accent); color:var(--accent)}
 .dtp-time.sel{background:var(--accent); border-color:var(--accent); color:var(--on-accent)}
-.dtp-time:disabled{opacity:.3; cursor:default}
-.dtp-hint{grid-column:1/-1; text-align:center; color:var(--t3); font-size:12.5px; padding:16px 0}
+.dtp-hint{text-align:center; color:var(--t3); font-size:12.5px; padding:24px 6px; line-height:1.5}
+@media(max-width:560px){ .dtp{grid-template-columns:1fr} .dtp-times{flex-direction:row; flex-wrap:wrap; max-height:150px} .dtp-time{width:auto; flex:1 1 70px} }
 .rdvm-recap{margin-top:6px; background:var(--accent-tint); color:var(--accent); border-radius:9px; padding:10px 12px; font-size:13.5px; font-weight:800; text-align:center}
 .rdvm-recap::first-letter{text-transform:uppercase}
 .rdvm-prefill{display:flex; align-items:center; gap:11px; padding:10px 12px; background:var(--surface-2); border:1px solid var(--b1); border-radius:11px; margin-bottom:6px}
@@ -1298,31 +1298,71 @@ function toLocalInput(iso){ const d=new Date(iso); if(isNaN(d)) return ''; const
 
 // Modale « Ajouter un RDV CalendIQ » : type R1/R2 (durée par défaut R1=45 / R2=30, modifiable) + date/heure,
 // pré-remplie avec les infos du lead. Crée un VRAI RDV dans le CalendIQ du closer connecté.
-// Sélecteur date + heure fluide (calendrier mensuel + créneaux 15 min) — remplace l'input natif.
+// Sélecteur date + heure connecté aux VRAIES dispos CalendIQ (comme leur page de booking) :
+// jours filtrés sur les horaires de l'organizer (profiles.availability), créneaux filtrés sur
+// l'occupation réelle (google-busy-slots = Google Calendar + RDV existants). Layout 2 colonnes.
 const DTP_WD=['lun','mar','mer','jeu','ven','sam','dim'];
+const DTP_WDKEY=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
 const DTP_MONTHS=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 const dtpPad=n=>String(n).padStart(2,'0');
-const DTP_SLOTS=(()=>{ const a=[]; for(let h=8;h<20;h++){ for(const m of [0,15,30,45]) a.push([h,m]); } return a; })();
-function DateTimePicker({ value, onChange }){
+function DateTimePicker({ organizerId, duration, value, onChange }){
   const v0 = value? new Date(value) : null;
   const [day,setDay]=useState(v0? new Date(v0.getFullYear(),v0.getMonth(),v0.getDate()) : null);
   const [hm,setHm]=useState(v0? {h:v0.getHours(),m:v0.getMinutes()} : null);
   const base0 = day||v0||new Date();
   const [vy,setVy]=useState(base0.getFullYear());
   const [vm,setVm]=useState(base0.getMonth());
+  const [avail,setAvail]=useState(null);   // {monday:{enabled,start,end},…} (null = pas encore chargé)
+  const [busy,setBusy]=useState([]);        // [{start,end}] du jour sélectionné
+  const [loading,setLoading]=useState(false);
+
+  // horaires de travail de l'organizer (1 fois)
+  useEffect(()=>{ if(!organizerId) return; let on=true;
+    cqGet('profiles?id=eq.'+encodeURIComponent(organizerId)+'&select=availability').then(r=>{ if(on&&r&&r[0]) setAvail(r[0].availability||{}); }).catch(()=>{ if(on) setAvail({}); });
+    return ()=>{on=false;};
+  },[organizerId]);
+  // émet la valeur combinée
   useEffect(()=>{ onChange( (day&&hm)? `${day.getFullYear()}-${dtpPad(day.getMonth()+1)}-${dtpPad(day.getDate())}T${dtpPad(hm.h)}:${dtpPad(hm.m)}` : '' ); },[day,hm]);
+  // créneaux occupés du jour sélectionné (Google + RDV existants)
+  useEffect(()=>{ if(!day||!organizerId){ setBusy([]); return; } let on=true; setLoading(true);
+    const ds=`${day.getFullYear()}-${dtpPad(day.getMonth()+1)}-${dtpPad(day.getDate())}`;
+    cqInvoke('google-busy-slots',{ organizer_id:organizerId, date:ds, organizer_timezone:'Europe/Paris' })
+      .then(r=>{ if(on) setBusy((r&&r.busy)||[]); }).catch(()=>{ if(on) setBusy([]); }).finally(()=>{ if(on) setLoading(false); });
+    return ()=>{on=false;};
+  },[day,organizerId]);
+
   const today=new Date(); today.setHours(0,0,0,0);
+  const winFor=(dt)=>{ const a=avail&&avail[DTP_WDKEY[dt.getDay()]]; return (a&&a.enabled!==false)?a:null; };
+  const dayDisabled=(d)=>{ const dt=new Date(vy,vm,d); if(dt<today) return true; if(avail) return !winFor(dt); return false; };
   const first=new Date(vy,vm,1); const lead=(first.getDay()+6)%7; const dim=new Date(vy,vm+1,0).getDate();
   const cells=[]; for(let i=0;i<lead;i++) cells.push(null); for(let d=1;d<=dim;d++) cells.push(d);
-  const dayPast=d=> new Date(vy,vm,d) < today;
   const isSelDay=d=> day && day.getFullYear()===vy && day.getMonth()===vm && day.getDate()===d;
   const isTodayCell=d=> +new Date(vy,vm,d)===+today;
-  const isToday = day && +day===+today;
-  const nowMin=()=>{ const n=new Date(); return n.getHours()*60+n.getMinutes(); };
-  const slotPast=(h,m)=> isToday && (h*60+m) <= nowMin();
   const canPrev = +new Date(vy,vm,1) > +new Date(today.getFullYear(),today.getMonth(),1);
   const prevMonth=()=>{ if(vm<=0){ setVm(11); setVy(vy-1); } else setVm(vm-1); };
   const nextMonth=()=>{ if(vm>=11){ setVm(0); setVy(vy+1); } else setVm(vm+1); };
+
+  // créneaux libres = fenêtre de travail × pas(durée) − occupés − passé
+  const slots = useMemo(()=>{
+    if(!day) return [];
+    const win = winFor(day) || { start:'09:00', end:'18:00' }; // fallback si dispo absente
+    const [sh,sm]=win.start.split(':').map(Number); const [eh,em]=win.end.split(':').map(Number);
+    const wStart=new Date(day); wStart.setHours(sh,sm,0,0);
+    const wEnd=new Date(day); wEnd.setHours(eh,em,0,0);
+    const now=Date.now(), step=Math.max(15,duration)*60000;
+    const bz=busy.map(b=>[+new Date(b.start),+new Date(b.end)]);
+    const out=[];
+    for(let t=+wStart; t+duration*60000<=+wEnd+1; t+=step){
+      const s=t, e=t+duration*60000;
+      if(s<=now) continue;
+      if(bz.some(([bs,be])=> s<be && e>bs)) continue;
+      const d=new Date(s); out.push({h:d.getHours(),m:d.getMinutes()});
+    }
+    return out;
+  },[day,busy,duration,avail]);
+  // si l'heure choisie n'est plus libre (durée changée, RDV repris) → on la déselectionne
+  useEffect(()=>{ if(hm && !slots.some(s=>s.h===hm.h&&s.m===hm.m)) setHm(null); },[slots]);
+
   return (
     <div className="dtp">
       <div className="dtp-cal">
@@ -1335,20 +1375,22 @@ function DateTimePicker({ value, onChange }){
         <div className="dtp-grid">
           {cells.map((d,i)=> d===null
             ? <span key={i} className="dtp-empty"></span>
-            : <button type="button" key={i} disabled={dayPast(d)} onClick={()=>setDay(new Date(vy,vm,d))}
+            : <button type="button" key={i} disabled={dayDisabled(d)} onClick={()=>{ setHm(null); setDay(new Date(vy,vm,d)); }}
                 className={'dtp-day'+(isSelDay(d)?' sel':'')+(isTodayCell(d)?' today':'')}>{d}</button>)}
         </div>
       </div>
       <div className="dtp-times">
-        {!day ? <div className="dtp-hint">Choisis d’abord un jour ↑</div>
-          : DTP_SLOTS.map(([h,m])=> <button type="button" key={h+':'+m} disabled={slotPast(h,m)}
+        {!day ? <div className="dtp-hint">Choisis un jour</div>
+          : loading ? <div className="dtp-hint">Chargement des créneaux…</div>
+          : slots.length===0 ? <div className="dtp-hint">Aucun créneau libre ce jour</div>
+          : slots.map(({h,m})=> <button type="button" key={h+':'+m}
               className={'dtp-time'+(hm&&hm.h===h&&hm.m===m?' sel':'')} onClick={()=>setHm({h,m})}>{dtpPad(h)}:{dtpPad(m)}</button>)}
       </div>
     </div>
   );
 }
 const RDV_DUR = { r1:45, r2:30 };
-function AddRdvModal({ lead, initial, onClose, onAdd }){
+function AddRdvModal({ lead, initial, organizerId, onClose, onAdd }){
   const editing=!!initial;
   const [type,setType]=useState((initial&&initial.type)||'r1');
   const [dur,setDur]=useState((initial&&initial.dur)||RDV_DUR[(initial&&initial.type)||'r1']);
@@ -1371,15 +1413,15 @@ function AddRdvModal({ lead, initial, onClose, onAdd }){
           </div>
           <label className="rdvm-lbl">Type</label>
           <div className="rdv-types">
-            <button className={type==='r1'?'on':''} onClick={()=>pickType('r1')}>R1 · 45 min</button>
-            <button className={type==='r2'?'on':''} onClick={()=>pickType('r2')}>R2 · 30 min</button>
+            <button className={type==='r1'?'on':''} onClick={()=>pickType('r1')}>R1</button>
+            <button className={type==='r2'?'on':''} onClick={()=>pickType('r2')}>R2</button>
           </div>
           <label className="rdvm-lbl">Durée</label>
           <div className="rdv-durs">
             {[15,30,45,60].map(d=><button key={d} className={'rdv-dur'+(dur===d?' on':'')} onClick={()=>setDur(d)}>{d} min</button>)}
           </div>
           <label className="rdvm-lbl">Date &amp; heure</label>
-          <DateTimePicker value={dt} onChange={setDt}/>
+          <DateTimePicker organizerId={organizerId} duration={dur} value={dt} onChange={setDt}/>
           {dt && <div className="rdvm-recap">{(type||'r1').toUpperCase()} · {fmtRdv(dt)} · {dur} min</div>}
           {err && <div className="rdv-err">{err}</div>}
         </div>
@@ -1581,7 +1623,7 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
 }
 
 /* ============================================================= FICHE LEAD */
-function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onToggleAction, onActions, onClaim, meId, onAddRdv, onCancelRdv, calendiqReady}){
+function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onToggleAction, onActions, onClaim, meId, onAddRdv, onCancelRdv, calendiqReady, calendiqOrganizer}){
   const [moveOpen,setMoveOpen]=useState(false);
   const [noteOpen,setNoteOpen]=useState(false);
   const [noteMode,setNoteMode]=useState('note'); // 'note' = note écrite | 'nrp' = appel sans réponse
@@ -1602,7 +1644,7 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
     <div className="fiche">
       {noteOpen && <NoteModal mode={noteMode} onClose={()=>setNoteOpen(false)} onNote={(t,ti,tx)=>{ onNote(t,ti,tx); setNoteOpen(false); }}/>}
       {recapOpen && <RecapModal lead={lead} onClose={()=>setRecapOpen(false)} onEditField={onEditField} onNote={onNote} onAdvanceStage={onAdvanceStage}/>}
-      {rdvOpen && <AddRdvModal lead={lead} initial={rdvEdit} onClose={closeRdv} onAdd={(t,d,iso)=>onAddRdv(t,d,iso, rdvEdit?rdvEdit.id:null)}/>}
+      {rdvOpen && <AddRdvModal lead={lead} initial={rdvEdit} organizerId={calendiqOrganizer} onClose={closeRdv} onAdd={(t,d,iso)=>onAddRdv(t,d,iso, rdvEdit?rdvEdit.id:null)}/>}
       <div className="fiche-head">
         <button className="back" onClick={onBack}><I.back/>Mes leads</button>
         <div className="fiche-id">
@@ -2665,7 +2707,7 @@ function App({session, onLogout}){
         {screen==='leads' && <Board leads={leadsCq} search={search} setSearch={setSearch}
             onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col)=>setAddTarget(col)} onDelete={deleteLead}/>}
         {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen('leads')} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
-            onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} calendiqReady={!!(profile&&profile.calendiq_organizer_id)}/>}
+            onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} calendiqReady={!!(profile&&profile.calendiq_organizer_id)} calendiqOrganizer={profile&&profile.calendiq_organizer_id}/>}
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen('leads')}>Retour au board</button></div>}
         {screen==='agenda' && <Agenda meetings={cqMeetings} sources={cqSources} loading={cqLoading} error={cqError}
             isAdmin={isAdmin} profile={profile} onConnect={connectCalendiq} onDisconnect={disconnectCalendiq}
