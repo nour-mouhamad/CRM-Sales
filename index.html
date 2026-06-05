@@ -2447,7 +2447,18 @@ function App({session, onLogout}){
   },[isAdmin,profile,userId]);
   useEffect(()=>{ loadCalendiq(); },[loadCalendiq]);
   // rafraîchit l'agenda tant qu'on le regarde (RDV pris/déplacés dans CalendIQ)
-  useEffect(()=>{ if(screen!=='agenda') return; const t=setInterval(loadCalendiq,90000); return ()=>clearInterval(t); },[screen,loadCalendiq]);
+  // RDV pris dans CalendIQ (ex : rush post-webi) → visibles dans le CRM en quelques secondes, sur TOUS les écrans.
+  // Polling 20 s tant que l'onglet est visible + refresh instantané au focus ; en pause si onglet caché.
+  useEffect(()=>{
+    let timer=null;
+    const start=()=>{ if(!timer) timer=setInterval(loadCalendiq,20000); };
+    const stop=()=>{ if(timer){ clearInterval(timer); timer=null; } };
+    const onVis=()=>{ if(document.visibilityState==='visible'){ loadCalendiq(); start(); } else stop(); };
+    if(document.visibilityState==='visible') start();
+    window.addEventListener('focus',loadCalendiq);
+    document.addEventListener('visibilitychange',onVis);
+    return ()=>{ stop(); window.removeEventListener('focus',loadCalendiq); document.removeEventListener('visibilitychange',onVis); };
+  },[loadCalendiq]);
 
   const connectCalendiq=useCallback(async(input)=>{
     const slug=cqParseSlug(input);
