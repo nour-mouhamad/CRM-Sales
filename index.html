@@ -1865,6 +1865,7 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
             </div>
             <div className="actions">
               <button className="act" onClick={openNewRdv} disabled={!calendiqReady} title={calendiqReady?'Créer un RDV dans CalendIQ':'Connecte ton CalendIQ (onglet Agenda)'}>
+                <span className="act-ic"><I.calPlus/></span>
                 <span className="act-tx"><b>Envoyer un rendez-vous</b><span>{calendiqReady?'CalendIQ · R1 / R2':'CalendIQ non connecté'}</span></span>
               </button>
               <button className="act" onClick={onCall} disabled={!lead.tel} title={lead.tel?'Appeler':'Aucun numéro de téléphone'}>
