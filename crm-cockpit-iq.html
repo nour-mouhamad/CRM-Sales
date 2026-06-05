@@ -859,6 +859,18 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .rdv-connect{text-align:center; padding:26px 10px}
 .rdv-connect p{color:var(--t2); font-size:14px; line-height:1.55; margin-bottom:16px; max-width:440px; margin:0 auto 16px}
 .rdv-err{margin-top:12px; background:var(--danger-tint); color:var(--danger); font-size:12.5px; padding:9px 12px; border-radius:9px}
+/* ---- modale Ajouter un RDV CalendIQ ---- */
+.rdvm{position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:90; width:min(440px,94vw); background:var(--surface); border:1px solid var(--b1); border-radius:18px; box-shadow:0 24px 60px rgba(0,0,0,.42); animation:fade .2s ease; overflow:hidden}
+.rdvm-head{display:flex; align-items:center; justify-content:space-between; padding:18px 20px 4px}
+.rdvm-head h3{font-size:17px; font-weight:800}
+.rdvm-body{padding:14px 20px 18px; display:flex; flex-direction:column; gap:8px}
+.rdvm-prefill{display:flex; align-items:center; gap:11px; padding:10px 12px; background:var(--surface-2); border:1px solid var(--b1); border-radius:11px; margin-bottom:6px}
+.rdvm-pf-tx{min-width:0}
+.rdvm-pf-tx b{display:block; font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.rdvm-pf-tx span{display:block; font-size:11.5px; color:var(--t3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.rdvm-lbl{font-size:11px; font-weight:700; color:var(--t3); text-transform:uppercase; letter-spacing:.04em; margin-top:6px}
+.rdvm-foot{display:flex; gap:10px; padding:0 20px 20px}
+.rdvm-foot .btn{flex:1; justify-content:center; padding:11px}
 </style>
 </head>
 <body>
@@ -919,6 +931,17 @@ async function cqMeetingsFor(organizerId){
   if(!organizerId) return [];
   const cols='id,title,start_at,duration_minutes,booker_name,booker_email,booker_phone,status,meet_link,payment_status';
   return cqGet('meetings?organizer_id=eq.'+encodeURIComponent(organizerId)+'&select='+cols+'&order=start_at.asc');
+}
+// crée un RDV dans CalendIQ (même insert anon que la page de booking publique) → retourne la ligne
+async function cqCreateMeeting(organizerId, m){
+  const body={ organizer_id:organizerId, title:m.title, start_at:m.start_at, duration_minutes:m.duration_minutes,
+    booker_name:m.booker_name||'', booker_email:m.booker_email||null, booker_phone:m.booker_phone||null,
+    booker_timezone:m.booker_timezone||'Europe/Paris', status:'confirmed' };
+  const r=await fetch(CALENDIQ.api+'/rest/v1/meetings',{ method:'POST',
+    headers:{ apikey:CALENDIQ.anon, Authorization:'Bearer '+CALENDIQ.anon, 'Content-Type':'application/json', Prefer:'return=representation' },
+    body: JSON.stringify(body) });
+  if(!r.ok){ let t=''; try{ const j=await r.json(); t=j.message||j.hint||''; }catch(e){} throw new Error(t||('CalendIQ '+r.status)); }
+  const rows=await r.json(); return Array.isArray(rows)?rows[0]:rows;
 }
 // helpers d'affichage agenda
 function cqDayKey(iso){ const d=new Date(iso); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
@@ -1214,42 +1237,49 @@ function CopyField({value, icon, copyVal, title}){
   );
 }
 
-// ISO -> valeur d'un <input type="datetime-local"> (heure locale)
-function toLocalInput(iso){ const d=new Date(iso); if(isNaN(d)) return ''; const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }
 function fmtRdv(iso){ try{ const s=new Date(iso).toLocaleString('fr-FR',{weekday:'short',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}); return s.replace(':',' h '); }catch(e){ return ''; } }
 
-// Champ « Rendez-vous » de la fiche : ajout/édition rapide via le sélecteur natif date+heure + type R1/R2.
-function RdvField({ lead, onSet }){
-  const [editing,setEditing]=useState(false);
-  const [dt,setDt]=useState('');
+// Modale « Ajouter un RDV CalendIQ » : type R1/R2 (durée par défaut R1=45 / R2=30, modifiable) + date/heure,
+// pré-remplie avec les infos du lead. Crée un VRAI RDV dans le CalendIQ du closer connecté.
+const RDV_DUR = { r1:45, r2:30 };
+function AddRdvModal({ lead, onClose, onAdd }){
   const [type,setType]=useState('r1');
-  const open=()=>{ setDt(lead.rdv_at?toLocalInput(lead.rdv_at):''); setType(lead.rdvType||'r1'); setEditing(true); };
-  const save=()=>{ if(!dt) return; onSet(new Date(dt).toISOString(), type); setEditing(false); };
+  const [dur,setDur]=useState(RDV_DUR.r1);
+  const [dt,setDt]=useState('');
+  const [busy,setBusy]=useState(false);
+  const [err,setErr]=useState(null);
+  const pickType=(t)=>{ setType(t); setDur(RDV_DUR[t]); };
+  const save=async()=>{ if(!dt||busy) return; setBusy(true); setErr(null);
+    try{ await onAdd(type, dur, new Date(dt).toISOString()); onClose(); }
+    catch(e){ setErr(e.message||'Création impossible'); } finally{ setBusy(false); } };
+  const name=`${lead.prenom||''} ${lead.nom||''}`.trim()||lead.email||'Lead';
   return (
-    <div className="field">
-      <span className="eyebrow">Rendez-vous</span>
-      {editing ? (
-        <div className="rdv-edit">
+    <div className="backdrop" onClick={onClose}>
+      <div className="rdvm" onClick={e=>e.stopPropagation()}>
+        <div className="rdvm-head"><h3>Ajouter un RDV CalendIQ</h3><button className="x-btn" style={{position:'static'}} onClick={onClose}><I.x/></button></div>
+        <div className="rdvm-body">
+          <div className="rdvm-prefill">
+            <Avatar lead={lead} size="sz-sm"/>
+            <div className="rdvm-pf-tx"><b>{name}</b><span>{lead.email||'—'}{lead.tel?(' · '+fmtPhone(lead.tel)):''}</span></div>
+          </div>
+          <label className="rdvm-lbl">Type</label>
           <div className="rdv-types">
-            <button className={type==='r1'?'on':''} onClick={()=>setType('r1')}>R1</button>
-            <button className={type==='r2'?'on':''} onClick={()=>setType('r2')}>R2</button>
+            <button className={type==='r1'?'on':''} onClick={()=>pickType('r1')}>R1 · 45 min</button>
+            <button className={type==='r2'?'on':''} onClick={()=>pickType('r2')}>R2 · 30 min</button>
           </div>
+          <label className="rdvm-lbl">Date &amp; heure</label>
           <input type="datetime-local" className="rdv-input" value={dt} autoFocus onChange={e=>setDt(e.target.value)}/>
-          <div className="rdv-foot">
-            <button className="btn btn-accent" disabled={!dt} onClick={save}>Enregistrer</button>
-            <button className="btn btn-ghost" onClick={()=>setEditing(false)}>Annuler</button>
+          <label className="rdvm-lbl">Durée</label>
+          <div className="rdv-durs">
+            {[15,30,45,60].map(d=><button key={d} className={'rdv-dur'+(dur===d?' on':'')} onClick={()=>setDur(d)}>{d} min</button>)}
           </div>
+          {err && <div className="rdv-err">{err}</div>}
         </div>
-      ) : lead.rdv_at ? (
-        <div className="rdv-set">
-          <span className="rdv-badge">{(lead.rdvType||'r1').toUpperCase()}</span>
-          <span className="rdv-when">{fmtRdv(lead.rdv_at)}</span>
-          <button className="rdv-link" onClick={open} title="Modifier le rendez-vous">Modifier</button>
-          <button className="rdv-link del" onClick={()=>onSet(null,null)} title="Retirer le rendez-vous">Retirer</button>
+        <div className="rdvm-foot">
+          <button className="btn btn-accent" disabled={!dt||busy} onClick={save}>{busy?'Création…':'Créer dans CalendIQ'}</button>
+          <button className="btn btn-ghost" onClick={onClose}>Annuler</button>
         </div>
-      ) : (
-        <button className="action-add" onClick={open}>+ Ajouter un rendez-vous</button>
-      )}
+      </div>
     </div>
   );
 }
@@ -1437,11 +1467,12 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
 }
 
 /* ============================================================= FICHE LEAD */
-function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onToggleAction, onActions, onClaim, meId, onSetRdv}){
+function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onToggleAction, onActions, onClaim, meId, onAddRdv, calendiqReady}){
   const [moveOpen,setMoveOpen]=useState(false);
   const [noteOpen,setNoteOpen]=useState(false);
   const [noteMode,setNoteMode]=useState('note'); // 'note' = note écrite | 'nrp' = appel sans réponse
   const [recapOpen,setRecapOpen]=useState(false);
+  const [rdvOpen,setRdvOpen]=useState(false);
   const moveBtnRef=useRef(null);
   const [movePos,setMovePos]=useState(null);
   const toggleMove=()=>{ if(moveOpen){ setMoveOpen(false); return; } const r=moveBtnRef.current.getBoundingClientRect(); setMovePos({top:r.bottom+4, left:r.left, width:r.width, maxH:Math.max(200, window.innerHeight-r.bottom-16)}); setMoveOpen(true); };
@@ -1453,6 +1484,7 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
     <div className="fiche">
       {noteOpen && <NoteModal mode={noteMode} onClose={()=>setNoteOpen(false)} onNote={(t,ti,tx)=>{ onNote(t,ti,tx); setNoteOpen(false); }}/>}
       {recapOpen && <RecapModal lead={lead} onClose={()=>setRecapOpen(false)} onEditField={onEditField} onNote={onNote} onAdvanceStage={onAdvanceStage}/>}
+      {rdvOpen && <AddRdvModal lead={lead} onClose={()=>setRdvOpen(false)} onAdd={onAddRdv}/>}
       <div className="fiche-head">
         <button className="back" onClick={onBack}><I.back/>Mes leads</button>
         <div className="fiche-id">
@@ -1481,7 +1513,6 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
                 <span className="eyebrow">Source du lead</span>
                 <div className="val" style={{fontWeight:700}}>{si.label}</div>
               </div>
-              <RdvField lead={lead} onSet={onSetRdv}/>
               {lead.calendiqRdv && <CqRdvField rdv={lead.calendiqRdv}/>}
               <div className="field">
                 <span className="eyebrow">Action</span>
@@ -1592,6 +1623,10 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
               </>)}
             </div>
             <div className="actions">
+              <button className="act" onClick={()=>setRdvOpen(true)} disabled={!calendiqReady} title={calendiqReady?'Créer un RDV dans CalendIQ':'Connecte ton CalendIQ (onglet Agenda)'}>
+                <span className="act-ic"><I.calPlus/></span>
+                <span className="act-tx"><b>Ajouter un RDV</b><span>{calendiqReady?'CalendIQ · R1 / R2':'CalendIQ non connecté'}</span></span>
+              </button>
               <button className="act" onClick={onCall} disabled={!lead.tel} title={lead.tel?'Appeler':'Aucun numéro de téléphone'}>
                 <span className="act-ic"><I.phone/></span>
                 <span className="act-tx"><b>Appeler</b><span className={lead.tel?'mono':''}>{lead.tel||'Pas de numéro'}</span></span>
@@ -2390,8 +2425,25 @@ function App({session, onLogout}){
   // appropriation du lead par le closer connecté (toggle) — owner_closer_id = id de l'utilisateur auth
   // 3 états : libre -> je m'approprie ; à moi -> je libère ; à un autre closer -> bloqué (pas de vol)
   const claimLead=()=>{ if(!sel) return; const uid=session.user.id; if(sel.owner && sel.owner!==uid){ toast('Lead déjà approprié','Par un autre closer','info'); return; } const next=sel.owner?null:uid; patch(sel.id,{owner:next}); saveLead(sel.id,{owner:next}); toast(next?'Lead approprié':'Lead libéré', `${sel.prenom||''} ${sel.nom||''}`.trim()||null, next?'ok':'info'); };
-  // ajout/édition/suppression d'un rendez-vous saisi à la main (rdv_at + rdv_type R1/R2)
-  const setRdv=(at,type)=>{ if(!sel) return; const p={rdv_at:at, rdvType:type}; const claim = at && type==='r1' && !sel.owner && !isAdmin; if(claim) p.owner=userId; patch(sel.id,p); saveLead(sel.id,p); toast(at?(claim?'R1 calé — lead approprié':'Rendez-vous enregistré'):'Rendez-vous retiré', at?((type||'r1').toUpperCase()+' · '+fmtRdv(at)):null, at?'ok':'info'); };
+  // Ajouter un RDV : crée un VRAI RDV dans le CalendIQ du closer connecté, pré-rempli avec le lead,
+  // puis reflète côté CRM (rdv_at + type + auto-claim R1 + note + refresh agenda).
+  const addCalendiqRdv=useCallback(async(type, durationMin, startIso)=>{
+    if(!sel) return;
+    const orgId = profile && profile.calendiq_organizer_id;
+    if(!orgId){ toast('Connecte ton CalendIQ d’abord','Onglet Agenda','info'); throw new Error('CalendIQ non connecté'); }
+    const name=`${sel.prenom||''} ${sel.nom||''}`.trim()||sel.email||'Lead';
+    await cqCreateMeeting(orgId, { title:'IQ Project × '+(sel.prenom||name), start_at:startIso, duration_minutes:durationMin,
+      booker_name:name, booker_email:sel.email||null, booker_phone:sel.tel||null });
+    const claim = type==='r1' && !sel.owner && !isAdmin;
+    const p={ rdv_at:startIso, rdvType:type, ...(claim?{owner:userId}:{}) };
+    patch(sel.id,p); saveLead(sel.id,p);
+    const title='RDV CalendIQ — '+(type||'r1').toUpperCase()+' · '+fmtRdv(startIso);
+    const actP=addActivite(sel.id,'rdv',title,null);
+    patch(sel.id,prev=>({timeline:[{type:'rdv',when:'à l’instant',title,text:''},...prev.timeline]}));
+    loadCalendiq();
+    toast(claim?((type).toUpperCase()+' calé — lead approprié'):((type||'r1').toUpperCase()+' calé dans CalendIQ'), fmtRdv(startIso),'ok');
+    return actP;
+  },[sel,profile,isAdmin,userId,toast,patch,loadCalendiq]);
 
   // payment send → À payer, then auto Payé (id capturé, transition garantie)
   const sendPayment=(amount,tag)=>{
@@ -2470,7 +2522,7 @@ function App({session, onLogout}){
         {screen==='leads' && <Board leads={leadsCq} search={search} setSearch={setSearch}
             onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col)=>setAddTarget(col)} onDelete={deleteLead}/>}
         {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen('leads')} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
-            onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions} onClaim={claimLead} meId={session.user.id} onSetRdv={setRdv}/>}
+            onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} calendiqReady={!!(profile&&profile.calendiq_organizer_id)}/>}
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen('leads')}>Retour au board</button></div>}
         {screen==='agenda' && <Agenda meetings={cqMeetings} sources={cqSources} loading={cqLoading} error={cqError}
             isAdmin={isAdmin} profile={profile} onConnect={connectCalendiq} onDisconnect={disconnectCalendiq}
