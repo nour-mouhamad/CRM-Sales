@@ -288,6 +288,8 @@ input,textarea{font-family:inherit; color:inherit}
 .parcours-dot{flex:none; width:8px; height:8px; border-radius:50%; background:var(--accent)}
 .parcours-lbl{flex:1; min-width:0; font-size:13px; font-weight:600; color:var(--t1)}
 .parcours-when{font-size:11.5px; color:var(--t3); font-weight:500; white-space:nowrap}
+.parcours-step.current .parcours-lbl{color:var(--accent); font-weight:700}
+.parcours-step.current .parcours-dot{box-shadow:0 0 0 3px var(--accent-tint)}
 /* Appropriation du lead par le closer */
 .claim{display:flex; align-items:center; gap:11px; cursor:pointer; padding:7px 9px; margin:0 -9px; border-radius:9px; border:1px solid transparent; transition:all var(--speed)}
 .claim:hover{background:var(--surface-2); border-color:var(--b1)}
@@ -1804,15 +1806,25 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
             </div>
           </div>
           <div className="panel-body">
-            {(()=>{ const steps=lead.timeline.filter(e=>e.title&&e.title.indexOf('Étape :')===0); if(steps.length===0) return null; return (
+            {(()=>{
+              // Parcours = origine (source + date de création) → étapes loguées (chaque move logue une étape dans la DB) → étape actuelle.
+              // Toujours affiché, pour TOUS les leads (même importés sans historique de moves).
+              const steps=lead.timeline.filter(e=>e.title&&e.title.indexOf('Étape :')===0).slice().reverse();
+              const si=SOURCE_INFO[lead.source]||{label:lead.source||'Entrée'};
+              const fmtD=(d)=>{ try{ return new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}); }catch(e){ return ''; } };
+              const items=[{ key:'origin', lbl:si.label, when:lead.date_creation?fmtD(lead.date_creation):'' }];
+              steps.forEach((s,i)=>items.push({ key:s.id||('s'+i), lbl:s.title.replace('Étape : ',''), when:s.when }));
+              const cur=COL_LABEL[lead.column]||lead.column;
+              if(items[items.length-1].lbl!==cur) items.push({ key:'cur', lbl:cur, when:'actuel' });
+              return (
               <div className="parcours">
                 <span className="eyebrow">Parcours du lead</span>
                 <div className="parcours-list">
-                  {steps.slice().reverse().map((s,i)=>(
-                    <div className="parcours-step" key={s.id||i}>
+                  {items.map((it,i)=>(
+                    <div className={'parcours-step'+(i===items.length-1?' current':'')} key={it.key}>
                       <span className="parcours-dot"></span>
-                      <span className="parcours-lbl">{s.title.replace('Étape : ','')}</span>
-                      <span className="parcours-when">{s.when}</span>
+                      <span className="parcours-lbl">{it.lbl}</span>
+                      <span className="parcours-when">{it.when}</span>
                     </div>
                   ))}
                 </div>
