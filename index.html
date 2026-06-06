@@ -1292,14 +1292,15 @@ const inferCallKind = (lead, callType) => {
   return (k==='r1'||k==='r2'||k==='r3') ? k : null;
 };
 
-// Avancée d'étape automatique quand un RDV est fixé : R1 → « 1er RDV pris », R2 → « Closing ».
-// Garde anti-rétrogradation : on n'avance JAMAIS un lead déjà plus loin (qualifié/à encaisser/gagné/perdu/désabonné).
+// Avancée d'étape automatique quand un RDV est fixé : SEUL le R1 → « 1er RDV pris ».
+// Le R2 (et au-delà) NE change PAS l'étape (décision Nour-Mouhamad). Garde anti-rétrogradation : on n'avance
+// jamais un lead déjà plus loin (qualifié/closing/à encaisser/gagné/perdu/désabonné).
 const STAGE_ORDER = {contacter:0, perso:0, atc:1, rdv1:2, contacte:3, qualifie:4, closing:5, encaisser:6, won:7, lost:7, desabonne:7};
-const RDV_STAGE_TERMINAL = {encaisser:1, won:1, lost:1, desabonne:1};
+const RDV_STAGE_TERMINAL = {closing:1, encaisser:1, won:1, lost:1, desabonne:1};
 function rdvTargetStage(type, cur){
-  const target = type==='r2' ? 'closing' : 'rdv1';
-  if(RDV_STAGE_TERMINAL[cur]) return null;                 // déjà au-delà du closing → on ne touche pas
-  return (STAGE_ORDER[target]||0) > (STAGE_ORDER[cur]||0) ? target : null; // seulement si ça AVANCE
+  if(type!=='r1') return null;                              // R2/R3 : on ne touche pas à l'étape
+  if(RDV_STAGE_TERMINAL[cur]) return null;                  // lead déjà plus avancé → intact
+  return STAGE_ORDER.rdv1 > (STAGE_ORDER[cur]||0) ? 'rdv1' : null; // seulement si ça AVANCE
 }
 
 const OFFERS = [
