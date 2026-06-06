@@ -3095,15 +3095,6 @@ function TeamScreen({ userId, toast, leads, onOpenLead }){
           : ranked.map((c,i)=><CloserCard key={c.key} rank={i+1} name={c.name} leads={c.leads} maxCa={maxCa} onOpenLead={onOpenLead} defaultOpen={i===0&&ranked.length<=2}/>)}
       </div>
 
-      {unassigned.length>0 && (<>
-        <div className="mgr-sec"><span className="eyebrow" style={{color:'var(--warm)'}}>⚠ Leads non attribués</span><span className="mgr-count">{unassigned.length}</span></div>
-        <div className="lb-list">
-          <div className="lb-card open"><div className="lb-body" style={{borderTop:'none'}}>
-            {unassigned.map(l=><ManagerLeadRow key={l.id} lead={l} onOpenLead={onOpenLead}/>)}
-          </div></div>
-        </div>
-      </>)}
-
       <div className="mgr-sec"><span className="eyebrow">Invitations en attente</span><span className="mgr-count">{pending.length}</span></div>
       <div className="lb-list">
         <div className="lb-card"><div className="lb-body" style={{borderTop:'none'}}>
