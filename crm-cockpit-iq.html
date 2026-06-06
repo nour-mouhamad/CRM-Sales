@@ -350,6 +350,60 @@ input,textarea{font-family:inherit; color:inherit}
 .team-tag{font-size:11px; font-weight:700; color:var(--t3); background:var(--surface); border:1px solid var(--b1); border-radius:6px; padding:2px 8px}
 .team-tok{font-size:12px; color:var(--t3); flex:1; min-width:0}
 
+/* ===== Cockpit manager ===== */
+.mgr-pad{padding:24px 30px 40px; max-width:1240px; width:100%; box-sizing:border-box; height:100%; overflow:auto}
+.mgr-head{display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:18px}
+.mgr-head h1{font-size:25px; font-weight:800; letter-spacing:-.02em}
+.mgr-head p{color:var(--t3); font-size:13px; margin-top:3px; font-weight:500}
+.mgr-kpis{display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:24px}
+@media(max-width:1000px){.mgr-kpis{grid-template-columns:repeat(2,1fr)}}
+.kpi{background:var(--surface); border:1px solid var(--b1); border-radius:14px; padding:14px 15px; position:relative; overflow:hidden}
+.kpi .kpi-ic{position:absolute; top:12px; right:12px; width:16px; height:16px; color:var(--t4); stroke-width:1.9}
+.kpi .kpi-n{font-family:'Gabarito',sans-serif; font-size:26px; font-weight:800; letter-spacing:-.02em; line-height:1}
+.kpi .kpi-l{font-size:11.5px; color:var(--t3); font-weight:600; margin-top:6px; text-transform:uppercase; letter-spacing:.04em}
+.kpi.accent .kpi-n{color:var(--accent)} .kpi.ok .kpi-n{color:var(--ok)}
+.mgr-sec{display:flex; align-items:center; gap:9px; margin:4px 0 12px}
+.mgr-sec .eyebrow{color:var(--t3)}
+.mgr-sec .mgr-count{font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; color:var(--t3); background:var(--surface); border:1px solid var(--b1); border-radius:6px; padding:1px 8px}
+.lb-list{display:flex; flex-direction:column; gap:10px; margin-bottom:28px}
+.lb-card{background:var(--surface); border:1px solid var(--b1); border-radius:14px; overflow:hidden; transition:border-color var(--speed) var(--ease)}
+.lb-card.open{border-color:var(--b3)}
+.lb-head{display:flex; align-items:center; gap:14px; padding:13px 16px; width:100%; text-align:left; cursor:pointer}
+.lb-head:hover{background:var(--surface-2)}
+.lb-rank{font-family:'Gabarito',sans-serif; font-weight:800; font-size:15px; color:var(--t4); width:20px; text-align:center; flex:none}
+.lb-card:first-child .lb-rank{color:var(--accent)}
+.lb-id{display:flex; align-items:center; gap:11px; min-width:170px; flex:none}
+.lb-id b{font-size:14.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.lb-metrics{display:flex; gap:22px; flex:1; min-width:0}
+@media(max-width:760px){.lb-metrics{display:none}}
+.lb-m{display:flex; flex-direction:column; gap:2px}
+.lb-m b{font-family:'Gabarito',sans-serif; font-size:17px; font-weight:800; letter-spacing:-.02em; line-height:1}
+.lb-m span{font-size:10px; color:var(--t3); font-weight:600; text-transform:uppercase; letter-spacing:.05em}
+.lb-m.warn b{color:var(--warm)} .lb-m.won b{color:var(--ok)}
+.lb-ca{display:flex; flex-direction:column; gap:5px; width:150px; flex:none}
+.lb-ca-top{display:flex; align-items:baseline; justify-content:space-between; gap:8px}
+.lb-ca-top b{font-family:'Gabarito',sans-serif; font-size:17px; font-weight:800; color:var(--accent); letter-spacing:-.02em}
+.lb-ca-top span{font-size:10px; color:var(--t3); font-weight:600; text-transform:uppercase; letter-spacing:.05em}
+.lb-bar{height:5px; background:var(--surface-3); border-radius:99px; overflow:hidden}
+.lb-bar i{display:block; height:100%; background:linear-gradient(90deg,var(--accent-h),var(--accent)); border-radius:99px}
+.lb-chev{color:var(--t4); transition:transform var(--speed) var(--ease); flex:none}
+.lb-chev svg{width:18px; height:18px}
+.lb-card.open .lb-chev{transform:rotate(90deg)}
+.lb-body{border-top:1px solid var(--b1); padding:8px 10px; background:var(--surface-2)}
+.lb-empty{font-size:12.5px; color:var(--t3); padding:12px 8px}
+.cl-lead{display:flex; align-items:center; gap:10px; width:100%; text-align:left; padding:9px 10px; border-radius:9px; cursor:pointer; transition:background var(--speed) var(--ease)}
+.cl-lead:hover{background:var(--surface)}
+.cl-lead-name{font-size:13.5px; font-weight:700; width:150px; flex:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.chip{font-size:11px; font-weight:700; padding:2px 9px; border-radius:99px; white-space:nowrap; flex:none; display:inline-flex; align-items:center; gap:5px}
+.chip .cdot{width:6px; height:6px; border-radius:99px; background:currentColor}
+.chip-rdv{font-size:11px; font-weight:700; padding:2px 9px; border-radius:99px; white-space:nowrap; flex:none; background:var(--accent-tint); color:var(--accent); display:inline-flex; align-items:center; gap:5px}
+.chip-rdv svg{width:11px; height:11px; stroke-width:2}
+.chip-rdv.todo{background:var(--surface-3); color:var(--warm)}
+.cl-amt{font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; color:var(--t1); flex:none}
+.cl-concl{font-size:12px; color:var(--t3); flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-style:italic}
+.cl-arrow{color:var(--t4); flex:none} .cl-arrow svg{width:15px; height:15px}
+.cl-lead:hover .cl-arrow{color:var(--accent)}
+
 /* timeline */
 .tl{display:flex; flex-direction:column; gap:10px}
 .tl-empty{font-size:12.5px; color:var(--t3); padding:4px 2px}
@@ -2877,7 +2931,7 @@ function App({session, onLogout}){
         {screen==='agenda' && <Agenda meetings={cqMeetings} sources={cqSources} loading={cqLoading} error={cqError}
             isAdmin={isAdmin} profile={profile} onConnect={connectCalendiq} onDisconnect={disconnectCalendiq}
             onRefresh={loadCalendiq} onOpenLead={openLead} meetingLeadId={meetingLeadId}/>}
-        {screen==='team' && isAdmin && <TeamScreen userId={userId} toast={toast}/>}
+        {screen==='team' && isAdmin && <TeamScreen userId={userId} toast={toast} leads={leadsCq} onOpenLead={openLead}/>}
       </main>
 
       {/* OVERLAYS */}
@@ -2891,15 +2945,91 @@ function App({session, onLogout}){
   );
 }
 
-/* ====================== ÉCRAN ADMIN : CLOSERS / INVITATIONS ====================== */
-function TeamScreen({ userId, toast }){
-  const [closers,setClosers]=useState([]);
+/* ====================== ÉCRAN MANAGER : COCKPIT CLOSERS ====================== */
+// statut dérivé d'un lead (aucune donnée inventée — vide reste vide)
+const LB_LOST=['lost','perdu','desabonne','desabo'], LB_WON=['won','paye'], LB_CLOSING=['closing','encaisser','apayer','cpf'];
+function leadStatus(l){
+  const col=l.column;
+  const isWon = l.paid===true || LB_WON.includes(col);
+  const isLost = !isWon && LB_LOST.includes(col);
+  const isClosing = !isWon && !isLost && LB_CLOSING.includes(col);
+  const rdvUpcoming = !!l.rdv_at && new Date(l.rdv_at).getTime()>Date.now();
+  const recap=(l.timeline||[]).find(t=>t.type==='recap');
+  return { col, label:COL_LABEL[col]||col, color:COL_COLOR[col]||'var(--t3)',
+    isWon, isLost, isClosing, rdvUpcoming, rdvType:l.rdvType||null, rdv_at:l.rdv_at||null,
+    montant:l.offer||0, conclusion: recap?(recap.text||recap.title||''):'' };
+}
+// faut-il caler un RDV ? (étape amont, aucun RDV à venir)
+const RDV_TODO_COLS=['contacter','perso','atc','contacte'];
+function leadAttn(s){ if(s.isClosing) return 0; if(s.rdvUpcoming) return 1; if(!s.isWon&&!s.isLost) return 2; if(s.isWon) return 3; return 4; }
+
+function ManagerLeadRow({ lead, onOpenLead }){
+  const s=leadStatus(lead);
+  const rdvLabel = s.rdvUpcoming ? ((s.rdvType||'r1').toUpperCase()+' · '+cqDayLabel(s.rdv_at)+' '+cqTime(s.rdv_at)) : null;
+  const todo = !s.rdvUpcoming && !s.isWon && !s.isLost && RDV_TODO_COLS.includes(s.col);
+  return (
+    <button className="cl-lead" onClick={()=>onOpenLead(lead.id)}>
+      <span className="cl-lead-name">{lead.prenom} {lead.nom}</span>
+      <span className="chip" style={{color:s.color, background:'color-mix(in srgb, currentColor 12%, transparent)'}}><span className="cdot"></span>{s.label}</span>
+      {rdvLabel && <span className="chip-rdv">{I.agenda({})}{rdvLabel}</span>}
+      {todo && <span className="chip-rdv todo">{I.clock({})}RDV à caler</span>}
+      {s.montant>0 && <span className="cl-amt">{eur(s.montant)}</span>}
+      {s.conclusion && <span className="cl-concl">« {s.conclusion} »</span>}
+      <span className="cl-arrow">{I.chev({})}</span>
+    </button>
+  );
+}
+
+function CloserCard({ rank, name, leads, maxCa, onOpenLead, defaultOpen }){
+  const [open,setOpen]=useState(!!defaultOpen);
+  const m=useMemo(()=>{
+    let rdv=0,closing=0,won=0,ca=0,lost=0;
+    leads.forEach(l=>{ const s=leadStatus(l);
+      if(s.isWon){ won++; ca+=s.montant; }
+      else if(s.isLost) lost++;
+      else if(s.isClosing) closing++;
+      if(s.rdvUpcoming) rdv++;
+    });
+    return { n:leads.length, rdv, closing, won, ca, lost, taux: leads.length?Math.round(won/leads.length*100):0 };
+  },[leads]);
+  const sorted=useMemo(()=>leads.slice().sort((a,b)=>leadAttn(leadStatus(a))-leadAttn(leadStatus(b))),[leads]);
+  const caPct = maxCa>0 ? Math.max(4, Math.round(m.ca/maxCa*100)) : 0;
+  return (
+    <div className={'lb-card'+(open?' open':'')}>
+      <button className="lb-head" onClick={()=>setOpen(o=>!o)}>
+        <span className="lb-rank">{rank}</span>
+        <div className="lb-id"><span className="avatar sz-sm">{((name||'?')[0]||'?').toUpperCase()}</span><b>{name}</b></div>
+        <div className="lb-metrics">
+          <div className="lb-m"><b>{m.n}</b><span>Leads</span></div>
+          <div className={'lb-m'+(m.rdv?' warn':'')}><b>{m.rdv}</b><span>RDV à venir</span></div>
+          <div className="lb-m"><b>{m.closing}</b><span>En closing</span></div>
+          <div className={'lb-m'+(m.won?' won':'')}><b>{m.won}</b><span>Gagnés</span></div>
+          <div className="lb-m"><b>{m.taux}%</b><span>Taux close</span></div>
+        </div>
+        <div className="lb-ca">
+          <div className="lb-ca-top"><b>{eur(m.ca)}</b><span>encaissé</span></div>
+          <div className="lb-bar"><i style={{width:caPct+'%'}}></i></div>
+        </div>
+        <span className="lb-chev">{I.chev({})}</span>
+      </button>
+      {open && (
+        <div className="lb-body">
+          {sorted.length===0 ? <div className="lb-empty">Aucun lead attribué.</div>
+            : sorted.map(l=><ManagerLeadRow key={l.id} lead={l} onOpenLead={onOpenLead}/>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TeamScreen({ userId, toast, leads, onOpenLead }){
+  const [profiles,setProfiles]=useState([]);
   const [invites,setInvites]=useState([]);
   const [busy,setBusy]=useState(false);
   const base = (typeof location!=='undefined') ? (location.origin+location.pathname) : '';
   const linkFor = t => base+'?invite='+t;
   const load=()=>{
-    SB.from('profiles').select('id,name,role,created_at').order('created_at').then(({data})=>setClosers((data||[]).filter(p=>p.role==='closer')));
+    SB.from('profiles').select('id,name,role,created_at').order('created_at').then(({data})=>setProfiles(data||[]));
     SB.from('invites').select('token,email,name,used_at,created_at').order('created_at',{ascending:false}).then(({data})=>setInvites(data||[]));
   };
   useEffect(load,[]);
@@ -2911,35 +3041,80 @@ function TeamScreen({ userId, toast }){
   }catch(e){ toast('Erreur', e.message, 'info'); } finally{ setBusy(false); } };
   const copy=t=>{ try{ navigator.clipboard.writeText(linkFor(t)); toast('Lien copié',null,'ok'); }catch(e){} };
   const pending = invites.filter(i=>!i.used_at);
+
+  const all = leads||[];
+  // roster : profils closer (même à 0 lead) ∪ propriétaires réels présents dans les leads ; le manager (userId) exclu
+  const { rosterClosers, unassigned } = useMemo(()=>{
+    const nameById={}; profiles.forEach(p=>{ nameById[p.id]=p.name; });
+    const byKey={};
+    profiles.filter(p=>p.role==='closer').forEach(p=>{ byKey[p.id]={key:p.id, name:p.name||'—', leads:[]}; });
+    const un=[];
+    all.forEach(l=>{
+      if(!l.owner){ un.push(l); return; }
+      if(l.owner===userId) return; // les leads du manager lui-même ne comptent pas comme « closer »
+      if(!byKey[l.owner]) byKey[l.owner]={key:l.owner, name:nameById[l.owner]||l.owner, leads:[]};
+      byKey[l.owner].leads.push(l);
+    });
+    return { rosterClosers:Object.values(byKey), unassigned:un };
+  },[all,profiles,userId]);
+
+  const ranked = useMemo(()=>rosterClosers.slice().sort((a,b)=>{
+    const ca=x=>x.leads.reduce((t,l)=>{const s=leadStatus(l); return t+(s.isWon?s.montant:0);},0);
+    const wn=x=>x.leads.filter(l=>leadStatus(l).isWon).length;
+    return (ca(b)-ca(a)) || (wn(b)-wn(a)) || (b.leads.length-a.leads.length);
+  }),[rosterClosers]);
+  const maxCa = useMemo(()=>Math.max(0,...ranked.map(c=>c.leads.reduce((t,l)=>{const s=leadStatus(l); return t+(s.isWon?s.montant:0);},0))),[ranked]);
+
+  // KPIs équipe (tous les closers, hors leads du manager)
+  const team = useMemo(()=>{
+    const ls=ranked.flatMap(c=>c.leads);
+    let rdv=0,closing=0,won=0,ca=0;
+    ls.forEach(l=>{ const s=leadStatus(l); if(s.isWon){won++;ca+=s.montant;} else if(s.isClosing) closing++; if(s.rdvUpcoming) rdv++; });
+    return { n:ls.length, rdv, closing, won, ca };
+  },[ranked]);
+
   return (
-    <div className="team-pad">
-      <div className="team-head"><h1>Closers</h1><button className="btn btn-accent" disabled={busy} onClick={gen}><I.plus style={{width:15,height:15}}/>Inviter un closer</button></div>
-      <div className="team-grid">
-        <div className="panel">
-          <div className="panel-head"><span className="eyebrow">Équipe · {closers.length}</span></div>
-          <div className="panel-body">
-            {closers.length===0 ? <div className="tl-empty">Aucun closer connecté pour l’instant.</div>
-              : closers.map(c=>(
-                <div key={c.id} className="team-row">
-                  <span className="avatar sz-sm">{((c.name||'?')[0]||'?').toUpperCase()}</span>
-                  <b style={{flex:1,minWidth:0}}>{c.name||'—'}</b>
-                  <span className="team-tag">Closer</span>
-                </div>
-              ))}
-          </div>
+    <div className="mgr-pad">
+      <div className="mgr-head">
+        <div><h1>Cockpit closers</h1><p>Vue manager — performance, pipeline et leads de chaque closer en un coup d’œil.</p></div>
+        <button className="btn btn-accent" disabled={busy} onClick={gen}><I.plus style={{width:15,height:15}}/>Inviter un closer</button>
+      </div>
+
+      <div className="mgr-kpis">
+        <div className="kpi"><span className="kpi-ic">{I.leads({})}</span><div className="kpi-n">{team.n}</div><div className="kpi-l">Leads suivis</div></div>
+        <div className="kpi accent"><span className="kpi-ic">{I.agenda({})}</span><div className="kpi-n">{team.rdv}</div><div className="kpi-l">RDV à venir</div></div>
+        <div className="kpi"><span className="kpi-ic">{I.euro({})}</span><div className="kpi-n">{team.closing}</div><div className="kpi-l">En closing</div></div>
+        <div className="kpi ok"><span className="kpi-ic">{I.check({})}</span><div className="kpi-n">{team.won}</div><div className="kpi-l">Gagnés</div></div>
+        <div className="kpi accent"><span className="kpi-ic">{I.euro({})}</span><div className="kpi-n">{eur(team.ca)}</div><div className="kpi-l">CA encaissé</div></div>
+      </div>
+
+      <div className="mgr-sec"><span className="eyebrow">Performance · classement</span><span className="mgr-count">{ranked.length}</span></div>
+      <div className="lb-list">
+        {ranked.length===0
+          ? <div className="lb-card"><div className="lb-empty" style={{padding:'18px 16px'}}>Aucun closer pour l’instant. Clique « Inviter un closer » pour démarrer.</div></div>
+          : ranked.map((c,i)=><CloserCard key={c.key} rank={i+1} name={c.name} leads={c.leads} maxCa={maxCa} onOpenLead={onOpenLead} defaultOpen={i===0&&ranked.length<=2}/>)}
+      </div>
+
+      {unassigned.length>0 && (<>
+        <div className="mgr-sec"><span className="eyebrow" style={{color:'var(--warm)'}}>⚠ Leads non attribués</span><span className="mgr-count">{unassigned.length}</span></div>
+        <div className="lb-list">
+          <div className="lb-card open"><div className="lb-body" style={{borderTop:'none'}}>
+            {unassigned.map(l=><ManagerLeadRow key={l.id} lead={l} onOpenLead={onOpenLead}/>)}
+          </div></div>
         </div>
-        <div className="panel">
-          <div className="panel-head"><span className="eyebrow">Liens en attente · {pending.length}</span></div>
-          <div className="panel-body">
-            {pending.length===0 ? <div className="tl-empty">Aucun lien en attente. Clique « Inviter un closer ».</div>
-              : pending.map(i=>(
-                <div key={i.token} className="team-row">
-                  <span className="mono team-tok">invite …{String(i.token).slice(-6)}</span>
-                  <button className="btn btn-soft" style={{padding:'5px 11px',fontSize:12}} onClick={()=>copy(i.token)}>Copier le lien</button>
-                </div>
-              ))}
-          </div>
-        </div>
+      </>)}
+
+      <div className="mgr-sec"><span className="eyebrow">Invitations en attente</span><span className="mgr-count">{pending.length}</span></div>
+      <div className="lb-list">
+        <div className="lb-card"><div className="lb-body" style={{borderTop:'none'}}>
+          {pending.length===0 ? <div className="lb-empty">Aucun lien en attente. Clique « Inviter un closer ».</div>
+            : pending.map(i=>(
+              <div key={i.token} className="cl-lead" style={{cursor:'default'}}>
+                <span className="mono" style={{fontSize:12,color:'var(--t3)',flex:1}}>invite …{String(i.token).slice(-6)}{i.name?(' · '+i.name):''}</span>
+                <button className="btn btn-soft" style={{padding:'5px 11px',fontSize:12}} onClick={()=>copy(i.token)}>Copier le lien</button>
+              </div>
+            ))}
+        </div></div>
       </div>
     </div>
   );
