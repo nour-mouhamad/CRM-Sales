@@ -396,6 +396,7 @@ input,textarea{font-family:inherit; color:inherit}
 .cl-lead-name{font-size:13.5px; font-weight:700; width:150px; flex:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .chip{font-size:11px; font-weight:700; padding:2px 9px; border-radius:99px; white-space:nowrap; flex:none; display:inline-flex; align-items:center; gap:5px}
 .chip .cdot{width:6px; height:6px; border-radius:99px; background:currentColor}
+.chip.sm{font-size:10px; padding:1px 7px; gap:4px}
 .chip-rdv{font-size:11px; font-weight:700; padding:2px 9px; border-radius:99px; white-space:nowrap; flex:none; background:var(--accent-tint); color:var(--accent); display:inline-flex; align-items:center; gap:5px}
 .chip-rdv svg{width:11px; height:11px; stroke-width:2}
 .chip-rdv.todo{background:var(--surface-3); color:var(--warm)}
@@ -2212,6 +2213,7 @@ function TlCard({ ev, onEditNote, onDeleteNote }){
         <span className="tl-recap-ic">{Icon({})}</span>
         <span className="tl-recap-title">{ev.title}</span>
         <span className="tl-recap-right">
+          {isRecap && ev.result && RESULT_META[ev.result] && (()=>{ const rk=RESULT_META[ev.result]; return <span className="chip sm" style={{color:rk.color, background:'color-mix(in srgb, currentColor 14%, transparent)'}}><span className="cdot"></span>{rk.label}</span>; })()}
           <span className="tl-when">{ev.when}</span>
           {ev.id && <span className="tl-recap-actions">
             {canEdit && <button title="Modifier" onClick={startEdit}>{I.pencil({})}</button>}
