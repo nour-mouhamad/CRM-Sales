@@ -1292,6 +1292,16 @@ const inferCallKind = (lead, callType) => {
   return (k==='r1'||k==='r2'||k==='r3') ? k : null;
 };
 
+// Avancée d'étape automatique quand un RDV est fixé : R1 → « 1er RDV pris », R2 → « Closing ».
+// Garde anti-rétrogradation : on n'avance JAMAIS un lead déjà plus loin (qualifié/à encaisser/gagné/perdu/désabonné).
+const STAGE_ORDER = {contacter:0, perso:0, atc:1, rdv1:2, contacte:3, qualifie:4, closing:5, encaisser:6, won:7, lost:7, desabonne:7};
+const RDV_STAGE_TERMINAL = {encaisser:1, won:1, lost:1, desabonne:1};
+function rdvTargetStage(type, cur){
+  const target = type==='r2' ? 'closing' : 'rdv1';
+  if(RDV_STAGE_TERMINAL[cur]) return null;                 // déjà au-delà du closing → on ne touche pas
+  return (STAGE_ORDER[target]||0) > (STAGE_ORDER[cur]||0) ? target : null; // seulement si ça AVANCE
+}
+
 const OFFERS = [
   {id:'1400', amount:1400, tag:'Non chômeur (France Travail)'},
   {id:'1250', amount:1250, tag:'Chômeur (France Travail)'},
@@ -2880,11 +2890,14 @@ function App({session, onLogout}){
     // 2) reprogrammation : annule l'ancien RDV via CalendIQ (supprime event Google + email d'annulation)
     if(replaceMeetingId){ try{ await cqInvoke('cancel-meeting',{ meeting_id:replaceMeetingId }); }catch(e){ console.warn('cancel old',e); } setCqMeetings(ms=>ms.filter(m=>m.id!==replaceMeetingId)); }
     const claim = type==='r1' && !sel.owner && !isAdmin;
+    const tgt = rdvTargetStage(type, sel.column); // RDV fixé → avance l'étape (R1→1er RDV pris, R2→Closing), jamais en arrière
+    const stagePatch = tgt ? { column:tgt, nextAction:NEXT_BY_COL[tgt]||null } : {};
     // le lien Meet est stocké dans crm-sales (rdvMeetLink) car l'UPDATE anon sur la base CalendIQ est bloqué
-    const p={ rdv_at:startIso, rdvType:type, rdvMeetLink:booked.meet_link||null, ...(claim?{owner:userId}:{}) };
+    const p={ rdv_at:startIso, rdvType:type, rdvMeetLink:booked.meet_link||null, ...(claim?{owner:userId}:{}), ...stagePatch };
     // reflet immédiat du RDV (avec le lien Meet) sur la fiche, sans attendre le refetch
     patch(sel.id,prev=>({ ...p, calendiqRdv:{ id:booked.id, title:'IQ Project × '+(sel.prenom||name), start_at:startIso, duration_minutes:durationMin, status:'confirmed', meet_link:booked.meet_link||null } }));
     saveLead(sel.id,p);
+    if(tgt){ const stTitle='Étape : '+(COL_LABEL[tgt]||tgt); addActivite(sel.id,'note',stTitle,null).catch(()=>null); patch(sel.id,prev=>({timeline:[{type:'note',when:'à l’instant',title:stTitle,text:''},...prev.timeline]})); }
     const verb=replaceMeetingId?'reprogrammé':'calé';
     const title='RDV CalendIQ '+verb+' — '+(type||'r1').toUpperCase()+' · '+fmtRdv(startIso);
     const actP=addActivite(sel.id,'rdv',title,null).catch(()=>null);
@@ -2909,7 +2922,7 @@ function App({session, onLogout}){
     toast('RDV annulé','CalendIQ a retiré le créneau','info');
   },[sel,toast,patch,loadCalendiq]);
   // RDV saisi à la main : CRM UNIQUEMENT (rdv_at/rdvType/rdvMeetLink). Aucun appel CalendIQ, aucun email, aucun Meet généré.
-  const setManualRdv=useCallback((type, iso, meetLink)=>{ if(!sel) return; const p={ rdv_at:iso, rdvType:type, rdvMeetLink:meetLink||null }; patch(sel.id,p); saveLead(sel.id,p); toast('Rendez-vous enregistré', (type||'r1').toUpperCase()+' · '+fmtRdv(iso),'ok'); },[sel,patch,toast]);
+  const setManualRdv=useCallback((type, iso, meetLink)=>{ if(!sel) return; const tgt=rdvTargetStage(type, sel.column); const p={ rdv_at:iso, rdvType:type, rdvMeetLink:meetLink||null, ...(tgt?{column:tgt, nextAction:NEXT_BY_COL[tgt]||null}:{}) }; patch(sel.id,p); saveLead(sel.id,p); if(tgt){ const stTitle='Étape : '+(COL_LABEL[tgt]||tgt); addActivite(sel.id,'note',stTitle,null).catch(()=>null); patch(sel.id,prev=>({timeline:[{type:'note',when:'à l’instant',title:stTitle,text:''},...prev.timeline]})); } toast('Rendez-vous enregistré', (type||'r1').toUpperCase()+' · '+fmtRdv(iso),'ok'); },[sel,patch,toast]);
   const removeManualRdv=useCallback(()=>{ if(!sel) return; const p={ rdv_at:null, rdvType:null, rdvMeetLink:null }; patch(sel.id,p); saveLead(sel.id,p); toast('Rendez-vous retiré',null,'info'); },[sel,patch,toast]);
 
   // payment send → À payer, then auto Payé (id capturé, transition garantie)
