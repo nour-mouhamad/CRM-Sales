@@ -511,6 +511,10 @@ input,textarea{font-family:inherit; color:inherit}
 @keyframes recap-rot{to{transform:rotate(360deg)}}
 .recap-err{margin-top:14px; padding:12px 14px; border-radius:11px; background:var(--surface-2); border:1px solid var(--b2); color:var(--t1); font-size:13px}
 .recap-type{display:inline-block; font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; background:var(--accent-tint); color:var(--accent); padding:3px 9px; border-radius:99px; margin-bottom:12px}
+.recap-concl{margin-bottom:13px}
+.recap-concl .eyebrow{display:block; margin-bottom:7px}
+.recap-concl-row{display:flex; align-items:center; gap:11px; flex-wrap:wrap}
+.recap-concl-tx{font-size:13.5px; color:var(--t1); font-weight:600}
 .recap-box{border:1px solid var(--b1); border-radius:12px; padding:14px 16px; max-height:240px; overflow:auto; background:var(--surface-2)}
 .recap-md{font-size:13px; color:var(--t2); line-height:1.6}
 .recap-h{font-weight:800; color:var(--t1); font-size:13px; margin:11px 0 4px; letter-spacing:-.01em}
@@ -1121,7 +1125,7 @@ function dbToLead(r, acts){
     offer:r.montant||0, paid:r.statut_paiement==='paye',
     cpf:r.cpf_dispo||0, metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'',
     rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, rdvMeetLink:r.rdv_meet_link||null, hubspot_deal_id:r.hubspot_deal_id||null,
-    timeline:(acts||[]).map(a=>({id:a.id, type:a.type, when:fmtWhen(a.created_at), title:a.titre||'', text:a.contenu||'', paid:a.type==='paiement'}))
+    timeline:(acts||[]).map(a=>({id:a.id, type:a.type, when:fmtWhen(a.created_at), at:a.created_at||null, title:a.titre||'', text:a.contenu||'', paid:a.type==='paiement', result:a.result||null, conclusion:a.conclusion||null, callKind:a.call_kind||null}))
   };
 }
 
@@ -1175,8 +1179,12 @@ async function createLead(fields){
 }
 
 // ajoute une ligne d'historique (note/appel/rdv/mail/paiement)
-async function addActivite(lead_id, type, titre, contenu, montant){
-  try{ const { data } = await SB.from('activites').insert({lead_id, type, titre:titre||null, contenu:contenu||null, montant:montant||null}).select('id').single(); return data&&data.id; }catch(e){ console.warn('addActivite',e); }
+async function addActivite(lead_id, type, titre, contenu, montant, extra){
+  const row={lead_id, type, titre:titre||null, contenu:contenu||null, montant:montant||null};
+  if(extra){ if(extra.result!=null) row.result=extra.result; if(extra.conclusion!=null) row.conclusion=extra.conclusion; if(extra.call_kind!=null) row.call_kind=extra.call_kind; }
+  const { data, error } = await SB.from('activites').insert(row).select('id').single();
+  if(error){ console.warn('addActivite',error); throw error; } // supabase-js ne throw pas : on remonte explicitement
+  return data && data.id;
 }
 // modifier / supprimer une entrée d'historique
 async function updateActivite(id, contenu){
@@ -1264,6 +1272,24 @@ const COL_LABEL = Object.fromEntries(COLUMNS.map(c=>[c.id,c.label]));
 const COL_COLOR = {contacter:'var(--accent)', perso:'var(--cold)', atc:'var(--cold)', rdv1:'var(--warm)', contacte:'var(--warm)', qualifie:'var(--warm)', closing:'var(--accent)', encaisser:'var(--accent)', won:'var(--ok)', lost:'var(--t4)', desabonne:'var(--t4)'};
 // libellé d'action par défaut quand un lead change de colonne
 const NEXT_BY_COL = {contacter:'À contacter', perso:'Contact perso à traiter', atc:'Sans réponse — à relancer', rdv1:'R1 à faire', contacte:'À qualifier', qualifie:'À closer', closing:'Closing en cours', encaisser:'Paiement à encaisser', won:'Gagné', lost:'Perdu', desabonne:'Désabonné'};
+
+// Résultat de call standardisé (le VERDICT) — valable pour n'importe quel call (R1, R2…), jamais lié au numéro du call.
+const RESULT_META = {
+  interesse:     {label:'Intéressé',     color:'var(--warm)'},
+  a_closer:      {label:'À closer',      color:'var(--accent)'},
+  objection:     {label:'Objection',     color:'var(--warm)'},
+  close:         {label:'Closé',         color:'var(--ok)'},
+  pas_interesse: {label:'Pas intéressé', color:'var(--t4)'},
+  no_show:       {label:'No-show',       color:'var(--danger)'},
+};
+const RESULT_KEYS = Object.keys(RESULT_META);
+const callKindLabel = k => k==='r1'?'R1':k==='r2'?'R2':k==='r3'?'R3':'';
+// quel call ce débrief concerne : le type du RDV (vérité) d'abord, l'IA en secours.
+// Borné à l'enum DB {r1,r2,r3} (un rdv_type legacy hors-enum ferait rejeter l'insert).
+const inferCallKind = (lead, callType) => {
+  const k = (lead && lead.rdvType) || ({closing:'r2', decouverte:'r1', setting:'r1'}[callType]) || null;
+  return (k==='r1'||k==='r2'||k==='r3') ? k : null;
+};
 
 const OFFERS = [
   {id:'1400', amount:1400, tag:'Non chômeur (France Travail)'},
@@ -2108,7 +2134,10 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage }){
     const acts=editActions.filter(a=>a.label.trim());
     const actTxt = acts.length ? ('\n\n— Actions —\n'+acts.map(a=>'• '+a.label.trim()+(a.priority==='haute'?' (prioritaire)':'')).join('\n')) : '';
     const body=(recapText.trim()+actTxt).trim();
-    if(body) onNote('note', 'Récap · '+((result&&result.call_type_label)||'Call'), body);
+    const res = (result && RESULT_META[result.result]) ? result.result : null;
+    const concl = (result && result.conclusion) || (res ? RESULT_META[res].label : null);
+    const call_kind = inferCallKind(lead, result && result.call_type);
+    if(body || res) onNote('recap', 'Récap · '+((result&&result.call_type_label)||'Call'), body, {result:res, conclusion:concl, call_kind});
     // l'action prioritaire du call devient l'Action du lead (catégorie Action + carte board)
     const prio = acts.find(a=>a.priority==='haute') || acts[0];
     if(prio) onEditField('nextAction','nextAction', prio.label.trim());
@@ -2131,7 +2160,16 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage }){
         <div className="modal-foot"><button className="btn btn-ghost" onClick={()=>setPhase('input')}>Réessayer</button><button className="btn btn-accent" onClick={onClose}>Fermer</button></div>
       </>)}
       {phase==='result' && result && (<>
-        <span className="recap-type">{result.call_type_label||'Call'}</span>
+        {(()=>{ const rk=RESULT_META[result.result]; const ck=inferCallKind(lead, result.call_type); return (
+          <div className="recap-concl">
+            <span className="eyebrow">Conclusion</span>
+            <div className="recap-concl-row">
+              {rk
+                ? <span className="chip" style={{color:rk.color, background:'color-mix(in srgb, currentColor 14%, transparent)'}}><span className="cdot"></span>{ck?(callKindLabel(ck)+' · '):''}{rk.label}</span>
+                : <span className="recap-type">{result.call_type_label||'Call'}</span>}
+              {result.conclusion && <span className="recap-concl-tx">{result.conclusion}</span>}
+            </div>
+          </div>); })()}
         <textarea className="recap-edit" value={recapText} onChange={e=>setRecapText(e.target.value)} placeholder="Résumé du call (modifiable)…"/>
         <div className="recap-actions">
           <div className="recap-actions-h">Actions</div>
@@ -2156,7 +2194,7 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage }){
 // carte d'historique unifiée : MÊME structure pour tous les types (note, NRP/appel, récap, paiement…).
 // En-tête toujours = chevron (si contenu) + icône + titre + heure + actions. Corps pliable si contenu.
 function TlCard({ ev, onEditNote, onDeleteNote }){
-  const isRecap = !!ev.title && ev.title.indexOf('Récap')===0;
+  const isRecap = ev.type === 'recap'; // par TYPE (aligné sur leadStatus) — pas par titre
   const hasBody = isRecap || !!ev.text || !!ev.granola;
   const [open,setOpen]=useState(false);
   const [editing,setEditing]=useState(false);
@@ -2191,9 +2229,24 @@ function TlCard({ ev, onEditNote, onDeleteNote }){
                 <button className="btn btn-ghost" onClick={()=>setEditing(false)}>Annuler</button>
               </div>
             </div>
-          ) : isRecap ? (
-            <MdText text={ev.text}/>
-          ) : (<>
+          ) : isRecap ? (<>
+            {(ev.result || ev.conclusion) && (()=>{ const rk=RESULT_META[ev.result]; const ck=ev.callKind; return (
+              <div className="recap-concl" style={{marginBottom:11}}>
+                <div className="recap-concl-row">
+                  {rk && <span className="chip" style={{color:rk.color, background:'color-mix(in srgb, currentColor 14%, transparent)'}}><span className="cdot"></span>{ck?(callKindLabel(ck)+' · '):''}{rk.label}</span>}
+                  {ev.conclusion && <span className="recap-concl-tx">{ev.conclusion}</span>}
+                </div>
+              </div>); })()}
+            {ev.text && <MdText text={ev.text}/>}
+            {ev.granola && (
+              <div className="tl-granola">
+                <div className="g-head"><I.spark style={{width:13,height:13,strokeWidth:2,color:'var(--accent)'}}/><span className="eyebrow">Recap Granola</span></div>
+                <div className="g-line"><b>Contexte —</b> {ev.granola.contexte}</div>
+                <div className="g-line"><b>Pain point —</b> {ev.granola.pain}</div>
+                <div className="g-line"><b>Angle —</b> {ev.granola.angle}</div>
+              </div>
+            )}
+          </>) : (<>
             {ev.text && <div className="tl-card-text">{ev.text}</div>}
             {ev.granola && (
               <div className="tl-granola">
@@ -2746,7 +2799,7 @@ function App({session, onLogout}){
       saveLead(id,{column:col, ...(na?{nextAction:na}:{}), ...(claim?{owner:userId}:{})});
       if(claim) patch(id,{owner:userId});
       const stTitle='Étape : '+(COL_LABEL[col]||col);
-      const stActP=addActivite(id,'note',stTitle,null);
+      const stActP=addActivite(id,'note',stTitle,null).catch(()=>null);
       patch(id,prev=>({timeline:[{type:'note',when:'à l’instant',title:stTitle,text:''},...prev.timeline]}));
       if(!(opts && opts.silent)){
         const fromCol=l.column, fromNa=l.nextAction, fromOwner=l.owner;
@@ -2767,11 +2820,19 @@ function App({session, onLogout}){
     toast('Appel lancé', l.tel, 'accent'); // pas de pop-up : la trace d'appel se fait via « + Note » → Appel
   };
   // entrée d'historique depuis la modale Note : note écrite OU NRP (appel sans réponse)
-  const addNote=(type,title,text)=>{
+  const addNote=async(type,title,text,extra)=>{
     if(!sel) return;
-    addActivite(sel.id, type, title, text||null);
-    patch(sel.id,prev=>({timeline:[{type,when:'à l’instant',title,text:text||''},...prev.timeline]}));
-    toast(type==='appel'?(title&&title.indexOf('NRP')===0?'NRP enregistré':'Appel enregistré'):'Note ajoutée', title, 'ok');
+    const lid=sel.id;
+    const optimistic={type,when:'à l’instant',at:new Date().toISOString(),title,text:text||'',result:extra?.result||null,conclusion:extra?.conclusion||null,callKind:extra?.call_kind||null};
+    patch(lid,prev=>({timeline:[optimistic,...prev.timeline]})); // affichage instantané
+    try{
+      const id=await addActivite(lid, type, title, text||null, null, extra);
+      if(id) patch(lid,prev=>({timeline:prev.timeline.map(e=>e===optimistic?{...e,id}:e)})); // attache l'id réel (édit/suppr avant reload)
+      toast(type==='recap'?'Débrief enregistré':(type==='appel'?(title&&title.indexOf('NRP')===0?'NRP enregistré':'Appel enregistré'):'Note ajoutée'), title, 'ok');
+    }catch(e){
+      patch(lid,prev=>({timeline:prev.timeline.filter(e=>e!==optimistic)})); // rollback : on n'a pas menti
+      toast('Échec de l’enregistrement', e.message||'Réessaie', 'info');
+    }
   };
 
   // ajout manuel d'un lead — annulable (Ctrl+Z / Annuler → corbeille douce)
@@ -2824,7 +2885,7 @@ function App({session, onLogout}){
     saveLead(sel.id,p);
     const verb=replaceMeetingId?'reprogrammé':'calé';
     const title='RDV CalendIQ '+verb+' — '+(type||'r1').toUpperCase()+' · '+fmtRdv(startIso);
-    const actP=addActivite(sel.id,'rdv',title,null);
+    const actP=addActivite(sel.id,'rdv',title,null).catch(()=>null);
     patch(sel.id,prev=>({timeline:[{type:'rdv',when:'à l’instant',title,text:''},...prev.timeline]}));
     loadCalendiq();
     if(booked.meet_link) toast((type||'r1').toUpperCase()+' '+verb+' + Meet'+(claim?' — lead approprié':''), fmtRdv(startIso),'ok');
@@ -2840,7 +2901,7 @@ function App({session, onLogout}){
     patch(sel.id,{ rdv_at:null, rdvType:null, rdvMeetLink:null, calendiqRdv:null });
     saveLead(sel.id,{ rdv_at:null, rdvType:null, rdvMeetLink:null });
     const title='RDV CalendIQ annulé';
-    addActivite(sel.id,'rdv',title,null);
+    addActivite(sel.id,'rdv',title,null).catch(()=>{});
     patch(sel.id,prev=>({timeline:[{type:'rdv',when:'à l’instant',title,text:''},...prev.timeline]}));
     loadCalendiq();
     toast('RDV annulé','CalendIQ a retiré le créneau','info');
@@ -2855,7 +2916,7 @@ function App({session, onLogout}){
     patch(id,prev=>({column:'encaisser', offer:amount, nextAction:`${eur(amount)} envoyé — en attente`,
       timeline:[{type:'paiement',when:'à l’instant',title:`Lien de paiement envoyé — ${eur(amount)}`,text:`Email envoyé à ${l.email}. En attente de paiement.`},...prev.timeline]}));
     saveLead(id,{column:'encaisser', offer:amount, statut_paiement:'lien_envoye', nextAction:`${eur(amount)} envoyé — en attente`});
-    addActivite(id,'paiement',`Lien de paiement envoyé — ${eur(amount)}`,`Email envoyé à ${l.email}. En attente de paiement.`,amount);
+    addActivite(id,'paiement',`Lien de paiement envoyé — ${eur(amount)}`,`Email envoyé à ${l.email}. En attente de paiement.`,amount).catch(()=>{});
     toast(`Lien envoyé · ${eur(amount)}`,`Email parti à ${l.prenom}`,'accent');
   };
 
@@ -2950,14 +3011,17 @@ function App({session, onLogout}){
 const LB_LOST=['lost','perdu','desabonne','desabo'], LB_WON=['won','paye'], LB_CLOSING=['closing','encaisser','apayer','cpf'];
 function leadStatus(l){
   const col=l.column;
-  const isWon = l.paid===true || LB_WON.includes(col);
-  const isLost = !isWon && LB_LOST.includes(col);
-  const isClosing = !isWon && !isLost && LB_CLOSING.includes(col);
-  const rdvUpcoming = !!l.rdv_at && new Date(l.rdv_at).getTime()>Date.now();
   const recap=(l.timeline||[]).find(t=>t.type==='recap');
+  const result = (recap && RESULT_META[recap.result]) ? recap.result : null;
+  const isWon = l.paid===true || LB_WON.includes(col) || result==='close';
+  const isLost = !isWon && (LB_LOST.includes(col) || result==='pas_interesse');
+  const isClosing = !isWon && !isLost && (LB_CLOSING.includes(col) || result==='a_closer');
+  const rdvUpcoming = !!l.rdv_at && new Date(l.rdv_at).getTime()>Date.now();
   return { col, label:COL_LABEL[col]||col, color:COL_COLOR[col]||'var(--t3)',
     isWon, isLost, isClosing, rdvUpcoming, rdvType:l.rdvType||null, rdv_at:l.rdv_at||null,
-    montant:l.offer||0, conclusion: recap?(recap.text||recap.title||''):'' };
+    montant:l.offer||0,
+    result, callKind: recap?(recap.callKind||null):null,
+    conclusion: recap?(recap.conclusion||recap.text||''):'' };
 }
 // faut-il caler un RDV ? (étape amont, aucun RDV à venir)
 const RDV_TODO_COLS=['contacter','perso','atc','contacte'];
@@ -2971,6 +3035,7 @@ function ManagerLeadRow({ lead, onOpenLead }){
     <button className="cl-lead" onClick={()=>onOpenLead(lead.id)}>
       <span className="cl-lead-name">{lead.prenom} {lead.nom}</span>
       <span className="chip" style={{color:s.color, background:'color-mix(in srgb, currentColor 12%, transparent)'}}><span className="cdot"></span>{s.label}</span>
+      {s.result && (()=>{ const rk=RESULT_META[s.result]; return <span className="chip" style={{color:rk.color, background:'color-mix(in srgb, currentColor 14%, transparent)'}}><span className="cdot"></span>{s.callKind?(callKindLabel(s.callKind)+' · '):''}{rk.label}</span>; })()}
       {rdvLabel && <span className="chip-rdv">{I.agenda({})}{rdvLabel}</span>}
       {todo && <span className="chip-rdv todo">{I.clock({})}RDV à caler</span>}
       {s.montant>0 && <span className="cl-amt">{eur(s.montant)}</span>}
