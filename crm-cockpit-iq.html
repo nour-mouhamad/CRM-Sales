@@ -3443,6 +3443,14 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     catch(e){ toast('Initialisation échouée', e.message||'', 'info'); }
     finally{ setSyncBusy(false); await load(); }
   };
+  // ré-aligne TOUTE la base de référence sur HubSpot (ex. après un changement de règles montants) — LIT HubSpot, 0 écriture HubSpot
+  const doRebaseline=async()=>{
+    if(!window.confirm('Ré-aligner toute la base sur HubSpot ?\n\nÇa relit HubSpot et adopte ses montants comme « Payé » dans le CRM. AUCUNE écriture dans HubSpot. Les changements non envoyés seront ré-évalués.')) return;
+    setLoading(true); setSyncBusy(true);
+    try{ const r=await callFn('hubspot-sync',{action:'seed',force:true}); toast('Base ré-alignée',(r.seeded||0)+' leads (montants adoptés)','ok'); }
+    catch(e){ toast('Échec', e.message||'', 'info'); }
+    finally{ setSyncBusy(false); await load(); if(reloadLeads) reloadLeads(); }
+  };
 
   // envoie une liste d'items à la fonction Edge (par paquets de 8), rafraîchit, garde les échecs visibles
   const push=React.useCallback(async(items,label)=>{
@@ -3489,6 +3497,7 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     <div className="screen-head">
       <div className="screen-title"><h1>CRM — Synchro HubSpot</h1><p>Page de contrôle : tu valides chaque changement avant qu’il parte dans HubSpot. Rien ne part sans ton clic.</p></div>
       <div style={{display:'flex',gap:8}}>
+        <button className="btn btn-ghost" disabled={loading} onClick={doRebaseline} title="Relit HubSpot et adopte ses montants comme Payé (0 écriture HubSpot)">Re-synchroniser la base</button>
         <button className="btn btn-ghost" disabled={loading} onClick={()=>load()}>{loading?'…':'Rafraîchir'}</button>
       </div>
     </div>
