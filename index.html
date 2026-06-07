@@ -1352,7 +1352,7 @@ const OUTCOME_META = {
   present: {label:'Présent', color:'var(--ok)'},
   no_show: {label:'No-show', color:'var(--danger)'},
 };
-const RDV_DEBRIEF_DELAY_MIN = 10; // le bloc « à traiter » apparaît 10 min APRÈS la FIN du RDV (jamais en plein call)
+const RDV_DEBRIEF_DELAY_MIN = 0; // le bloc « à traiter » apparaît DÈS la fin du RDV (pas pendant le call)
 // fin estimée d'un RDV (start + durée). CalendIQ fournit duration_minutes ; sinon fallback par type.
 function rdvEndMs(rdv){ const s=new Date(rdv.start_at).getTime(); const d=rdv.duration_minutes||RDV_DUR[rdv.type]||45; return s + d*60000; }
 // machine d'états d'une carte RDV : outcome (présent/no_show) prime ; sinon dérivé du temps.
