@@ -796,6 +796,35 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .card-rdv{display:inline-flex; align-items:center; gap:5px; margin-top:8px; font-size:11px; font-weight:700; color:var(--accent); background:var(--accent-tint); border-radius:7px; padding:3px 8px}
 .card-rdv svg{width:12px; height:12px}
 
+/* liste de RDV (R1 + R2 …) + machine d'états présent/no-show */
+.rdvlist{display:flex; flex-direction:column; gap:9px}
+/* états de la carte (surbrillance DOUCE, pas criarde) */
+.rdvcard.rdv-live{border-left-color:var(--accent)}
+.rdvcard.rdv-todo{border-left-color:var(--warm); background:color-mix(in srgb, var(--warm) 7%, var(--surface-2))}
+.rdvcard.rdv-present{border-left-color:var(--ok); opacity:1}
+.rdvcard.rdv-present .rdvcard-ic{background:var(--ok-tint); color:var(--ok)}
+.rdvcard.rdv-noshow{border-left-color:var(--danger)}
+.rdvcard.rdv-noshow .rdvcard-ic{background:var(--danger-tint); color:var(--danger)}
+.rdvcard.rdv-noshow .rdvcard-info b{color:var(--t2)}
+/* verdict (badge à droite de l'en-tête) */
+.rdv-verdict{margin-left:auto; flex:none; display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; padding:3px 10px; border-radius:99px; white-space:nowrap}
+.rdv-verdict .cdot{width:6px; height:6px; border-radius:99px; background:currentColor}
+/* prompt « que s'est-il passé ? » */
+.rdv-ask{font-size:12px; font-weight:600; color:var(--warm); padding:1px 1px 0}
+/* boutons résultat (présent / no-show) */
+.rdv-oc{display:inline-flex; gap:7px}
+.rdv-oc-btn{display:inline-flex; align-items:center; gap:6px; height:32px; padding:0 13px; border-radius:9px; border:1.5px solid var(--b1); background:var(--surface); color:var(--t2); font-size:12.5px; font-weight:700; cursor:pointer; transition:all var(--speed)}
+.rdv-oc-btn svg{width:14px; height:14px; stroke-width:2.4}
+.rdv-oc-btn.present:hover{border-color:var(--ok); color:var(--ok); background:var(--ok-tint)}
+.rdv-oc-btn.noshow:hover{border-color:var(--danger); color:var(--danger); background:var(--danger-tint)}
+/* en mode « à traiter » les boutons sont proéminents */
+.rdv-oc.prom .rdv-oc-btn.present{border-color:var(--ok); color:var(--ok)}
+.rdv-oc.prom .rdv-oc-btn.noshow{border-color:var(--danger); color:var(--danger)}
+/* corriger le résultat */
+.rdv-redo{display:inline-flex; align-items:center; gap:6px; height:32px; padding:0 11px; border-radius:9px; background:none; border:1px solid transparent; color:var(--t3); font-size:12px; font-weight:600; cursor:pointer; transition:all var(--speed)}
+.rdv-redo:hover{color:var(--t1); background:var(--surface-2)}
+.rdv-redo svg{width:13px; height:13px}
+
 /* admission */
 .adm-list{display:flex; flex-direction:column; gap:14px; max-width:980px}
 .adm-card{background:var(--surface); border:1px solid var(--b1); border-radius:var(--r-panel); overflow:hidden; transition:opacity var(--speed)}
@@ -1119,14 +1148,22 @@ function fmtWhen(ts){
 
 // ligne Supabase -> objet lead attendu par l'UI (aucun champ inventé : vide reste vide)
 function dbToLead(r, acts){
+  const acts2 = acts||[]; // triés created_at desc (cf loadLeads)
+  const rdvMeta = (r.rdv_meta && typeof r.rdv_meta==='object' && !Array.isArray(r.rdv_meta)) ? r.rdv_meta : {};
+  // noShow dérivé de rdv_meta = LA source de vérité unique de la présence (même donnée que les cartes RDV).
+  // Le statut posé le plus récemment (outcome_at) décide → un « Présent » ultérieur efface le tag, un clear aussi.
+  let noShow=false; { let latest=null;
+    for(const k in rdvMeta){ const v=rdvMeta[k]; if(v && (v.outcome==='present'||v.outcome==='no_show')){ if(!latest || String(v.outcome_at||'')>String(latest.outcome_at||'')) latest=v; } }
+    noShow = !!(latest && latest.outcome==='no_show');
+  }
   return {
     id:r.id, prenom:r.prenom||'', nom:r.nom||'', tel:r.telephone||'', email:r.email||'',
     source:r.source, heat:r.heat||null, column:COL_DB2UI(r.colonne), owner:r.owner_closer_id||null,
-    nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, extraActions:Array.isArray(r.extra_actions)?r.extra_actions:[], live:false, noShow:false,
+    nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, extraActions:Array.isArray(r.extra_actions)?r.extra_actions:[], live:false, noShow,
     offer:r.montant||0, paid:r.statut_paiement==='paye',
     cpf:r.cpf_dispo||0, metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'',
-    rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, rdvMeetLink:r.rdv_meet_link||null, hubspot_deal_id:r.hubspot_deal_id||null,
-    timeline:(acts||[]).map(a=>({id:a.id, type:a.type, when:fmtWhen(a.created_at), at:a.created_at||null, title:a.titre||'', text:a.contenu||'', paid:a.type==='paiement', result:a.result||null, conclusion:a.conclusion||null, callKind:a.call_kind||null}))
+    rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, rdvMeetLink:r.rdv_meet_link||null, rdvMeta, hubspot_deal_id:r.hubspot_deal_id||null,
+    timeline:acts2.map(a=>({id:a.id, type:a.type, when:fmtWhen(a.created_at), at:a.created_at||null, title:a.titre||'', text:a.contenu||'', paid:a.type==='paiement', result:a.result||null, conclusion:a.conclusion||null, callKind:a.call_kind||null, rdvOutcome:a.rdv_outcome||null}))
   };
 }
 
@@ -1160,7 +1197,13 @@ async function saveLead(id, uiPatch){
   if('rdv_at' in uiPatch) m.rdv_at=uiPatch.rdv_at;
   if('rdvType' in uiPatch) m.rdv_type=uiPatch.rdvType;
   if('rdvMeetLink' in uiPatch) m.rdv_meet_link=uiPatch.rdvMeetLink;
+  if('rdvMeta' in uiPatch) m.rdv_meta=uiPatch.rdvMeta;
   try{ if(Object.keys(m).length) await SB.from('leads').update(m).eq('id',id); }catch(e){ console.warn('saveLead',e); }
+}
+// écriture DÉDIÉE du résultat de RDV (rdv_meta) qui REMONTE l'erreur (≠ saveLead silencieux) → permet rollback + toast.
+async function saveLeadRdvMeta(id, map){
+  const { error } = await SB.from('leads').update({ rdv_meta:map }).eq('id',id).select('id').single();
+  if(error) throw error;
 }
 
 // crée un lead manuellement (retourne l'objet UI) — RLS authenticated requise (connecté)
@@ -1182,7 +1225,7 @@ async function createLead(fields){
 // ajoute une ligne d'historique (note/appel/rdv/mail/paiement)
 async function addActivite(lead_id, type, titre, contenu, montant, extra){
   const row={lead_id, type, titre:titre||null, contenu:contenu||null, montant:montant||null};
-  if(extra){ if(extra.result!=null) row.result=extra.result; if(extra.conclusion!=null) row.conclusion=extra.conclusion; if(extra.call_kind!=null) row.call_kind=extra.call_kind; }
+  if(extra){ if(extra.result!=null) row.result=extra.result; if(extra.conclusion!=null) row.conclusion=extra.conclusion; if(extra.call_kind!=null) row.call_kind=extra.call_kind; if(extra.rdv_outcome!=null) row.rdv_outcome=extra.rdv_outcome; }
   const { data, error } = await SB.from('activites').insert(row).select('id').single();
   if(error){ console.warn('addActivite',error); throw error; } // supabase-js ne throw pas : on remonte explicitement
   return data && data.id;
@@ -1285,10 +1328,10 @@ const RESULT_META = {
 };
 const RESULT_KEYS = Object.keys(RESULT_META);
 const callKindLabel = k => k==='r1'?'R1':k==='r2'?'R2':k==='r3'?'R3':'';
-// quel call ce débrief concerne : le type du RDV (vérité) d'abord, l'IA en secours.
-// Borné à l'enum DB {r1,r2,r3} (un rdv_type legacy hors-enum ferait rejeter l'insert).
+// quel call ce débrief concerne : la lecture de l'IA (call_type) D'ABORD — fiable en multi-RDV —,
+// le scalaire lead.rdvType (= dernier RDV booké) seulement en secours. Borné à l'enum DB {r1,r2,r3}.
 const inferCallKind = (lead, callType) => {
-  const k = (lead && lead.rdvType) || ({closing:'r2', decouverte:'r1', setting:'r1'}[callType]) || null;
+  const k = ({closing:'r2', decouverte:'r1', setting:'r1'}[callType]) || (lead && lead.rdvType) || null;
   return (k==='r1'||k==='r2'||k==='r3') ? k : null;
 };
 
@@ -1301,6 +1344,35 @@ function rdvTargetStage(type, cur){
   if(type!=='r1') return null;                              // R2/R3 : on ne touche pas à l'étape
   if(RDV_STAGE_TERMINAL[cur]) return null;                  // lead déjà plus avancé → intact
   return STAGE_ORDER.rdv1 > (STAGE_ORDER[cur]||0) ? 'rdv1' : null; // seulement si ça AVANCE
+}
+
+// ===== RÉSULTAT D'UN RDV (présence) — fait structuré, stocké chez nous (CalendIQ = lecture seule) =====
+// présent = le prospect était là (« RDV terminé ») · no-show = absent. C'est la DONNÉE qui pilote l'UI.
+const OUTCOME_META = {
+  present: {label:'Présent', color:'var(--ok)'},
+  no_show: {label:'No-show', color:'var(--danger)'},
+};
+const RDV_DEBRIEF_DELAY_MIN = 10; // le bloc « à traiter » apparaît 10 min APRÈS la FIN du RDV (jamais en plein call)
+// fin estimée d'un RDV (start + durée). CalendIQ fournit duration_minutes ; sinon fallback par type.
+function rdvEndMs(rdv){ const s=new Date(rdv.start_at).getTime(); const d=rdv.duration_minutes||RDV_DUR[rdv.type]||45; return s + d*60000; }
+// machine d'états d'une carte RDV : outcome (présent/no_show) prime ; sinon dérivé du temps.
+//  upcoming (avant l'heure) · live (en cours + 10 min de grâce après la fin) · todo (à traiter)
+function rdvState(rdv, now){
+  if(rdv.outcome==='present'||rdv.outcome==='no_show') return rdv.outcome;
+  const s=new Date(rdv.start_at).getTime();
+  if(now < s) return 'upcoming';
+  if(now < rdvEndMs(rdv) + RDV_DEBRIEF_DELAY_MIN*60000) return 'live';
+  return 'todo';
+}
+// quel RDV un débrief concerne : on cible le RDV passé du bon type (sinon le plus récent passé), jamais à l'aveugle.
+function pickRecapTargetRdv(rdvs, callKind){
+  if(!rdvs || !rdvs.length) return null;
+  const now=Date.now();
+  const past=rdvs.filter(r=>new Date(r.start_at).getTime()<=now);
+  if(!past.length) return null; // un débrief concerne un RDV PASSÉ — jamais auto-taguer un créneau à venir
+  const typed=callKind?past.filter(r=>r.type===callKind):[];
+  const cand=typed.length?typed:past;
+  return cand.slice().sort((a,b)=>new Date(b.start_at)-new Date(a.start_at))[0]||null;
 }
 
 const OFFERS = [
@@ -1388,7 +1460,7 @@ const INCOMING_POOL = [
 ];
 
 /* ============================================================= TIMELINE ICON MAP */
-const tlIcon = {appel:I.phone, mail:I.mail, sms:I.sms, note:I.note, noshow:I.noshow, recap:I.spark, paiement:I.euro, rdv_accepted:I.check};
+const tlIcon = {appel:I.phone, mail:I.mail, sms:I.sms, note:I.note, noshow:I.noshow, recap:I.spark, paiement:I.euro, rdv_accepted:I.check, rdv:I.agenda};
 const tlTone = {paiement:'ok', noshow:'danger', recap:'accent', appel:'accent', rdv_accepted:'ok'};
 
 /* ============================================================= SMALL COMPONENTS */
@@ -1514,7 +1586,7 @@ function DateTimePicker({ organizerId, duration, value, onChange }){
     </div>
   );
 }
-const RDV_DUR = { r1:45, r2:30 };
+const RDV_DUR = { r1:45, r2:30, r3:45 };
 function AddRdvModal({ lead, initial, organizerId, onClose, onAdd }){
   const editing=!!initial;
   const [type,setType]=useState((initial&&initial.type)||'r1');
@@ -1559,37 +1631,52 @@ function AddRdvModal({ lead, initial, organizerId, onClose, onAdd }){
   );
 }
 
-/* RDV synchronisé depuis CalendIQ — affiché sur la fiche ; modif/annulation passent par CalendIQ */
-function CqRdvField({ rdv, type, onModify, onCancel }){
-  if(!rdv){
-    return (
-      <div className="field">
-        <span className="eyebrow">Rendez-vous</span>
-        <div className="rdvcard empty">Pas de rendez-vous</div>
-      </div>
-    );
-  }
-  const past = new Date(rdv.start_at).getTime() < Date.now();
+/* Carte RDV unique — machine d'états présent/no-show. Présentation pure : tous les faits viennent de `rdv`,
+   toutes les actions remontent via props. Partagée par RdvList (CalendIQ) et ManualRdvField (saisie manuelle). */
+function RdvCard({ rdv, onModify, onCancel, onOutcome, onClearOutcome }){
+  const [tick,setTick]=useState(0);
+  // re-render PILE au prochain seuil (début / fin+10min) sans interval global → zéro jank sur le board.
+  useEffect(()=>{
+    if(rdv.outcome==='present'||rdv.outcome==='no_show') return; // figé : aucun timer
+    const now=Date.now();
+    const thr=[new Date(rdv.start_at).getTime(), rdvEndMs(rdv)+RDV_DEBRIEF_DELAY_MIN*60000].filter(t=>t>now);
+    if(!thr.length) return;
+    const ms=Math.min(Math.min(...thr)-now+500, 2147483000);
+    const id=setTimeout(()=>setTick(n=>n+1), ms);
+    return ()=>clearTimeout(id);
+  },[rdv.start_at, rdv.duration_minutes, rdv.outcome, tick]);
+  const st=rdvState(rdv, Date.now());
+  const settled = st==='present'||st==='no_show';
+  const oc = settled ? OUTCOME_META[st] : null;
+  const typeLabel=(rdv.type||'r1').toUpperCase();
+  const dur=rdv.duration_minutes||RDV_DUR[rdv.type]||45;
+  const canJoin = rdv.meet_link && (st==='upcoming'||st==='live');
+  const showTools = (onModify||onCancel) && st!=='present';
+  const cls='rdvcard'+(st==='live'?' rdv-live':'')+(st==='todo'?' rdv-todo':'')+(st==='present'?' rdv-present':'')+(st==='no_show'?' rdv-noshow':'');
   return (
-    <div className="field">
-      <span className="eyebrow">Rendez-vous</span>
-      <div className={'rdvcard'+(past?' past':'')}>
-        <div className="rdvcard-top">
-          <span className="rdvcard-ic">{I.agenda({})}</span>
-          <div className="rdvcard-info">
-            <b>{type?(type.toUpperCase()+' · '):''}{cqDayLabel(rdv.start_at)}</b>
-            <span>{I.clock({})}{cqTime(rdv.start_at)}{rdv.duration_minutes?(' · '+rdv.duration_minutes+' min'):''}{past?' · passé':''}</span>
-          </div>
+    <div className={cls}>
+      <div className="rdvcard-top">
+        <span className="rdvcard-ic">{settled ? (st==='present'?I.check({}):I.noshow({})) : I.agenda({})}</span>
+        <div className="rdvcard-info">
+          <b>{typeLabel} · {cqDayLabel(rdv.start_at)}</b>
+          <span>{I.clock({})}{cqTime(rdv.start_at)} · {dur} min{st==='live'?' · en cours':''}</span>
         </div>
-        {(rdv.meet_link || (!past && (onModify||onCancel))) && (
-          <div className="rdvcard-actions">
-            {rdv.meet_link && <a className="rdvcard-join" href={rdv.meet_link} target="_blank" rel="noreferrer" title="Rejoindre le Google Meet">{I.video({})}Rejoindre</a>}
-            {!past && (onModify||onCancel) && (
-              <div className="rdvcard-tools">
-                {onModify && <button className="rdvcard-btn" title="Modifier (reprogrammer dans CalendIQ)" onClick={()=>onModify(rdv)}>{I.pencil({})}</button>}
-                {onCancel && <button className="rdvcard-btn del" title="Annuler dans CalendIQ" onClick={()=>onCancel(rdv)}>{I.trash({})}</button>}
-              </div>
-            )}
+        {oc && <span className="rdv-verdict" style={{color:oc.color, background:'color-mix(in srgb, currentColor 14%, transparent)'}}><span className="cdot"></span>{oc.label}</span>}
+      </div>
+      {st==='todo' && <div className="rdv-ask">Ce RDV est passé — que s’est-il passé ?</div>}
+      <div className="rdvcard-actions">
+        {canJoin && <a className="rdvcard-join" href={rdv.meet_link} target="_blank" rel="noreferrer" title="Rejoindre le Google Meet">{I.video({})}Rejoindre</a>}
+        {!settled && (
+          <div className={'rdv-oc'+(st==='todo'?' prom':'')}>
+            <button className="rdv-oc-btn present" onClick={()=>onOutcome('present')} title="Le prospect était présent (RDV terminé)">{I.check({})}Présent</button>
+            <button className="rdv-oc-btn noshow" onClick={()=>onOutcome('no_show')} title="Le prospect ne s’est pas présenté">{I.noshow({})}No-show</button>
+          </div>
+        )}
+        {settled && onClearOutcome && <button className="rdv-redo" onClick={onClearOutcome} title="Corriger le résultat">{I.pencil({})}Modifier</button>}
+        {showTools && (
+          <div className="rdvcard-tools">
+            {onModify && <button className="rdvcard-btn" title="Reprogrammer" onClick={()=>onModify(rdv)}>{I.pencil({})}</button>}
+            {onCancel && <button className="rdvcard-btn del" title="Annuler ce RDV" onClick={()=>onCancel(rdv)}>{I.trash({})}</button>}
           </div>
         )}
       </div>
@@ -1597,9 +1684,27 @@ function CqRdvField({ rdv, type, onModify, onCancel }){
   );
 }
 
-/* RDV saisi À LA MAIN (front-only, CRM uniquement) — informe le CRM sans rien envoyer à CalendIQ
-   (zéro email, zéro réservation, zéro Meet généré). Lien Meet optionnel collé par le closer. */
-function ManualRdvField({ lead, onSave, onRemove }){
+/* Liste des RDV CalendIQ d'un lead (R1, R2…) — chaque carte porte son propre statut. */
+function RdvList({ rdvs, onModify, onCancel, onOutcome, onClearOutcome }){
+  return (
+    <div className="field">
+      <span className="eyebrow">Rendez-vous</span>
+      <div className="rdvlist">
+        {rdvs.map(r=>(
+          <RdvCard key={r.id} rdv={r}
+            onModify={r.source==='calendiq'?onModify:null}
+            onCancel={r.source==='calendiq'?onCancel:null}
+            onOutcome={(o)=>onOutcome(r,o)}
+            onClearOutcome={()=>onClearOutcome(r)}/>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* RDV saisi À LA MAIN (front-only, CRM uniquement) — fallback quand CalendIQ n'est pas connecté.
+   Affichage délégué à RdvCard (même machine d'états présent/no-show). Clé stable = manual:<lead.id>. */
+function ManualRdvField({ lead, onSave, onRemove, onOutcome, onClearOutcome }){
   const [editing,setEditing]=useState(false);
   const [type,setType]=useState(lead.rdvType||'r1');
   const [dt,setDt]=useState('');
@@ -1607,7 +1712,6 @@ function ManualRdvField({ lead, onSave, onRemove }){
   const open=()=>{ setType(lead.rdvType||'r1'); setDt(lead.rdv_at?toLocalInput(lead.rdv_at):''); setMeet(lead.rdvMeetLink||''); setEditing(true); };
   const save=()=>{ if(!dt) return; onSave(type, new Date(dt).toISOString(), meet.trim()||null); setEditing(false); };
   const has = !!lead.rdv_at;
-  const past = has && new Date(lead.rdv_at).getTime() < Date.now();
   if(editing){
     return (
       <div className="field">
@@ -1627,32 +1731,26 @@ function ManualRdvField({ lead, onSave, onRemove }){
       </div>
     );
   }
+  if(has){
+    const key='manual:'+lead.id;
+    const meta=(lead.rdvMeta&&lead.rdvMeta[key])||{};
+    const rdv={ id:key, source:'manual', type:lead.rdvType||'r1', start_at:lead.rdv_at, duration_minutes:RDV_DUR[lead.rdvType||'r1']||45, meet_link:lead.rdvMeetLink||null, outcome:meta.outcome||null };
+    return (
+      <div className="field">
+        <span className="eyebrow">Rendez-vous</span>
+        <div className="rdvlist">
+          <RdvCard rdv={rdv} onModify={()=>open()} onCancel={()=>onRemove()} onOutcome={(o)=>onOutcome(rdv,o)} onClearOutcome={()=>onClearOutcome(rdv)}/>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="field">
       <span className="eyebrow">Rendez-vous</span>
-      {has ? (
-        <div className={'rdvcard'+(past?' past':'')}>
-          <div className="rdvcard-top">
-            <span className="rdvcard-ic">{I.agenda({})}</span>
-            <div className="rdvcard-info">
-              <b>{(lead.rdvType||'r1').toUpperCase()} · {cqDayLabel(lead.rdv_at)}</b>
-              <span>{I.clock({})}{cqTime(lead.rdv_at)} · {RDV_DUR[lead.rdvType||'r1']} min{past?' · passé':''}</span>
-            </div>
-          </div>
-          <div className="rdvcard-actions">
-            {lead.rdvMeetLink && <a className="rdvcard-join" href={lead.rdvMeetLink} target="_blank" rel="noreferrer" title="Rejoindre le Google Meet">{I.video({})}Rejoindre</a>}
-            <div className="rdvcard-tools">
-              <button className="rdvcard-btn" title="Modifier" onClick={open}>{I.pencil({})}</button>
-              <button className="rdvcard-btn del" title="Retirer" onClick={onRemove}>{I.trash({})}</button>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="rdvcard empty">
-          <span>Pas de rendez-vous</span>
-          <button className="rdvcard-btn" style={{marginLeft:'auto'}} title="Indiquer un rendez-vous" onClick={open}>{I.pencil({})}</button>
-        </div>
-      )}
+      <div className="rdvcard empty">
+        <span>Pas de rendez-vous</span>
+        <button className="rdvcard-btn" style={{marginLeft:'auto'}} title="Indiquer un rendez-vous" onClick={open}>{I.pencil({})}</button>
+      </div>
     </div>
   );
 }
@@ -1847,7 +1945,7 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
 }
 
 /* ============================================================= FICHE LEAD */
-function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onToggleAction, onActions, onClaim, meId, onAddRdv, onCancelRdv, onManualRdv, onManualRemoveRdv, calendiqReady, calendiqOrganizer}){
+function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onToggleAction, onActions, onClaim, meId, onAddRdv, onCancelRdv, onManualRdv, onManualRemoveRdv, onRdvOutcome, onClearRdvOutcome, calendiqReady, calendiqOrganizer}){
   const [moveOpen,setMoveOpen]=useState(false);
   const [noteOpen,setNoteOpen]=useState(false);
   const [noteMode,setNoteMode]=useState('note'); // 'note' = note écrite | 'nrp' = appel sans réponse
@@ -1855,7 +1953,7 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
   const [rdvOpen,setRdvOpen]=useState(false);
   const [rdvEdit,setRdvEdit]=useState(null); // {id,type,dur,dt} si reprogrammation, null si nouveau
   const openNewRdv=()=>{ setRdvEdit(null); setRdvOpen(true); };
-  const openEditRdv=(rdv)=>{ setRdvEdit({ id:rdv.id, type:lead.rdvType||'r1', dur:rdv.duration_minutes||RDV_DUR[lead.rdvType||'r1'], dt:toLocalInput(rdv.start_at) }); setRdvOpen(true); };
+  const openEditRdv=(rdv)=>{ const t=rdv.type||'r1'; setRdvEdit({ id:rdv.id, type:t, dur:rdv.duration_minutes||RDV_DUR[t]||45, dt:toLocalInput(rdv.start_at) }); setRdvOpen(true); };
   const closeRdv=()=>{ setRdvOpen(false); setRdvEdit(null); };
   const moveBtnRef=useRef(null);
   const [movePos,setMovePos]=useState(null);
@@ -1868,7 +1966,7 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
   return (
     <div className="fiche">
       {noteOpen && <NoteModal mode={noteMode} onClose={()=>setNoteOpen(false)} onNote={(t,ti,tx)=>{ onNote(t,ti,tx); setNoteOpen(false); }}/>}
-      {recapOpen && <RecapModal lead={lead} onClose={()=>setRecapOpen(false)} onEditField={onEditField} onNote={onNote} onAdvanceStage={onAdvanceStage}/>}
+      {recapOpen && <RecapModal lead={lead} onClose={()=>setRecapOpen(false)} onEditField={onEditField} onNote={onNote} onAdvanceStage={onAdvanceStage} onSetRdvOutcome={(rdv,oc)=>onRdvOutcome(rdv,oc,'ia')}/>}
       {rdvOpen && <AddRdvModal lead={lead} initial={rdvEdit} organizerId={calendiqOrganizer} onClose={closeRdv} onAdd={(t,d,iso)=>onAddRdv(t,d,iso, rdvEdit?rdvEdit.id:null)}/>}
       <div className="fiche-head">
         <button className="back" onClick={onBack}><I.back/>Mes leads</button>
@@ -1898,9 +1996,11 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
                 <span className="eyebrow">Source du lead</span>
                 <div className="val" style={{fontWeight:700}}>{si.label}</div>
               </div>
-              {lead.calendiqRdv
-                ? <CqRdvField rdv={lead.calendiqRdv} type={lead.rdvType} onModify={calendiqReady?openEditRdv:null} onCancel={calendiqReady?(rdv=>{ if(window.confirm('Annuler ce RDV dans CalendIQ ? Le créneau Google + l’email d’annulation seront gérés par CalendIQ.')) onCancelRdv(rdv.id); }):null}/>
-                : <ManualRdvField lead={lead} onSave={onManualRdv} onRemove={onManualRemoveRdv}/>}
+              {(lead.rdvs && lead.rdvs.length)
+                ? <RdvList rdvs={lead.rdvs} onModify={calendiqReady?openEditRdv:null} onCancel={calendiqReady?(rdv=>{ if(window.confirm('Annuler ce RDV dans CalendIQ ? Le créneau Google + l’email d’annulation seront gérés par CalendIQ.')) onCancelRdv(rdv.id); }):null} onOutcome={onRdvOutcome} onClearOutcome={onClearRdvOutcome}/>
+                : Object.keys(lead.rdvMeta||{}).some(k=>k.indexOf('manual:')!==0)
+                  ? (<div className="field"><span className="eyebrow">Rendez-vous</span><div className="rdvcard empty">Chargement des rendez-vous…</div></div>)
+                  : <ManualRdvField lead={lead} onSave={onManualRdv} onRemove={onManualRemoveRdv} onOutcome={onRdvOutcome} onClearOutcome={onClearRdvOutcome}/>}
               <div className="field">
                 <span className="eyebrow">Action</span>
                 <div className="actlist">
@@ -2089,7 +2189,7 @@ function MdText({ text }){
 // Colle un transcript -> Edge Function `recap` (Gemini) -> récap adaptatif.
 // Auto-applique : remplit les champs VIDES, signale les conflits sans écraser,
 // sauve le récap en note datée, fait avancer l'étape R1/R2 UNIQUEMENT si un RDV est calé.
-function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage }){
+function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage, onSetRdvOutcome }){
   const [text,setText]=useState('');
   const [phase,setPhase]=useState('input'); // input | loading | result | error
   const [result,setResult]=useState(null);
@@ -2150,6 +2250,14 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage }){
     const concl = (result && result.conclusion) || (res ? RESULT_META[res].label : null);
     const call_kind = inferCallKind(lead, result && result.call_type);
     if(body || res) onNote('recap', 'Récap · '+((result&&result.call_type_label)||'Call'), body, {result:res, conclusion:concl, call_kind});
+    // AUTO-TAG présence : un verdict (sauf no_show) ⇒ le prospect était présent. On pose le statut sur le BON RDV.
+    // Le manuel prime (le handler ignore l'IA si un statut a déjà été posé à la main). Rien si verdict absent / aucune cible.
+    if(res && onSetRdvOutcome){
+      const rdvs = (lead.rdvs && lead.rdvs.length) ? lead.rdvs
+        : (lead.rdv_at ? [{id:'manual:'+lead.id, source:'manual', type:lead.rdvType||'r1', start_at:lead.rdv_at}] : []);
+      const target = pickRecapTargetRdv(rdvs, call_kind);
+      if(target) onSetRdvOutcome(target, res==='no_show'?'no_show':'present');
+    }
     // l'action prioritaire du call devient l'Action du lead (catégorie Action + carte board)
     const prio = acts.find(a=>a.priority==='haute') || acts[0];
     if(prio) onEditField('nextAction','nextAction', prio.label.trim());
@@ -2760,7 +2868,8 @@ function App({session, onLogout}){
   },[leads]);
   const meetingLeadId=useCallback((m)=>{ const e=(m.booker_email||'').trim().toLowerCase(); if(e&&leadIndex.em.has(e)) return leadIndex.em.get(e); const k=cqPhoneKey(m.booker_phone); if(k&&leadIndex.ph.has(k)) return leadIndex.ph.get(k); return null; },[leadIndex]);
 
-  // leads enrichis du prochain RDV CalendIQ (par email/tél) — sans toucher la DB
+  // leads enrichis de LEURS RDV CalendIQ (liste R1, R2…) + prochain RDV pour le badge kanban — sans toucher la DB.
+  // lead.rdvs = liste triée des meetings confirmés matchés (chacun avec type chrono + statut depuis rdv_meta).
   const leadsCq=useMemo(()=>{
     if(!cqMeetings.length) return leads;
     const tnow=Date.now();
@@ -2769,15 +2878,24 @@ function App({session, onLogout}){
       const e=(m.booker_email||'').trim().toLowerCase(); if(e){ if(!emM.has(e)) emM.set(e,[]); emM.get(e).push(m); }
       const k=cqPhoneKey(m.booker_phone); if(k){ if(!phM.has(k)) phM.set(k,[]); phM.get(k).push(m); }
     }
-    const pick=arr=>{ const up=arr.filter(m=>new Date(m.start_at).getTime()>=tnow-3600000).sort((a,b)=>new Date(a.start_at)-new Date(b.start_at)); if(up.length) return up[0]; return arr.slice().sort((a,b)=>new Date(b.start_at)-new Date(a.start_at))[0]; };
+    const pickNext=arr=>{ const up=arr.filter(m=>new Date(m.start_at).getTime()>=tnow-3600000).sort((a,b)=>new Date(a.start_at)-new Date(b.start_at)); if(up.length) return up[0]; return arr.slice().sort((a,b)=>new Date(b.start_at)-new Date(a.start_at))[0]; };
     return leads.map(l=>{
       let cand=[]; const e=(l.email||'').trim().toLowerCase(); if(e&&emM.has(e)) cand=cand.concat(emM.get(e));
       const k=cqPhoneKey(l.tel); if(k&&phM.has(k)) cand=cand.concat(phM.get(k));
       if(!cand.length) return l;
       const seen=new Set(); cand=cand.filter(m=>seen.has(m.id)?false:(seen.add(m.id),true));
-      const m=pick(cand);
-      // le lien Meet vit dans crm-sales (l'UPDATE anon sur la base CalendIQ est bloqué par leur RLS)
-      return { ...l, calendiqRdv:{ ...m, meet_link: m.meet_link || l.rdvMeetLink || null } };
+      // tri stable (start_at, puis id) → numérotation chrono r1/r2/r3 déterministe même à start_at égal
+      cand.sort((a,b)=> (new Date(a.start_at)-new Date(b.start_at)) || (a.id<b.id?-1:a.id>b.id?1:0));
+      const meta=l.rdvMeta||{};
+      const rdvs=cand.map((m,i)=>{
+        const mm=meta[m.id]||{};
+        const type=mm.type || (i===0?'r1':i===1?'r2':'r3'); // override explicite (booking CRM) sinon ordre chrono
+        // lien Meet : celui du meeting > celui qu'on a stocké > legacy single (UNIQUEMENT le meeting de même horaire)
+        const legacy = (l.rdvMeetLink && l.rdv_at && Math.abs(new Date(m.start_at)-new Date(l.rdv_at))<60000) ? l.rdvMeetLink : null;
+        return { id:m.id, source:'calendiq', type, start_at:m.start_at, duration_minutes:m.duration_minutes||null, meet_link:m.meet_link||mm.meet_link||legacy||null, outcome:(mm.outcome==='present'||mm.outcome==='no_show')?mm.outcome:null };
+      });
+      const next=pickNext(cand);
+      return { ...l, rdvs, calendiqRdv:{ ...next, meet_link: next.meet_link || l.rdvMeetLink || null } };
     });
   },[leads,cqMeetings]);
   const sel = leadsCq.find(l=>l.id===selId);
@@ -2893,8 +3011,13 @@ function App({session, onLogout}){
     const claim = type==='r1' && !sel.owner && !isAdmin;
     const tgt = rdvTargetStage(type, sel.column); // RDV fixé → avance l'étape (R1→1er RDV pris, R2→Closing), jamais en arrière
     const stagePatch = tgt ? { column:tgt, nextAction:NEXT_BY_COL[tgt]||null } : {};
+    // fige le TYPE choisi (R1/R2) + le Meet sur ce meeting précis (clé = id CalendIQ) → l'UI ne renumérote pas en cas d'annulation amont
+    const baseMeta = sel.rdvMeta||{};
+    const nextMeta = { ...baseMeta };
+    if(replaceMeetingId) delete nextMeta[replaceMeetingId]; // reprogrammation : purge l'ancienne clé (cohérent avec cancelCalendiqRdv, zéro orphelin)
+    nextMeta[booked.id] = { ...(baseMeta[booked.id]||{}), type, ...(booked.meet_link?{meet_link:booked.meet_link}:{}) };
     // le lien Meet est stocké dans crm-sales (rdvMeetLink) car l'UPDATE anon sur la base CalendIQ est bloqué
-    const p={ rdv_at:startIso, rdvType:type, rdvMeetLink:booked.meet_link||null, ...(claim?{owner:userId}:{}), ...stagePatch };
+    const p={ rdv_at:startIso, rdvType:type, rdvMeetLink:booked.meet_link||null, rdvMeta:nextMeta, ...(claim?{owner:userId}:{}), ...stagePatch };
     // reflet immédiat du RDV (avec le lien Meet) sur la fiche, sans attendre le refetch
     patch(sel.id,prev=>({ ...p, calendiqRdv:{ id:booked.id, title:'IQ Project × '+(sel.prenom||name), start_at:startIso, duration_minutes:durationMin, status:'confirmed', meet_link:booked.meet_link||null } }));
     saveLead(sel.id,p);
@@ -2914,8 +3037,9 @@ function App({session, onLogout}){
     try{ await cqInvoke('cancel-meeting',{ meeting_id:meetingId }); }
     catch(e){ toast('Annulation impossible', e.message, 'info'); return; }
     setCqMeetings(ms=>ms.filter(m=>m.id!==meetingId));
-    patch(sel.id,{ rdv_at:null, rdvType:null, rdvMeetLink:null, calendiqRdv:null });
-    saveLead(sel.id,{ rdv_at:null, rdvType:null, rdvMeetLink:null });
+    const cBase=sel.rdvMeta||{}; const cNext={...cBase}; delete cNext[meetingId]; // pas d'orphelin dans rdv_meta
+    patch(sel.id,{ rdv_at:null, rdvType:null, rdvMeetLink:null, rdvMeta:cNext, calendiqRdv:null });
+    saveLead(sel.id,{ rdv_at:null, rdvType:null, rdvMeetLink:null, rdvMeta:cNext });
     const title='RDV CalendIQ annulé';
     addActivite(sel.id,'rdv',title,null).catch(()=>{});
     patch(sel.id,prev=>({timeline:[{type:'rdv',when:'à l’instant',title,text:''},...prev.timeline]}));
@@ -2923,8 +3047,54 @@ function App({session, onLogout}){
     toast('RDV annulé','CalendIQ a retiré le créneau','info');
   },[sel,toast,patch,loadCalendiq]);
   // RDV saisi à la main : CRM UNIQUEMENT (rdv_at/rdvType/rdvMeetLink). Aucun appel CalendIQ, aucun email, aucun Meet généré.
-  const setManualRdv=useCallback((type, iso, meetLink)=>{ if(!sel) return; const tgt=rdvTargetStage(type, sel.column); const p={ rdv_at:iso, rdvType:type, rdvMeetLink:meetLink||null, ...(tgt?{column:tgt, nextAction:NEXT_BY_COL[tgt]||null}:{}) }; patch(sel.id,p); saveLead(sel.id,p); if(tgt){ const stTitle='Étape : '+(COL_LABEL[tgt]||tgt); addActivite(sel.id,'note',stTitle,null).catch(()=>null); patch(sel.id,prev=>({timeline:[{type:'note',when:'à l’instant',title:stTitle,text:''},...prev.timeline]})); } toast('Rendez-vous enregistré', (type||'r1').toUpperCase()+' · '+fmtRdv(iso),'ok'); },[sel,patch,toast]);
-  const removeManualRdv=useCallback(()=>{ if(!sel) return; const p={ rdv_at:null, rdvType:null, rdvMeetLink:null }; patch(sel.id,p); saveLead(sel.id,p); toast('Rendez-vous retiré',null,'info'); },[sel,patch,toast]);
+  const setManualRdv=useCallback((type, iso, meetLink)=>{ if(!sel) return; const tgt=rdvTargetStage(type, sel.column);
+    // nouveau créneau = repart à zéro : on purge le statut présence de l'ancien (sinon no-show fantôme sur la nouvelle date)
+    const mk='manual:'+sel.id; const base=sel.rdvMeta||{}; const nm={...base}; if(nm[mk]){ const e={...nm[mk]}; delete e.outcome; delete e.outcome_at; delete e.by; if(Object.keys(e).length) nm[mk]=e; else delete nm[mk]; }
+    const p={ rdv_at:iso, rdvType:type, rdvMeetLink:meetLink||null, rdvMeta:nm, ...(tgt?{column:tgt, nextAction:NEXT_BY_COL[tgt]||null}:{}) }; patch(sel.id,p); saveLead(sel.id,p); if(tgt){ const stTitle='Étape : '+(COL_LABEL[tgt]||tgt); addActivite(sel.id,'note',stTitle,null).catch(()=>null); patch(sel.id,prev=>({timeline:[{type:'note',when:'à l’instant',title:stTitle,text:''},...prev.timeline]})); } toast('Rendez-vous enregistré', (type||'r1').toUpperCase()+' · '+fmtRdv(iso),'ok'); },[sel,patch,toast]);
+  const removeManualRdv=useCallback(()=>{ if(!sel) return; const base=sel.rdvMeta||{}; const next={...base}; delete next['manual:'+sel.id]; const p={ rdv_at:null, rdvType:null, rdvMeetLink:null, rdvMeta:next }; patch(sel.id,p); saveLead(sel.id,p); toast('Rendez-vous retiré',null,'info'); },[sel,patch,toast]);
+
+  // ---- Résultat d'un RDV (présent / no-show) — fait structuré, SOURCE DE VÉRITÉ UNIQUE = leads.rdv_meta ----
+  // rdvMetaRef = miroir SYNCHRONE du rdv_meta de chaque lead. On lit/écrit dessus dans le handler (ordre garanti),
+  // donc deux marquages rapprochés (R1 puis R2, ou manuel + IA) FUSIONNENT au lieu de s'écraser → invariant #1 garanti.
+  const rdvMetaRef=useRef({});
+  useEffect(()=>{ const m={}; for(const l of leads) m[l.id]=l.rdvMeta||{}; rdvMetaRef.current=m; },[leads]);
+  // saveLeadRdvMeta REMONTE l'erreur → rollback optimiste (ref + UI) + toast (jamais de faux « enregistré »).
+  const writeRdvMeta=useCallback(async(leadId, mutator)=>{
+    const prev = rdvMetaRef.current[leadId] || {};
+    const next = mutator(prev);
+    if(next===prev) return 'noop';
+    rdvMetaRef.current = { ...rdvMetaRef.current, [leadId]:next }; // autorité synchrone (avant tout await)
+    patch(leadId,{rdvMeta:next});                                  // reflet UI optimiste
+    try{ await saveLeadRdvMeta(leadId, next); return true; }
+    catch(e){ rdvMetaRef.current = { ...rdvMetaRef.current, [leadId]:prev }; patch(leadId,{rdvMeta:prev}); toast('Échec de l’enregistrement', e.message||'Réessaie','info'); return false; }
+  },[patch,toast]);
+  const setRdvOutcome=useCallback(async(rdv, outcome, by='manual')=>{
+    if(!sel || !rdv) return;
+    const id=sel.id, key=rdv.id;
+    let changed=false;
+    const res=await writeRdvMeta(id, m=>{
+      const ex=m[key]||{};
+      if(by==='ia' && new Date(rdv.start_at).getTime()>Date.now()) return m;                       // l'IA ne tague jamais un RDV à venir
+      if(by==='ia' && ex.by==='manual' && (ex.outcome==='present'||ex.outcome==='no_show')) return m; // le manuel prime
+      if(ex.outcome===outcome){                                                                     // déjà ce statut
+        if(by==='manual' && ex.by!=='manual') return { ...m, [key]:{ ...ex, by:'manual' } };        // confirme = verrouille en manuel (silencieux)
+        return m;                                                                                   // sinon no-op
+      }
+      changed=true;
+      return { ...m, [key]:{ ...ex, outcome, outcome_at:new Date().toISOString(), by, ...(rdv.type?{type:rdv.type}:{}) } };
+    });
+    if(res===true && changed && by==='manual')
+      toast(outcome==='present'?'RDV marqué présent':'RDV marqué no-show', (rdv.type||'r1').toUpperCase()+' · '+cqDayLabel(rdv.start_at), outcome==='present'?'ok':'info');
+  },[sel,writeRdvMeta,toast]);
+  const clearRdvOutcome=useCallback(async(rdv)=>{
+    if(!sel || !rdv) return;
+    const id=sel.id, key=rdv.id;
+    await writeRdvMeta(id, m=>{
+      const cur=m[key]; if(!cur || !cur.outcome) return m;
+      const e={...cur}; delete e.outcome; delete e.outcome_at; delete e.by;
+      const n={...m}; if(Object.keys(e).length) n[key]=e; else delete n[key]; return n;
+    });
+  },[sel,writeRdvMeta]);
 
   // payment send → À payer, then auto Payé (id capturé, transition garantie)
   const sendPayment=(amount,tag)=>{
@@ -3003,7 +3173,7 @@ function App({session, onLogout}){
         {screen==='leads' && <Board leads={leadsCq} search={search} setSearch={setSearch}
             onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col)=>setAddTarget(col)} onDelete={deleteLead}/>}
         {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen('leads')} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
-            onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} onManualRdv={setManualRdv} onManualRemoveRdv={removeManualRdv} calendiqReady={!!(profile&&profile.calendiq_organizer_id)} calendiqOrganizer={profile&&profile.calendiq_organizer_id}/>}
+            onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} onManualRdv={setManualRdv} onManualRemoveRdv={removeManualRdv} onRdvOutcome={setRdvOutcome} onClearRdvOutcome={clearRdvOutcome} calendiqReady={!!(profile&&profile.calendiq_organizer_id)} calendiqOrganizer={profile&&profile.calendiq_organizer_id}/>}
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen('leads')}>Retour au board</button></div>}
         {screen==='agenda' && <Agenda meetings={cqMeetings} sources={cqSources} loading={cqLoading} error={cqError}
             isAdmin={isAdmin} profile={profile} onConnect={connectCalendiq} onDisconnect={disconnectCalendiq}
