@@ -1919,7 +1919,9 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
   const startDrag=useCallback((id)=>setDragId(id),[]);
   const endDrag=useCallback(()=>{ setDragId(null); setOverCol(null); setOver(null); },[]);
   const openCard=useCallback((id)=>onOpenLead(id),[onOpenLead]);
-  const byCol=useMemo(()=>{ const m={}; for(const c of COLUMNS) m[c.id]=[]; visible.forEach(l=>{ (m[l.column]||(m[l.column]=[])).push(l); }); return m; },[visible]);
+  // ordre chronologique d'apparition : le plus RÉCENT d'abord, dans TOUTES les colonnes (tri par date_creation desc, id en départage)
+  const byDateDesc=(a,b)=>{ const da=a.date_creation?Date.parse(a.date_creation):0, db=b.date_creation?Date.parse(b.date_creation):0; if(db!==da) return db-da; return String(b.id).localeCompare(String(a.id)); };
+  const byCol=useMemo(()=>{ const m={}; for(const c of COLUMNS) m[c.id]=[]; visible.forEach(l=>{ (m[l.column]||(m[l.column]=[])).push(l); }); for(const k in m) m[k].sort(byDateDesc); return m; },[visible]);
 
   const dropOn=(e,colId)=>{
     e.preventDefault();
@@ -1949,7 +1951,7 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
         </div>
       </div>
       <div style={{padding:'0 26px 8px'}}>
-        <span className="hint"><I.leads/>Glissez une carte pour changer de colonne ou la réordonner</span>
+        <span className="hint"><I.leads/>Glissez une carte pour changer de colonne — chaque colonne est triée du plus récent au plus ancien</span>
       </div>
       <div className="board-wrap">
         <div className="board">
