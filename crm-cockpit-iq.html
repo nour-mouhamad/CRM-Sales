@@ -3526,23 +3526,31 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     const keys=items.map(i=>i.key);
     setBusy(b=>{ const n={...b}; keys.forEach(k=>n[k]=true); return n; });
     setSyncBusy(true);
-    let ok=0, fail=0;
+    let ok=0, fail=0; const okKeys=new Set();
     if(items.length>1) setBulk({done:0,total:items.length});
     try{
       for(let i=0;i<items.length;i+=8){
         const chunk=items.slice(i,i+8);
         const r=await callFn('hubspot-sync',{action:'push',items:chunk,confirmBulk:true});
-        (r.results||[]).forEach(res=>{ if(res.ok) ok++; else fail++; });
+        (r.results||[]).forEach(res=>{ if(res.ok){ ok++; if(res.key) okKeys.add(res.key); } else fail++; });
         if(items.length>1) setBulk({done:Math.min(i+chunk.length,items.length),total:items.length});
       }
     }catch(e){ toast('Envoi échoué', e.message||'', 'info'); fail+=items.length-ok-fail; }
     setBulk(null);
     setBusy(b=>{ const n={...b}; keys.forEach(k=>delete n[k]); return n; });
     if(ok) oneCommit.current=true;
+    // RETRAIT OPTIMISTE : les lignes réussies disparaissent IMMÉDIATEMENT (sans attendre le re-diff complet ~3 s)
+    if(okKeys.size) setData(d=>{ if(!d) return d; const keep=(arr,kf)=>(arr||[]).filter(r=>!okKeys.has(kf(r)));
+      return { ...d,
+        sortants: keep(d.sortants, r=> r.mode==='lost'?'l:'+r.leadId:'s:'+r.leadId),
+        entrants: keep(d.entrants, r=> r.kind==='new'?'en:'+r.dealId:'eu:'+r.leadId),
+        conflits: keep(d.conflits, r=> 'c:'+r.leadId),
+      };
+    });
     setSyncBusy(false);
     toast(ok+' envoyé'+(ok>1?'s':'')+(fail?(' · '+fail+' échec'+(fail>1?'s':'')):''), label||null, fail?'info':'ok');
-    await load(true);
-    if(reloadLeads) reloadLeads();
+    // reconciliation en fond (ne bloque pas l'UI : les lignes sont déjà retirées)
+    load(true).then(()=>{ if(reloadLeads) reloadLeads(); });
   },[load,reloadLeads,setSyncBusy,toast]);
 
   const sortItem = r => {
