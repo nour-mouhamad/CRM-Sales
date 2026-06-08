@@ -1271,7 +1271,7 @@ function dbToLead(r, acts){
     offer:r.montant||0, aPayer:(r.montant_a_payer==null?'':r.montant_a_payer), quiPaie:r.qui_paie||'', paid:r.statut_paiement==='paye',
     cpf:r.cpf_dispo||0, metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'',
     rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, rdvMeetLink:r.rdv_meet_link||null, rdvMeta, hubspot_deal_id:r.hubspot_deal_id||null, date_creation:r.date_creation||null, hsImport:r.hs_import||null,
-    timeline:acts2.map(a=>({id:a.id, type:a.type, when:fmtWhen(a.created_at), at:a.created_at||null, title:a.titre||'', text:a.contenu||'', paid:a.type==='paiement', result:a.result||null, conclusion:a.conclusion||null, callKind:a.call_kind||null, rdvOutcome:a.rdv_outcome||null}))
+    timeline:acts2.map(a=>({id:a.id, type:a.type, when:fmtWhen(a.created_at), at:a.created_at||null, title:a.titre||'', text:a.contenu||'', paid:a.type==='paiement', result:a.result||null, conclusion:a.conclusion||null, callKind:a.call_kind||null, rdvOutcome:a.rdv_outcome||null, _src:(a.source==='hubspot'?'hs':'crm'), readOnly:(a.source==='hubspot'), html:(a.source==='hubspot')}))
   };
 }
 
@@ -2226,15 +2226,8 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
           </div>
           <div className="panel-body">
             {(()=>{
-              // HISTORIQUE UNIFIÉ : activités CRM + entrées importées de HubSpot, triées par date (récent en haut).
-              const crm = lead.timeline.filter(ev=>!(ev.title&&ev.title.indexOf('Étape :')===0)).map(ev=>({...ev, _src:'crm', _at:ev.at||''}));
-              const HSTYPE={ 'réunion':'rdv', 'appel':'appel', 'email':'mail', 'note':'note' };
-              const HSLBL={ 'réunion':'Réunion', 'appel':'Appel', 'email':'E-mail', 'note':'Note HubSpot' };
-              const hs = (((lead.hsImport||{}).historique)||[]).map(h=>({
-                id:'hs:'+h.id, _src:'hs', readOnly:true, html:true, type:HSTYPE[h.type]||'note',
-                title:h.title||HSLBL[h.type]||'Note HubSpot', when:h.at?fmtRdv(h.at):'', at:h.at, _at:h.at||'', text:h.body
-              }));
-              const all=[...crm,...hs].sort((a,b)=>String(b._at||'').localeCompare(String(a._at||'')));
+              // HISTORIQUE UNIFIÉ : lead.timeline contient déjà CRM + HubSpot (activites.source). On masque les logs d'étape.
+              const all=lead.timeline.filter(ev=>!(ev.title&&ev.title.indexOf('Étape :')===0));
               return (<div className="tl">
                 {all.map((ev,i)=><TlCard key={ev.id||i} ev={ev} onEditNote={onEditNote} onDeleteNote={onDeleteNote}/>)}
                 {all.length===0 && <div className="tl-empty">Aucune note pour l’instant.</div>}
