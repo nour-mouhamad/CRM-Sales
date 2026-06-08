@@ -3487,12 +3487,22 @@ const syncVal = (k,v)=> (v===null||v===undefined||v==='') ? '—' : ((k==='amoun
 
 // cache HORS React : survit au démontage du composant -> la synchro ne se relance PAS à chaque retour sur la page.
 // Le diff ne tourne qu'au 1er chargement ou via « Rafraîchir » (jamais automatiquement en changeant d'onglet).
-const CONSOLE_CACHE = { data:null, loaded:false };
+// État partagé HORS React : data + abonnés. Le diff (lent) ne tourne qu'UNE fois ; le résultat est diffusé
+// à toute instance montée via les abonnés. Naviguer pendant un chargement ne relance donc RIEN (et n'orpheline pas le résultat).
+const CONSOLE_CACHE = { data:null, loaded:false, inflight:false, error:null, subs:new Set() };
+const consoleNotify = ()=>{ CONSOLE_CACHE.subs.forEach(fn=>{ try{ fn(); }catch(e){} }); };
+async function consoleLoad(force){
+  if(CONSOLE_CACHE.inflight) return;            // déjà en cours -> on ne relance pas (on attend le même fetch)
+  if(CONSOLE_CACHE.loaded && !force) return;     // déjà chargé -> ne relance QUE via Rafraîchir / reconciliation (force)
+  CONSOLE_CACHE.inflight=true; CONSOLE_CACHE.error=null; consoleNotify();
+  try{ const d=await callFn('hubspot-sync',{action:'diff'}); CONSOLE_CACHE.data=d; CONSOLE_CACHE.loaded=true; }
+  catch(e){ CONSOLE_CACHE.error=e.message||'Lecture impossible'; }
+  finally{ CONSOLE_CACHE.inflight=false; consoleNotify(); }
+}
 
 function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
-  const [data,setData]=React.useState(CONSOLE_CACHE.data);
-  const [loading,setLoading]=React.useState(!CONSOLE_CACHE.loaded);
-  const [error,setError]=React.useState(null);
+  const [,bump]=React.useReducer(x=>x+1,0);
+  const [op,setOp]=React.useState(false);        // seed / re-baseline en cours (≠ diff)
   const [tab,setTab]=React.useState('sortants');
   const [busy,setBusy]=React.useState({});      // key -> en cours
   const [colSel,setColSel]=React.useState({});   // dealId nouveau lead -> colonne choisie
@@ -3501,30 +3511,28 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
   const [noteEdits,setNoteEdits]=React.useState({}); // leadId -> texte de note édité inline (avant envoi)
   const oneCommit=React.useRef(false);
 
-  const load=React.useCallback(async(silent)=>{
-    if(!silent) setLoading(true); setError(null);
-    try{ const d=await callFn('hubspot-sync',{action:'diff'}); setData(d); CONSOLE_CACHE.data=d; CONSOLE_CACHE.loaded=true; }
-    catch(e){ setError(e.message||'Lecture impossible'); }
-    finally{ setLoading(false); }
-  },[]);
-  // garde le cache module à jour à chaque changement de data (retrait optimiste, etc.)
-  React.useEffect(()=>{ CONSOLE_CACHE.data=data; },[data]);
-  // 1er montage SEULEMENT : si jamais chargé, on lance le diff. Sinon on réaffiche le cache, sans relancer.
-  React.useEffect(()=>{ if(!CONSOLE_CACHE.loaded) load(); },[load]);
+  // abonnement : toute mutation du cache (notify) re-rend cette instance. Désabo au démontage (pas de setState fantôme).
+  React.useEffect(()=>{ CONSOLE_CACHE.subs.add(bump); return ()=>{ CONSOLE_CACHE.subs.delete(bump); }; },[]);
+  // 1er montage : charge SI pas déjà chargé ni en cours. Sinon no-op -> réaffiche le cache, zéro rechargement au retour.
+  React.useEffect(()=>{ consoleLoad(false); },[]);
+
+  const data=CONSOLE_CACHE.data, error=CONSOLE_CACHE.error, loading=CONSOLE_CACHE.inflight||op;
+  const setData=(u)=>{ CONSOLE_CACHE.data = (typeof u==='function') ? u(CONSOLE_CACHE.data) : u; consoleNotify(); };
+  const load=React.useCallback((silent)=>consoleLoad(true),[]); // Rafraîchir / reconciliation -> force un re-diff
 
   const doInit=async()=>{
-    setLoading(true); setSyncBusy(true);
+    setOp(true); setSyncBusy(true);
     try{ const r=await callFn('hubspot-sync',{action:'seed'}); toast('Synchro initialisée',(r.seeded||0)+' leads photographiés (rien écrit dans HubSpot)','ok'); }
     catch(e){ toast('Initialisation échouée', e.message||'', 'info'); }
-    finally{ setSyncBusy(false); await load(); }
+    finally{ setSyncBusy(false); setOp(false); await load(); }
   };
   // ré-aligne TOUTE la base de référence sur HubSpot (ex. après un changement de règles montants) — LIT HubSpot, 0 écriture HubSpot
   const doRebaseline=async()=>{
     if(!window.confirm('Ré-aligner toute la base sur HubSpot ?\n\nÇa relit HubSpot et adopte ses montants comme « Payé » dans le CRM. AUCUNE écriture dans HubSpot. Les changements non envoyés seront ré-évalués.')) return;
-    setLoading(true); setSyncBusy(true);
+    setOp(true); setSyncBusy(true);
     try{ const r=await callFn('hubspot-sync',{action:'seed',force:true}); toast('Base ré-alignée',(r.seeded||0)+' leads (montants adoptés)','ok'); }
     catch(e){ toast('Échec', e.message||'', 'info'); }
-    finally{ setSyncBusy(false); await load(); if(reloadLeads) reloadLeads(); }
+    finally{ setSyncBusy(false); setOp(false); await load(); if(reloadLeads) reloadLeads(); }
   };
 
   // envoie une liste d'items à la fonction Edge (par paquets de 8), rafraîchit, garde les échecs visibles
