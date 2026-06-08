@@ -1046,6 +1046,8 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .sync-note-tag{font-size:10px; font-weight:700; text-transform:none; letter-spacing:0; padding:2px 7px; border-radius:999px; background:var(--accent-tint); color:var(--accent)}
 .sync-note-tag.muted{background:rgba(127,127,127,.14); color:var(--t3)}
 .sync-note-b{margin:0; padding:11px 13px; font:500 13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--t1); white-space:pre-wrap; word-break:break-word}
+.fiche-date{display:inline-flex; align-items:center; gap:6px; margin-top:6px; font-size:12.5px; font-weight:600; color:var(--t3)}
+.fiche-date svg{color:var(--t3)}
 .sync-list{display:flex; flex-direction:column; gap:9px}
 .sync-sec{font-size:11px; font-weight:700; color:var(--t3); text-transform:uppercase; letter-spacing:.05em; margin:16px 0 8px; display:flex; align-items:center; gap:8px}
 .syncrow{background:var(--surface); border:1px solid var(--b1); border-radius:13px; padding:13px 15px; display:flex; align-items:center; gap:14px; transition:border-color var(--speed) var(--ease)}
@@ -1220,7 +1222,7 @@ function dbToLead(r, acts){
     nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, extraActions:Array.isArray(r.extra_actions)?r.extra_actions:[], live:false, noShow,
     offer:r.montant||0, aPayer:(r.montant_a_payer==null?'':r.montant_a_payer), quiPaie:r.qui_paie||'', paid:r.statut_paiement==='paye',
     cpf:r.cpf_dispo||0, metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'',
-    rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, rdvMeetLink:r.rdv_meet_link||null, rdvMeta, hubspot_deal_id:r.hubspot_deal_id||null,
+    rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, rdvMeetLink:r.rdv_meet_link||null, rdvMeta, hubspot_deal_id:r.hubspot_deal_id||null, date_creation:r.date_creation||null,
     timeline:acts2.map(a=>({id:a.id, type:a.type, when:fmtWhen(a.created_at), at:a.created_at||null, title:a.titre||'', text:a.contenu||'', paid:a.type==='paiement', result:a.result||null, conclusion:a.conclusion||null, callKind:a.call_kind||null, rdvOutcome:a.rdv_outcome||null}))
   };
 }
@@ -1551,6 +1553,8 @@ function CopyField({value, icon, copyVal, title}){
 }
 
 function fmtRdv(iso){ try{ const s=new Date(iso).toLocaleString('fr-FR',{weekday:'short',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}); return s.replace(':',' h '); }catch(e){ return ''; } }
+// date jour (ex. « 6 juin 2026 ») — utilisée pour le tag de date du lead dans la fiche
+function fmtDay(d){ try{ return new Date(d).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}); }catch(e){ return ''; } }
 // ISO -> valeur d'un <input type="datetime-local"> (heure locale) — pour pré-remplir la reprogrammation
 function toLocalInput(iso){ const d=new Date(iso); if(isNaN(d)) return ''; const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }
 
@@ -2057,6 +2061,7 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
         <button className="back" onClick={onBack}><I.back/>Mes leads</button>
         <div className="fiche-id">
           <h1>{lead.prenom} {lead.nom}</h1>
+          {lead.date_creation && <div className="fiche-date"><I.agenda style={{width:13,height:13}}/>Lead créé le {fmtDay(lead.date_creation)}</div>}
         </div>
         <div className="status-pill"><span className="sdot" style={{background:statusColor}}></span>{COL_LABEL[lead.column]}</div>
       </div>
