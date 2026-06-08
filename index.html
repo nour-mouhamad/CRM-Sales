@@ -3662,7 +3662,8 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
                       <div className="sync-note-h">📋 Note HubSpot — éditable
                         {edited && <span className="sync-note-tag">éditée (sera envoyée)</span>}
                         {!edited && r.hasOverride && <span className="sync-note-tag">note manuelle</span>}
-                        <span style={{marginLeft:'auto',display:'flex',gap:8}}>
+                        <span style={{marginLeft:'auto',display:'flex',gap:10}}>
+                          {val.trim() && <button className="sync-note-link" onClick={()=>setNoteEdits(s=>({...s,[r.leadId]:''}))} title="Vider le champ d’un clic">Vider</button>}
                           {edited && <button className="sync-note-link" onClick={()=>setNoteEdits(s=>{ const n={...s}; delete n[r.leadId]; return n; })}>Annuler mes modifs</button>}
                           {r.hasOverride && <button className="sync-note-link" disabled={!!busy[k]} onClick={()=>{ if(window.confirm('Revenir à la note auto-générée ? Ta note manuelle sera remplacée dans HubSpot.')) resetNote(r); }}>Revenir à l’auto</button>}
                         </span>
