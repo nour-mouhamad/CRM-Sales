@@ -527,6 +527,18 @@ input,textarea{font-family:inherit; color:inherit}
 .recap-sp{height:7px}
 .recap-edit{width:100%; min-height:150px; max-height:240px; resize:vertical; box-sizing:border-box; border:1px solid var(--b2); border-radius:12px; padding:12px 14px; background:var(--surface-2); color:var(--t1); font-family:inherit; font-size:12.5px; line-height:1.6}
 .recap-edit:focus{border-color:var(--accent); outline:none}
+/* éditeur riche (Récap) */
+.rt{border:1px solid var(--b2); border-radius:12px; background:var(--surface-2); overflow:hidden}
+.rt-bar{display:flex; align-items:center; gap:4px; padding:6px 8px; border-bottom:1px solid var(--b1); background:var(--surface); flex-wrap:wrap}
+.rt-b{min-width:28px; height:28px; padding:0 8px; border-radius:7px; border:1px solid transparent; background:transparent; color:var(--t2); font-size:13px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center}
+.rt-b:hover{background:var(--surface-2); color:var(--t1); border-color:var(--b1)}
+.rt-sep{width:1px; height:18px; background:var(--b1); margin:0 4px}
+.rt-edit{min-height:150px; max-height:300px; overflow:auto; padding:12px 14px; color:var(--t1); font-size:13px; line-height:1.6; outline:none}
+.rt-edit:empty:before{content:attr(data-ph); color:var(--t4)}
+.rt-edit h3{font-size:14px; font-weight:800; margin:8px 0 4px; color:var(--t1)}
+.rt-edit b{font-weight:800; color:var(--t1)}
+.rt-edit ul{margin:4px 0 4px 18px}
+.rt-edit:focus{outline:none}
 .recap-action-edit{display:flex; align-items:center; gap:9px; padding:3px 0}
 .recap-action-edit input{flex:1; min-width:0; background:var(--surface); border:1px solid var(--b1); border-radius:7px; padding:6px 9px; color:var(--t1); font-size:13px; font-family:inherit}
 .recap-action-edit input:focus{border-color:var(--accent); outline:none}
@@ -2292,7 +2304,24 @@ function NoteModal({ mode, onClose, onNote }){
 function mdInline(s){
   return String(s).split(/(\*\*[^*]+\*\*)/g).map((p,i)=> p.startsWith('**')&&p.endsWith('**') ? <b key={i}>{p.slice(2,-2)}</b> : p);
 }
+const escHtml = (s)=> String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+// markdown IA (##, **, -) -> HTML simple pour l'éditeur riche
+function mdToHtml(md){
+  return String(md||'').split('\n').map(ln=>{
+    const t=ln.trim();
+    if(!t) return '<div><br></div>';
+    if(t.startsWith('## ')) return '<div><b>'+escHtml(t.slice(3))+'</b></div>';
+    if(t.startsWith('# ')) return '<div><b>'+escHtml(t.slice(2))+'</b></div>';
+    const bold = s=> escHtml(s).replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');
+    if(t.startsWith('- ')||t.startsWith('• ')||t.startsWith('* ')) return '<div>• '+bold(t.replace(/^(-|•|\*)\s*/,''))+'</div>';
+    return '<div>'+bold(t)+'</div>';
+  }).join('');
+}
+// nettoyage avant rendu HTML (anti-injection léger) : retire scripts/styles et handlers on*
+const sanitizeHtml = (h)=> String(h||'').replace(/<\/?(script|style|iframe|object|embed)[^>]*>/gi,'').replace(/ on\w+="[^"]*"/gi,'').replace(/ on\w+='[^']*'/gi,'');
+const isHtml = (s)=> /<[a-z!/][\s\S]*>/i.test(String(s||''));
 function MdText({ text }){
+  if(isHtml(text)) return <div className="recap-md" dangerouslySetInnerHTML={{__html: sanitizeHtml(text)}}/>;
   const lines=String(text||'').split('\n');
   return (<div className="recap-md">{lines.map((ln,i)=>{
     const t=ln.trim();
@@ -2302,6 +2331,32 @@ function MdText({ text }){
     if(t.startsWith('- ')||t.startsWith('• ')||t.startsWith('* ')) return <div key={i} className="recap-li">{mdInline(t.slice(2))}</div>;
     return <div key={i} className="recap-p">{mdInline(t)}</div>;
   })}</div>);
+}
+// éditeur WYSIWYG (contentEditable) : barre Gras / Souligné / Italique / Titre / Liste / taille. Valeur = HTML.
+function RichText({ html, onChange, placeholder }){
+  const ref=React.useRef(null);
+  React.useEffect(()=>{ if(ref.current && ref.current.innerHTML!==(html||'')) ref.current.innerHTML=html||''; },[]); // init une seule fois
+  const sync=()=>{ if(ref.current) onChange(ref.current.innerHTML); };
+  const cmd=(c,v)=>{ try{ document.execCommand('styleWithCSS',false,true); }catch(e){} document.execCommand(c,false,v||null); if(ref.current) ref.current.focus(); sync(); };
+  const Btn=({on,t,children,style})=> <button type="button" className="rt-b" style={style} title={t} onMouseDown={e=>e.preventDefault()} onClick={on}>{children}</button>;
+  return (
+    <div className="rt">
+      <div className="rt-bar">
+        <Btn on={()=>cmd('bold')} t="Gras"><b>B</b></Btn>
+        <Btn on={()=>cmd('italic')} t="Italique"><i>I</i></Btn>
+        <Btn on={()=>cmd('underline')} t="Souligné"><u>S</u></Btn>
+        <span className="rt-sep"/>
+        <Btn on={()=>cmd('formatBlock','H3')} t="Titre">Titre</Btn>
+        <Btn on={()=>cmd('insertUnorderedList')} t="Liste à puces">• Liste</Btn>
+        <span className="rt-sep"/>
+        <Btn on={()=>cmd('fontSize','2')} t="Petit" style={{fontSize:11}}>A</Btn>
+        <Btn on={()=>cmd('fontSize','4')} t="Normal" style={{fontSize:14}}>A</Btn>
+        <Btn on={()=>cmd('fontSize','6')} t="Grand" style={{fontSize:17}}>A</Btn>
+      </div>
+      <div className="rt-edit" ref={ref} contentEditable suppressContentEditableWarning
+        data-ph={placeholder||''} onInput={sync} onBlur={sync}/>
+    </div>
+  );
 }
 
 // Colle un transcript -> Edge Function `recap` (Gemini) -> récap adaptatif.
@@ -2342,7 +2397,7 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage, onSetR
       consider(F.cpf,'cpf','cpf','CPF dispo',true);
       consider(F.budget,'budget','budget','Budget',false);
       // récap + actions -> état ÉDITABLE (la sauvegarde en note se fait au clic "Confirmer")
-      setRecapText((out.recap_markdown||'').trim());
+      setRecapText(mdToHtml((out.recap_markdown||'').trim())); // markdown IA -> HTML pour l'éditeur riche
       setEditActions((out.actions||[]).map(a=>({label:a.label, priority:a.priority||'moyenne'})));
       // étape : avance UNIQUEMENT contacter/atc -> R1 si un RDV est calé (rdv_at présent).
       // Un seul champ rdv_at ne permet pas de certifier qu'un R2 distinct est calé :
@@ -2362,7 +2417,8 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage, onSetR
   // "Confirmer" : enregistre le récap ÉDITÉ (résumé + actions) en note datée, puis ferme.
   function confirm(){
     const acts=editActions.filter(a=>a.label.trim());
-    const actTxt = acts.length ? ('\n\n— Actions —\n'+acts.map(a=>'• '+a.label.trim()+(a.priority==='haute'?' (prioritaire)':'')).join('\n')) : '';
+    // récap = HTML (éditeur riche) -> on ajoute les actions en HTML aussi
+    const actTxt = acts.length ? ('<div><br></div><div><b>— Actions —</b></div>'+acts.map(a=>'<div>• '+escHtml(a.label.trim())+(a.priority==='haute'?' (prioritaire)':'')+'</div>').join('')) : '';
     const body=(recapText.trim()+actTxt).trim();
     const res = (result && RESULT_META[result.result]) ? result.result : null;
     const concl = (result && result.conclusion) || (res ? RESULT_META[res].label : null);
@@ -2408,7 +2464,7 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage, onSetR
               {result.conclusion && <span className="recap-concl-tx">{result.conclusion}</span>}
             </div>
           </div>); })()}
-        <textarea className="recap-edit" value={recapText} onChange={e=>setRecapText(e.target.value)} placeholder="Résumé du call (modifiable)…"/>
+        <RichText html={recapText} onChange={setRecapText} placeholder="Résumé du call (modifiable)…"/>
         <div className="recap-actions">
           <div className="recap-actions-h">Actions</div>
           {editActions.map((a,i)=>(
