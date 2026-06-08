@@ -3618,6 +3618,12 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     if(!rows.length) return;
     push(rows.map(entrItem),'Tout accepté');
   };
+  // Refuser une modif reçue de HubSpot : on garde la version CRM et on la RENVOIE vers HubSpot (annule la modif HubSpot).
+  // token = lastModified courant de l'entrant -> passe le contrôle de concurrence.
+  const refuseEntrant = r => {
+    if(!window.confirm('Refuser cette modif HubSpot ?\n\nTa version du CRM sera renvoyée vers HubSpot (la modification faite dans HubSpot est annulée). Lead « '+r.name+' ».')) return;
+    push([{ key:'eu:'+r.leadId, mode:'commit', leadId:r.leadId, token:r.lastModified }],'Modif HubSpot refusée — CRM renvoyé');
+  };
 
   const head=(
     <div className="screen-head">
@@ -3753,6 +3759,8 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
                           {COLUMNS.map(c=><option key={c.id} value={c.id}>{c.label}</option>)}
                         </select>
                       )}
+                      {r.kind!=='new' && <button className="btn btn-ghost" disabled={!!busy[k]} onClick={()=>onOpenLead(r.leadId)} title="Ouvrir la fiche">Éditer</button>}
+                      {r.kind!=='new' && <button className="btn btn-soft" disabled={!!busy[k]} onClick={()=>refuseEntrant(r)} title="Refuser : renvoyer ta version CRM vers HubSpot">{busy[k]?'…':'Refuser'}</button>}
                       <button className="btn btn-accent" disabled={!!busy[k]} onClick={()=>push([entrItem(r)], r.kind==='new'?'Lead ajouté au CRM':'Modif acceptée')}>{busy[k]?'…':'Accepter'}</button>
                     </div>
                   </div>
