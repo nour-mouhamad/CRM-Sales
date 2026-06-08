@@ -1780,52 +1780,50 @@ function RdvList({ rdvs, onModify, onCancel, onOutcome, onClearOutcome }){
 /* RDV saisi À LA MAIN (front-only, CRM uniquement) — fallback quand CalendIQ n'est pas connecté.
    Affichage délégué à RdvCard (même machine d'états présent/no-show). Clé stable = manual:<lead.id>. */
 function ManualRdvField({ lead, onSave, onRemove, onOutcome, onClearOutcome }){
-  const [editing,setEditing]=useState(false);
-  const [type,setType]=useState(lead.rdvType||'r1');
+  const [editing,setEditing]=useState(null); // null | 'new' | {key}
+  const [type,setType]=useState('r1');
   const [dt,setDt]=useState('');
   const [meet,setMeet]=useState('');
-  const open=()=>{ setType(lead.rdvType||'r1'); setDt(lead.rdv_at?toLocalInput(lead.rdv_at):''); setMeet(lead.rdvMeetLink||''); setEditing(true); };
-  const save=()=>{ if(!dt) return; onSave(type, new Date(dt).toISOString(), meet.trim()||null); setEditing(false); };
-  const has = !!lead.rdv_at;
-  if(editing){
-    return (
-      <div className="field">
-        <span className="eyebrow">Rendez-vous</span>
-        <div className="rdv-edit">
+  // liste des RDV manuels : créneau legacy (rdv_at) + tous les créneaux 'm:*' de rdv_meta
+  const list=[];
+  if(lead.rdv_at){ const mk='manual:'+lead.id; const meta=(lead.rdvMeta&&lead.rdvMeta[mk])||{}; list.push({ id:mk, source:'manual', type:lead.rdvType||'r1', start_at:lead.rdv_at, duration_minutes:RDV_DUR[lead.rdvType||'r1']||45, meet_link:lead.rdvMeetLink||null, outcome:meta.outcome||null }); }
+  for(const k in (lead.rdvMeta||{})){ if(k.indexOf('m:')===0){ const e=lead.rdvMeta[k]||{}; if(e.start_at) list.push({ id:k, source:'manual', type:e.type||'r1', start_at:e.start_at, duration_minutes:RDV_DUR[e.type||'r1']||45, meet_link:e.meet_link||null, outcome:e.outcome||null }); } }
+  list.sort((a,b)=>new Date(a.start_at)-new Date(b.start_at));
+  const openNew=()=>{ setType(list.length?'r2':'r1'); setDt(''); setMeet(''); setEditing('new'); };
+  const openEdit=(r)=>{ setType(r.type||'r1'); setDt(toLocalInput(r.start_at)); setMeet(r.meet_link||''); setEditing({key:r.id}); };
+  const save=()=>{ if(!dt) return; onSave(type, new Date(dt).toISOString(), meet.trim()||null, editing==='new'?null:editing.key); setEditing(null); };
+  return (
+    <div className="field">
+      <span className="eyebrow">Rendez-vous</span>
+      {list.length>0 && <div className="rdvlist">
+        {list.map(rdv=>(
+          <RdvCard key={rdv.id} rdv={rdv} onModify={()=>openEdit(rdv)} onCancel={()=>onRemove(rdv.id)} onOutcome={(o)=>onOutcome(rdv,o)} onClearOutcome={()=>onClearOutcome(rdv)}/>
+        ))}
+      </div>}
+      {editing && (
+        <div className="rdv-edit" style={{marginTop:list.length?10:0}}>
           <div className="rdv-types">
             <button className={type==='r1'?'on':''} onClick={()=>setType('r1')}>R1</button>
             <button className={type==='r2'?'on':''} onClick={()=>setType('r2')}>R2</button>
+            <button className={type==='r3'?'on':''} onClick={()=>setType('r3')}>R3</button>
           </div>
           <input type="datetime-local" className="rdv-input" value={dt} autoFocus onChange={e=>setDt(e.target.value)}/>
           <input type="url" className="rdv-input" placeholder="Lien Google Meet (optionnel)" value={meet} onChange={e=>setMeet(e.target.value)}/>
           <div className="rdv-foot">
             <button className="btn btn-accent" disabled={!dt} onClick={save}>Enregistrer</button>
-            <button className="btn btn-ghost" onClick={()=>setEditing(false)}>Annuler</button>
+            <button className="btn btn-ghost" onClick={()=>setEditing(null)}>Annuler</button>
           </div>
         </div>
-      </div>
-    );
-  }
-  if(has){
-    const key='manual:'+lead.id;
-    const meta=(lead.rdvMeta&&lead.rdvMeta[key])||{};
-    const rdv={ id:key, source:'manual', type:lead.rdvType||'r1', start_at:lead.rdv_at, duration_minutes:RDV_DUR[lead.rdvType||'r1']||45, meet_link:lead.rdvMeetLink||null, outcome:meta.outcome||null };
-    return (
-      <div className="field">
-        <span className="eyebrow">Rendez-vous</span>
-        <div className="rdvlist">
-          <RdvCard rdv={rdv} onModify={()=>open()} onCancel={()=>onRemove()} onOutcome={(o)=>onOutcome(rdv,o)} onClearOutcome={()=>onClearOutcome(rdv)}/>
+      )}
+      {!editing && list.length===0 && (
+        <div className="rdvcard empty">
+          <span>Pas de rendez-vous</span>
+          <button className="rdvcard-btn" style={{marginLeft:'auto'}} title="Indiquer un rendez-vous" onClick={openNew}>{I.pencil({})}</button>
         </div>
-      </div>
-    );
-  }
-  return (
-    <div className="field">
-      <span className="eyebrow">Rendez-vous</span>
-      <div className="rdvcard empty">
-        <span>Pas de rendez-vous</span>
-        <button className="rdvcard-btn" style={{marginLeft:'auto'}} title="Indiquer un rendez-vous" onClick={open}>{I.pencil({})}</button>
-      </div>
+      )}
+      {!editing && list.length>0 && (
+        <button className="action-add" onClick={openNew}>+ Ajouter un RDV</button>
+      )}
     </div>
   );
 }
@@ -2113,14 +2111,11 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
                 </div>
               </div>
               {(lead.rdvs && lead.rdvs.length)
-                ? <RdvList rdvs={lead.rdvs} onModify={calendiqReady?openEditRdv:null} onCancel={calendiqReady?(rdv=>{ if(window.confirm('Annuler ce RDV dans CalendIQ ? Le créneau Google + l’email d’annulation seront gérés par CalendIQ.')) onCancelRdv(rdv.id); }):null} onOutcome={onRdvOutcome} onClearOutcome={onClearRdvOutcome}/>
-                : Object.keys(lead.rdvMeta||{}).some(k=>k.indexOf('manual:')!==0)
+                ? (<><RdvList rdvs={lead.rdvs} onModify={calendiqReady?openEditRdv:null} onCancel={calendiqReady?(rdv=>{ if(window.confirm('Annuler ce RDV dans CalendIQ ? Le créneau Google + l’email d’annulation seront gérés par CalendIQ.')) onCancelRdv(rdv.id); }):null} onOutcome={onRdvOutcome} onClearOutcome={onClearRdvOutcome}/>
+                    <button className="action-add" onClick={openNewRdv} disabled={!calendiqReady} title={calendiqReady?'Programmer un nouveau RDV (R2, R3…) dans CalendIQ':'Connecte ton CalendIQ (onglet Agenda)'}>+ Ajouter un RDV</button></>)
+                : Object.keys(lead.rdvMeta||{}).some(k=>k.indexOf('manual:')!==0 && k.indexOf('m:')!==0)
                   ? (<div className="field"><span className="eyebrow">Rendez-vous</span><div className="rdvcard empty">Chargement des rendez-vous…</div></div>)
                   : <ManualRdvField lead={lead} onSave={onManualRdv} onRemove={onManualRemoveRdv} onOutcome={onRdvOutcome} onClearOutcome={onClearRdvOutcome}/>}
-              <button className="action-add" onClick={openNewRdv} disabled={!calendiqReady}
-                title={calendiqReady?'Programmer un nouveau RDV (R1, R2, R3…) dans CalendIQ':'Connecte ton CalendIQ (onglet Agenda) pour ajouter un RDV'}>
-                + Ajouter un RDV
-              </button>
               <div className="field">
                 <span className="eyebrow">Action</span>
                 <div className="actlist">
@@ -3172,11 +3167,27 @@ function App({session, onLogout}){
     toast('RDV annulé','CalendIQ a retiré le créneau','info');
   },[sel,toast,patch,loadCalendiq]);
   // RDV saisi à la main : CRM UNIQUEMENT (rdv_at/rdvType/rdvMeetLink). Aucun appel CalendIQ, aucun email, aucun Meet généré.
-  const setManualRdv=useCallback((type, iso, meetLink)=>{ if(!sel) return; const tgt=rdvTargetStage(type, sel.column);
-    // nouveau créneau = repart à zéro : on purge le statut présence de l'ancien (sinon no-show fantôme sur la nouvelle date)
-    const mk='manual:'+sel.id; const base=sel.rdvMeta||{}; const nm={...base}; if(nm[mk]){ const e={...nm[mk]}; delete e.outcome; delete e.outcome_at; delete e.by; if(Object.keys(e).length) nm[mk]=e; else delete nm[mk]; }
-    const p={ rdv_at:iso, rdvType:type, rdvMeetLink:meetLink||null, rdvMeta:nm, ...(tgt?{column:tgt, nextAction:NEXT_BY_COL[tgt]||null}:{}) }; patch(sel.id,p); saveLead(sel.id,p); if(tgt){ const stTitle='Étape : '+(COL_LABEL[tgt]||tgt); addActivite(sel.id,'note',stTitle,null).catch(()=>null); patch(sel.id,prev=>({timeline:[{type:'note',when:'à l’instant',title:stTitle,text:''},...prev.timeline]})); } toast('Rendez-vous enregistré', (type||'r1').toUpperCase()+' · '+fmtRdv(iso),'ok'); },[sel,patch,toast]);
-  const removeManualRdv=useCallback(()=>{ if(!sel) return; const base=sel.rdvMeta||{}; const next={...base}; delete next['manual:'+sel.id]; const p={ rdv_at:null, rdvType:null, rdvMeetLink:null, rdvMeta:next }; patch(sel.id,p); saveLead(sel.id,p); toast('Rendez-vous retiré',null,'info'); },[sel,patch,toast]);
+  // RDV manuel MULTIPLE : créneau legacy = rdv_at (clé 'manual:<id>') ; créneaux suivants = clés 'm:<rand>' dans rdv_meta {type,start_at,meet_link,outcome…}.
+  // key absent = NOUVEAU créneau (on n'écrase rien) ; key fourni = reprogrammation de ce créneau (on purge sa présence).
+  const setManualRdv=useCallback((type, iso, meetLink, key)=>{ if(!sel) return; const tgt=rdvTargetStage(type, sel.column);
+    const base=sel.rdvMeta||{}; const nm={...base}; let p;
+    if(key==='manual:'+sel.id){ // reprogrammation du créneau legacy
+      if(nm[key]){ const e={...nm[key]}; delete e.outcome; delete e.outcome_at; delete e.by; if(Object.keys(e).length) nm[key]=e; else delete nm[key]; }
+      p={ rdv_at:iso, rdvType:type, rdvMeetLink:meetLink||null, rdvMeta:nm };
+    } else {
+      const mk=(key && key.indexOf('m:')===0) ? key : ('m:'+Math.random().toString(36).slice(2)+Date.now().toString(36));
+      nm[mk]={ ...(nm[mk]||{}), type, start_at:iso, meet_link:meetLink||null };
+      if(key){ delete nm[mk].outcome; delete nm[mk].outcome_at; delete nm[mk].by; } // reprog d'un créneau existant -> repart à zéro
+      p={ rdvMeta:nm };
+    }
+    if(tgt){ p.column=tgt; p.nextAction=NEXT_BY_COL[tgt]||null; }
+    patch(sel.id,p); saveLead(sel.id,p);
+    if(tgt){ const stTitle='Étape : '+(COL_LABEL[tgt]||tgt); addActivite(sel.id,'note',stTitle,null).catch(()=>null); patch(sel.id,prev=>({timeline:[{type:'note',when:'à l’instant',title:stTitle,text:''},...prev.timeline]})); }
+    toast('Rendez-vous enregistré', (type||'r1').toUpperCase()+' · '+fmtRdv(iso),'ok'); },[sel,patch,toast]);
+  const removeManualRdv=useCallback((key)=>{ if(!sel) return; const base=sel.rdvMeta||{}; const next={...base}; let p;
+    if(!key || key==='manual:'+sel.id){ delete next['manual:'+sel.id]; p={ rdv_at:null, rdvType:null, rdvMeetLink:null, rdvMeta:next }; }
+    else { delete next[key]; p={ rdvMeta:next }; }
+    patch(sel.id,p); saveLead(sel.id,p); toast('Rendez-vous retiré',null,'info'); },[sel,patch,toast]);
 
   // ---- Résultat d'un RDV (présent / no-show) — fait structuré, SOURCE DE VÉRITÉ UNIQUE = leads.rdv_meta ----
   // rdvMetaRef = miroir SYNCHRONE du rdv_meta de chaque lead. On lit/écrit dessus dans le handler (ordre garanti),
