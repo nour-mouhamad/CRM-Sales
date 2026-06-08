@@ -1031,6 +1031,16 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .sync-banner h3{font-size:17px; font-weight:800; letter-spacing:-.01em}
 .sync-banner p{font-size:13px; color:var(--t3); line-height:1.5}
 .sync-banner .btn{margin-top:8px}
+.pay-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.pay-cell{display:flex; flex-direction:column; gap:4px}
+.pay-lbl{font-size:11px; font-weight:600; color:var(--t3); text-transform:uppercase; letter-spacing:.04em}
+.pay-val{text-align:left; font-size:16px; font-weight:800; letter-spacing:-.02em; color:var(--t1); background:transparent; border:1px solid transparent; border-radius:8px; padding:5px 8px; margin:-5px -8px; cursor:text; transition:background var(--speed) var(--ease), border-color var(--speed) var(--ease)}
+.pay-val:hover{background:var(--surface-2,rgba(127,127,127,.08)); border-color:var(--b1)}
+.pay-val.pay-accent{color:var(--accent)}
+.pay-val.pay-empty{color:var(--t3); font-weight:700}
+.pay-inp{font-size:16px; font-weight:800; color:var(--t1); background:var(--bg); border:1.5px solid var(--accent); border-radius:8px; padding:5px 8px; width:100%; outline:none}
+.pay-sel{font-size:13.5px; font-weight:600; color:var(--t1); background:var(--bg); border:1px solid var(--b1); border-radius:8px; padding:7px 9px; cursor:pointer; max-width:260px}
+.pay-sel:hover{border-color:var(--b3)}
 .sync-list{display:flex; flex-direction:column; gap:9px}
 .sync-sec{font-size:11px; font-weight:700; color:var(--t3); text-transform:uppercase; letter-spacing:.05em; margin:16px 0 8px; display:flex; align-items:center; gap:8px}
 .syncrow{background:var(--surface); border:1px solid var(--b1); border-radius:13px; padding:13px 15px; display:flex; align-items:center; gap:14px; transition:border-color var(--speed) var(--ease)}
@@ -1203,7 +1213,7 @@ function dbToLead(r, acts){
     id:r.id, prenom:r.prenom||'', nom:r.nom||'', tel:r.telephone||'', email:r.email||'',
     source:r.source, heat:r.heat||null, column:COL_DB2UI(r.colonne), owner:r.owner_closer_id||null,
     nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, extraActions:Array.isArray(r.extra_actions)?r.extra_actions:[], live:false, noShow,
-    offer:r.montant||0, paid:r.statut_paiement==='paye',
+    offer:r.montant||0, aPayer:(r.montant_a_payer==null?'':r.montant_a_payer), quiPaie:r.qui_paie||'', paid:r.statut_paiement==='paye',
     cpf:r.cpf_dispo||0, metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'',
     rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, rdvMeetLink:r.rdv_meet_link||null, rdvMeta, hubspot_deal_id:r.hubspot_deal_id||null,
     timeline:acts2.map(a=>({id:a.id, type:a.type, when:fmtWhen(a.created_at), at:a.created_at||null, title:a.titre||'', text:a.contenu||'', paid:a.type==='paiement', result:a.result||null, conclusion:a.conclusion||null, callKind:a.call_kind||null, rdvOutcome:a.rdv_outcome||null}))
@@ -1230,6 +1240,8 @@ async function saveLead(id, uiPatch){
   if('extraActions' in uiPatch) m.extra_actions=uiPatch.extraActions;
   if('heat' in uiPatch) m.heat=uiPatch.heat;
   if('offer' in uiPatch) m.montant=uiPatch.offer;
+  if('aPayer' in uiPatch) m.montant_a_payer=(uiPatch.aPayer===''||uiPatch.aPayer==null)?null:Number(uiPatch.aPayer);
+  if('quiPaie' in uiPatch) m.qui_paie=uiPatch.quiPaie||null;
   if('owner' in uiPatch) m.owner_closer_id=uiPatch.owner;
   if('paid' in uiPatch) m.statut_paiement=uiPatch.paid?'paye':'aucun';
   if('statut_paiement' in uiPatch) m.statut_paiement=uiPatch.statut_paiement;
@@ -1989,6 +2001,30 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
 }
 
 /* ============================================================= FICHE LEAD */
+// Liste « Qui paie ? » — valeurs IDENTIQUES à l'enum HubSpot qui_paie__ (sinon la synchro casse)
+const QUI_PAIE_OPTS = ["Entreprise","OPCO","UGAP","Chorus","Lingueo","Autre (précisez dans les notes)"];
+
+// Champ montant éditable inline (clic → input €). vide = non renseigné (≠ 0).
+function MoneyField({label, value, onSave, accent}){
+  const [editing,setEditing]=useState(false);
+  const [v,setV]=useState('');
+  const start=()=>{ setV(value===''||value==null?'':String(value)); setEditing(true); };
+  const save=()=>{ const t=v.trim(); onSave(t===''?'':Number(t.replace(',','.'))); setEditing(false); };
+  const has = value!=='' && value!=null;
+  return (
+    <div className="pay-cell">
+      <span className="pay-lbl">{label}</span>
+      {editing
+        ? <input className="pay-inp" type="number" inputMode="decimal" autoFocus value={v}
+            onChange={e=>setV(e.target.value)} onBlur={save}
+            onKeyDown={e=>{ if(e.key==='Enter') save(); if(e.key==='Escape') setEditing(false); }}/>
+        : <button className={`pay-val ${accent&&has?'pay-accent':''} ${!has?'pay-empty':''}`} onClick={start} title="Modifier">
+            {has?eur(Number(value)):'—'}
+          </button>}
+    </div>
+  );
+}
+
 function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onToggleAction, onActions, onClaim, meId, onAddRdv, onCancelRdv, onManualRdv, onManualRemoveRdv, onRdvOutcome, onClearRdvOutcome, calendiqReady, calendiqOrganizer}){
   const [moveOpen,setMoveOpen]=useState(false);
   const [noteOpen,setNoteOpen]=useState(false);
@@ -2039,6 +2075,20 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
               <div className="field">
                 <span className="eyebrow">Source du lead</span>
                 <div className="val" style={{fontWeight:700}}>{si.label}</div>
+              </div>
+              <div className="field">
+                <span className="eyebrow">Paiement</span>
+                <div className="pay-grid">
+                  <MoneyField label="Payé" value={lead.offer===0?'':lead.offer} accent onSave={v=>onEditField('offer','offer', v===''?0:v)}/>
+                  <MoneyField label="Reste à payer" value={lead.aPayer} onSave={v=>onEditField('aPayer','aPayer', v)}/>
+                </div>
+                <div className="pay-cell" style={{marginTop:8}}>
+                  <span className="pay-lbl">Qui paie ?</span>
+                  <select className="pay-sel" value={lead.quiPaie||''} onChange={e=>onEditField('quiPaie','quiPaie', e.target.value)}>
+                    <option value="">—</option>
+                    {QUI_PAIE_OPTS.map(o=><option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
               </div>
               {(lead.rdvs && lead.rdvs.length)
                 ? <RdvList rdvs={lead.rdvs} onModify={calendiqReady?openEditRdv:null} onCancel={calendiqReady?(rdv=>{ if(window.confirm('Annuler ce RDV dans CalendIQ ? Le créneau Google + l’email d’annulation seront gérés par CalendIQ.')) onCancelRdv(rdv.id); }):null} onOutcome={onRdvOutcome} onClearOutcome={onClearRdvOutcome}/>
@@ -3415,7 +3465,7 @@ function TeamScreen({ userId, toast, leads, onOpenLead }){
 /* ====================== CONSOLE SYNCHRO HUBSPOT (admin) ====================== */
 // Page de contrôle : la fonction Edge 'hubspot-sync' calcule le diff (Sortants / Entrants / Conflits) et exécute
 // les écritures. Ici on AFFICHE et on déclenche — le navigateur n'envoie que des décisions (jamais de champ brut).
-const SYNC_FK = { dealstage:'Étape', colonne:'Étape', amount:'Montant', montant:'Montant', firstname:'Prénom', prenom:'Prénom', lastname:'Nom', nom:'Nom', email:'Email', phone:'Téléphone', telephone:'Téléphone' };
+const SYNC_FK = { dealstage:'Étape', colonne:'Étape', amount:'Montant', montant:'Montant', qui_paie:'Qui paie ?', qui_paie__:'Qui paie ?', firstname:'Prénom', prenom:'Prénom', lastname:'Nom', nom:'Nom', email:'Email', phone:'Téléphone', telephone:'Téléphone' };
 const syncVal = (k,v)=> (v===null||v===undefined||v==='') ? '—' : ((k==='amount'||k==='montant') ? (v+' €') : String(v));
 
 function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
