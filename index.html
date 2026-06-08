@@ -1255,6 +1255,10 @@ function fmtWhen(ts){
 // libellé RDV homogène (« mer. 04 juin · 14:30 ») — fiche / picker / poll
 
 // ligne Supabase -> objet lead attendu par l'UI (aucun champ inventé : vide reste vide)
+// activités DB -> entrées de timeline UI (CRM + HubSpot via a.source)
+function actsToTimeline(acts){
+  return (acts||[]).map(a=>({id:a.id, type:a.type, when:fmtWhen(a.created_at), at:a.created_at||null, title:a.titre||'', text:a.contenu||'', paid:a.type==='paiement', result:a.result||null, conclusion:a.conclusion||null, callKind:a.call_kind||null, rdvOutcome:a.rdv_outcome||null, _src:(a.source==='hubspot'?'hs':'crm'), readOnly:(a.source==='hubspot'), html:(a.source==='hubspot')}));
+}
 function dbToLead(r, acts){
   const acts2 = acts||[]; // triés created_at desc (cf loadLeads)
   const rdvMeta = (r.rdv_meta && typeof r.rdv_meta==='object' && !Array.isArray(r.rdv_meta)) ? r.rdv_meta : {};
@@ -1271,19 +1275,19 @@ function dbToLead(r, acts){
     offer:r.montant||0, aPayer:(r.montant_a_payer==null?'':r.montant_a_payer), quiPaie:r.qui_paie||'', paid:r.statut_paiement==='paye',
     cpf:r.cpf_dispo||0, metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'',
     rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, rdvMeetLink:r.rdv_meet_link||null, rdvMeta, hubspot_deal_id:r.hubspot_deal_id||null, date_creation:r.date_creation||null, hsImport:r.hs_import||null,
-    timeline:acts2.map(a=>({id:a.id, type:a.type, when:fmtWhen(a.created_at), at:a.created_at||null, title:a.titre||'', text:a.contenu||'', paid:a.type==='paiement', result:a.result||null, conclusion:a.conclusion||null, callKind:a.call_kind||null, rdvOutcome:a.rdv_outcome||null, _src:(a.source==='hubspot'?'hs':'crm'), readOnly:(a.source==='hubspot'), html:(a.source==='hubspot')}))
+    timeline:actsToTimeline(acts2)
   };
 }
 
-// lecture live : tous les leads + leur historique
+// lecture live : LEADS seuls (léger). L'historique (activites) est chargé À LA DEMANDE à l'ouverture d'une fiche.
 async function loadLeads(){
-  const [{data:rows}, {data:acts}] = await Promise.all([
-    SB.from('leads').select('*').is('deleted_at', null).order('date_creation',{ascending:false}),
-    SB.from('activites').select('*').order('created_at',{ascending:false})
-  ]);
-  const byLead={};
-  (acts||[]).forEach(a=>{ (byLead[a.lead_id]=byLead[a.lead_id]||[]).push(a); });
-  return (rows||[]).map(r=>dbToLead(r, byLead[r.id]));
+  const { data:rows } = await SB.from('leads').select('*').is('deleted_at', null).order('date_creation',{ascending:false});
+  return (rows||[]).map(r=>dbToLead(r, []));
+}
+// historique d'UN lead (à l'ouverture de la fiche)
+async function loadLeadTimeline(id){
+  const { data:acts } = await SB.from('activites').select('*').eq('lead_id', id).order('created_at',{ascending:false});
+  return actsToTimeline(acts);
 }
 
 // écriture ciblée d'un champ pilotage (UI -> colonnes DB)
@@ -2973,8 +2977,11 @@ function App({session, onLogout}){
   const incomingIdx=useRef(0);
   const tid=useRef(0);
 
-  // chargement initial depuis Supabase (tables leads + activites)
-  const reload=useCallback(()=>{ loadLeads().then(d=>{ setLeads(d); setLoaded(true); }); },[]);
+  // chargement initial depuis Supabase (leads seuls ; l'historique est chargé à l'ouverture d'une fiche)
+  const selIdRef=useRef(null);
+  // injecte/rafraîchit l'historique d'un lead dans le state (lazy)
+  const loadTimelineFor=useCallback((id)=>{ if(!id) return; loadLeadTimeline(id).then(tl=>setLeads(ls=>ls.map(l=>l.id===id?{...l,timeline:tl}:l))).catch(()=>{}); },[]);
+  const reload=useCallback(()=>{ loadLeads().then(d=>{ setLeads(d); setLoaded(true); const sid=selIdRef.current; if(sid) loadTimelineFor(sid); }); },[loadTimelineFor]);
   useEffect(()=>{ reload(); },[reload]);
   // pendant une synchro HubSpot (init / envoi groupé) on suspend le realtime puis on recharge 1 fois (anti-flicker)
   const syncBusyRef=useRef(false);
@@ -2985,12 +2992,13 @@ function App({session, onLogout}){
   useEffect(()=>{
     const ch=SB.channel('crm-live')
       .on('postgres_changes',{event:'*',schema:'public',table:'leads'},reloadDebounced)
-      .on('postgres_changes',{event:'*',schema:'public',table:'activites'},reloadDebounced)
+      // activites : on ne recharge PAS toute la base — juste l'historique du lead ouvert (léger)
+      .on('postgres_changes',{event:'*',schema:'public',table:'activites'},()=>{ if(syncBusyRef.current) return; const sid=selIdRef.current; if(sid) loadTimelineFor(sid); })
       .subscribe();
     return ()=>{ SB.removeChannel(ch); clearTimeout(reloadT.current); };
-  },[reloadDebounced]);
+  },[reloadDebounced,loadTimelineFor]);
   useEffect(()=>localStorage.setItem('iqcrm_screen',JSON.stringify(screen)),[screen]);
-  useEffect(()=>localStorage.setItem('iqcrm_sel',JSON.stringify(selId)),[selId]);
+  useEffect(()=>{ selIdRef.current=selId; localStorage.setItem('iqcrm_sel',JSON.stringify(selId)); },[selId]);
   useEffect(()=>{ localStorage.setItem('iqcrm_theme_v2',JSON.stringify(theme)); document.documentElement.setAttribute('data-theme',theme); },[theme]);
   useEffect(()=>{ localStorage.setItem('iqcrm_density',JSON.stringify(density)); document.documentElement.setAttribute('data-density',density); },[density]);
 
@@ -3126,7 +3134,7 @@ function App({session, onLogout}){
   },[]);
 
   /* ---------- actions ---------- */
-  const openLead=(id)=>{ setSelId(id); setScreen('fiche'); setSearch(''); }; // vide la recherche à l'ouverture d'un lead
+  const openLead=(id)=>{ setSelId(id); setScreen('fiche'); setSearch(''); loadTimelineFor(id); }; // charge l'historique du lead à l'ouverture (lazy)
 
   const reorderLead=(id,col,beforeId,opts)=>{
     const l=leads.find(x=>x.id===id); if(!l) return;
