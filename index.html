@@ -135,6 +135,9 @@ input,textarea{font-family:inherit; color:inherit}
 .screen-title h1{font-size:23px}
 .screen-title p{color:var(--t3); font-size:13px; margin-top:3px; font-weight:500}
 .head-tools{margin-left:auto; display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.viewtog{display:inline-flex; background:var(--surface-2,rgba(127,127,127,.1)); border:1px solid var(--b1); border-radius:10px; padding:2px}
+.viewtog button{border:0; background:transparent; color:var(--t3); font-size:12.5px; font-weight:700; padding:6px 12px; border-radius:8px; cursor:pointer}
+.viewtog button.on{background:var(--accent); color:var(--on-accent)}
 
 /* ----- inputs ----- */
 .search{
@@ -1943,7 +1946,7 @@ const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDrag
 });
 
 /* ============================================================= KANBAN BOARD */
-function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDelete}){
+function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDelete, view, setView, userId}){
   const [dragId, setDragId] = useState(null);
   const [overCol, setOverCol] = useState(null);
   const [over, setOver] = useState(null); // {cardId, pos}
@@ -1962,13 +1965,14 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
   },[leads]);
 
   const visible = useMemo(()=> leads.filter(l=>{
-    // manager : voit tout (filtrage par closer ajouté au câblage des comptes)
+    // vue « Mes leads » = lead qui m'appartient OU dont un RDV CalendIQ est calé avec moi (option B)
+    if(view==='mine' && !(l.owner===userId || l._cqCloserId===userId)) return false;
     if(search.trim()){
       const q=deburr(search.trim());
       if(!deburr(`${l.prenom} ${l.nom} ${l.metier} ${l.email} ${l.tel}`).includes(q)) return false;
     }
     return true;
-  }),[leads,search]);
+  }),[leads,search,view,userId]);
 
   // handlers STABLES (useCallback) + regroupement mémoïsé : avec ~949 cartes, seules
   // les cartes réellement concernées (carte tirée / survolée) se re-rendent pendant un drag.
@@ -2002,6 +2006,10 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
           <p>Pipeline de closing</p>
         </div>
         <div className="head-tools">
+          <div className="viewtog">
+            <button className={view==='mine'?'on':''} onClick={()=>setView('mine')}>Mes leads</button>
+            <button className={view==='global'?'on':''} onClick={()=>setView('global')}>Global</button>
+          </div>
           <div className="search">
             <I.search/><input placeholder="Rechercher un lead…" value={search} onChange={e=>setSearch(e.target.value)}/>
           </div>
@@ -2968,6 +2976,8 @@ function App({session, onLogout}){
   const [theme,setTheme]=useState(()=>persistedState('iqcrm_theme_v2','dark'));
   const [density,setDensity]=useState(()=>persistedState('iqcrm_density','standard'));
   const [search,setSearch]=useState('');
+  const [view,setView]=useState(()=>persistedState('iqcrm_view',null)); // 'mine' | 'global' (null = pas encore défini par rôle)
+  useEffect(()=>{ if(view!=null) localStorage.setItem('iqcrm_view',JSON.stringify(view)); },[view]);
 
   const [payTarget,setPayTarget]=useState(null); // {lead}
   const [showSettings,setShowSettings]=useState(false);
@@ -3120,10 +3130,28 @@ function App({session, onLogout}){
         return { id:m.id, source:'calendiq', type, start_at:m.start_at, duration_minutes:m.duration_minutes||null, meet_link:m.meet_link||mm.meet_link||legacy||null, outcome:(mm.outcome==='present'||mm.outcome==='no_show')?mm.outcome:null };
       });
       const next=pickNext(cand);
-      return { ...l, rdvs, calendiqRdv:{ ...next, meet_link: next.meet_link || l.rdvMeetLink || null } };
+      return { ...l, rdvs, _cqCloserId: next?._closerId || null, calendiqRdv:{ ...next, meet_link: next.meet_link || l.rdvMeetLink || null } };
     });
   },[leads,cqMeetings]);
   const sel = leadsCq.find(l=>l.id===selId);
+  // défaut de la vue selon le rôle (une fois le profil chargé) : closer = Mes leads, admin = Global
+  useEffect(()=>{ if(view==null && profile) setView(isAdmin?'global':'mine'); },[profile,isAdmin,view]);
+  // ATTRIBUTION AUTO : un RDV CalendIQ calé pour un lead -> il revient au closer (owner) + passe « 1er RDV pris ».
+  const autoAssignRef=useRef(new Set());
+  useEffect(()=>{
+    for(const l of leadsCq){
+      if(!l._cqCloserId) continue;
+      const needOwner=!l.owner;
+      const needStage=['contacter','perso','atc'].includes(l.column);
+      if(!needOwner && !needStage) continue;
+      if(autoAssignRef.current.has(l.id)) continue;
+      autoAssignRef.current.add(l.id);
+      const ui={}, db={};
+      if(needOwner){ ui.owner=l._cqCloserId; db.owner=l._cqCloserId; }
+      if(needStage){ ui.column='rdv1'; db.column='rdv1'; const na=NEXT_BY_COL['rdv1']||null; db.nextAction=na; ui.nextAction=na; }
+      patch(l.id, ui); saveLead(l.id, db);
+    }
+  },[leadsCq,patch]);
 
   // (faux lead entrant de démo désactivé — on n'affiche que la vraie donnée)
 
@@ -3411,7 +3439,7 @@ function App({session, onLogout}){
 
       {/* WORK */}
       <main className="work">
-        {screen==='leads' && <Board leads={leadsCq} search={search} setSearch={setSearch}
+        {screen==='leads' && <Board leads={leadsCq} search={search} setSearch={setSearch} view={view||'mine'} setView={setView} userId={userId}
             onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col)=>setAddTarget(col)} onDelete={deleteLead}/>}
         {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen('leads')} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
             onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} onManualRdv={setManualRdv} onManualRemoveRdv={removeManualRdv} onRdvOutcome={setRdvOutcome} onClearRdvOutcome={clearRdvOutcome} calendiqReady={!!(profile&&profile.calendiq_organizer_id)} calendiqOrganizer={profile&&profile.calendiq_organizer_id}/>}
