@@ -1041,6 +1041,11 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .pay-inp{font-size:16px; font-weight:800; color:var(--t1); background:var(--bg); border:1.5px solid var(--accent); border-radius:8px; padding:5px 8px; width:100%; outline:none}
 .pay-sel{font-size:13.5px; font-weight:600; color:var(--t1); background:var(--bg); border:1px solid var(--b1); border-radius:8px; padding:7px 9px; cursor:pointer; max-width:260px}
 .pay-sel:hover{border-color:var(--b3)}
+.sync-note{margin-top:12px; border:1px solid var(--b1); border-radius:11px; background:var(--bg); overflow:hidden}
+.sync-note-h{font-size:11.5px; font-weight:700; color:var(--t2); text-transform:uppercase; letter-spacing:.04em; padding:9px 12px; border-bottom:1px solid var(--b1); display:flex; align-items:center; gap:8px; background:var(--surface)}
+.sync-note-tag{font-size:10px; font-weight:700; text-transform:none; letter-spacing:0; padding:2px 7px; border-radius:999px; background:var(--accent-tint); color:var(--accent)}
+.sync-note-tag.muted{background:rgba(127,127,127,.14); color:var(--t3)}
+.sync-note-b{margin:0; padding:11px 13px; font:500 13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--t1); white-space:pre-wrap; word-break:break-word}
 .sync-list{display:flex; flex-direction:column; gap:9px}
 .sync-sec{font-size:11px; font-weight:700; color:var(--t3); text-transform:uppercase; letter-spacing:.05em; margin:16px 0 8px; display:flex; align-items:center; gap:8px}
 .syncrow{background:var(--surface); border:1px solid var(--b1); border-radius:13px; padding:13px 15px; display:flex; align-items:center; gap:14px; transition:border-color var(--speed) var(--ease)}
@@ -3534,6 +3539,11 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     ? { key:'en:'+r.dealId, mode:'accept_new', dealId:r.dealId, column:(colSel[r.dealId]||r.proposedColumn) }
     : { key:'eu:'+r.leadId, mode:'accept_entrant', leadId:r.leadId };
   const conflItem = r => ({ key:'c:'+r.leadId, mode:'conflict', leadId:r.leadId, conflict:(confl[r.leadId]||{}), token:r.lastModified });
+  // Refuser un sortant : annule la modif côté CRM (ré-aligne le lead sur HubSpot). AUCUNE écriture HubSpot.
+  const refuseSortant = r => {
+    if(!window.confirm('Refuser ce changement ?\n\nLe lead « '+r.name+' » sera ré-aligné sur HubSpot : la modification faite côté CRM est annulée. AUCUNE écriture dans HubSpot.')) return;
+    push([{ key:'s:'+r.leadId, mode:'refuse', leadId:r.leadId, token:r.lastModified }],'Changement refusé — CRM ré-aligné sur HubSpot');
+  };
 
   const commitAllSortants=()=>{
     const rows=(data.sortants||[]).filter(r=>r.mode!=='lost');
@@ -3600,13 +3610,23 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
             )}
             <div className="sync-list">
               {sortNormal.map(r=>{ const k='s:'+r.leadId; return (
-                <div key={k} className="syncrow">
-                  <div className="sync-main" onClick={()=>onOpenLead(r.leadId)}>
-                    <b>{r.name}</b>
-                    <div className="sync-reasons">{(r.reasons||[]).map((x,i)=><span key={i} className={'sync-chip'+(/note|rdv|paiement|appel/i.test(x)?' note':'')}>{x}</span>)}</div>
-                    {r.fields&&r.fields.length>0 && <div className="sync-chg">{r.fields.map((f,i)=><span key={i}><span className="k">{SYNC_FK[f.k]||f.k} :</span> {syncVal(f.k,f.from)}<span className="ar">→</span>{syncVal(f.k,f.to)}</span>)}</div>}
+                <div key={k} className="syncrow" style={{display:'block'}}>
+                  <div style={{display:'flex',alignItems:'flex-start',gap:14}}>
+                    <div className="sync-main" style={{cursor:'default'}}>
+                      <b>{r.name}</b>
+                      <div className="sync-reasons">{(r.reasons||[]).map((x,i)=><span key={i} className={'sync-chip'+(/note|rdv|paiement|appel/i.test(x)?' note':'')}>{x}</span>)}</div>
+                      {r.fields&&r.fields.length>0 && <div className="sync-chg">{r.fields.map((f,i)=><span key={i}><span className="k">{SYNC_FK[f.k]||f.k} :</span> {syncVal(f.k,f.from)}<span className="ar">→</span>{syncVal(f.k,f.to)}</span>)}</div>}
+                    </div>
+                    <div className="sync-act" style={{flexShrink:0}}>
+                      <button className="btn btn-ghost" disabled={!!busy[k]} onClick={()=>onOpenLead(r.leadId)} title="Ouvrir la fiche pour corriger avant d’envoyer">Éditer</button>
+                      <button className="btn btn-soft" disabled={!!busy[k]} onClick={()=>refuseSortant(r)} title="Annuler ce changement et ré-aligner le CRM sur HubSpot (0 écriture)">{busy[k]?'…':'Refuser'}</button>
+                      <button className="btn btn-accent" disabled={!!busy[k]} onClick={()=>push([sortItem(r)],'Envoyé vers HubSpot')}>{busy[k]?'…':'Envoyer'}</button>
+                    </div>
                   </div>
-                  <div className="sync-act"><button className="btn btn-accent" disabled={!!busy[k]} onClick={()=>push([sortItem(r)],'Envoyé vers HubSpot')}>{busy[k]?'…':'Envoyer'}</button></div>
+                  {r.note && <div className="sync-note">
+                    <div className="sync-note-h">📋 Note qui sera écrite dans HubSpot{r.noteChanged?<span className="sync-note-tag">modifiée</span>:<span className="sync-note-tag muted">inchangée</span>}</div>
+                    <pre className="sync-note-b">{r.note}</pre>
+                  </div>}
                 </div>
               );})}
             </div>
