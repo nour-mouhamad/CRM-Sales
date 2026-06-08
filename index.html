@@ -1046,6 +1046,11 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .sync-note-tag{font-size:10px; font-weight:700; text-transform:none; letter-spacing:0; padding:2px 7px; border-radius:999px; background:var(--accent-tint); color:var(--accent)}
 .sync-note-tag.muted{background:rgba(127,127,127,.14); color:var(--t3)}
 .sync-note-b{margin:0; padding:11px 13px; font:500 13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--t1); white-space:pre-wrap; word-break:break-word}
+.sync-note-edit{display:block; width:100%; box-sizing:border-box; border:0; border-radius:0 0 11px 11px; padding:11px 13px; background:var(--bg); color:var(--t1); font:500 13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; resize:vertical; outline:none}
+.sync-note-edit:focus{box-shadow:inset 0 0 0 2px var(--accent)}
+.sync-note-link{font-size:11.5px; font-weight:700; color:var(--accent); background:none; border:0; cursor:pointer; padding:0; text-transform:none; letter-spacing:0}
+.sync-note-link:hover{text-decoration:underline}
+.sync-note-link:disabled{opacity:.5; cursor:default}
 .fiche-date{display:inline-flex; align-items:center; gap:6px; margin-top:6px; font-size:12.5px; font-weight:600; color:var(--t3)}
 .fiche-date svg{color:var(--t3)}
 .sync-list{display:flex; flex-direction:column; gap:9px}
@@ -3489,6 +3494,7 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
   const [colSel,setColSel]=React.useState({});   // dealId nouveau lead -> colonne choisie
   const [confl,setConfl]=React.useState({});     // leadId -> { champ: 'crm'|'hubspot' }
   const [bulk,setBulk]=React.useState(null);     // { done, total } pendant un envoi groupé
+  const [noteEdits,setNoteEdits]=React.useState({}); // leadId -> texte de note édité inline (avant envoi)
   const oneCommit=React.useRef(false);
 
   const load=React.useCallback(async(silent)=>{
@@ -3539,9 +3545,15 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     if(reloadLeads) reloadLeads();
   },[load,reloadLeads,setSyncBusy,toast]);
 
-  const sortItem = r => r.mode==='lost'
-    ? { key:'l:'+r.leadId, mode:'lost', leadId:r.leadId, token:r.lastModified }
-    : { key:'s:'+r.leadId, mode:'commit', leadId:r.leadId, token:r.lastModified };
+  const sortItem = r => {
+    if(r.mode==='lost') return { key:'l:'+r.leadId, mode:'lost', leadId:r.leadId, token:r.lastModified };
+    const it={ key:'s:'+r.leadId, mode:'commit', leadId:r.leadId, token:r.lastModified };
+    const e=noteEdits[r.leadId];
+    if(e!==undefined && e!==r.note) it.noteText=e; // note éditée inline -> override persistant côté serveur
+    return it;
+  };
+  // revenir à la note auto-générée (efface l'override côté serveur) — pousse vers HubSpot
+  const resetNote = r => { setNoteEdits(s=>{ const n={...s}; delete n[r.leadId]; return n; }); push([{ key:'s:'+r.leadId, mode:'commit', leadId:r.leadId, token:r.lastModified, noteReset:true }],'Note revenue à l’auto'); };
   const entrItem = r => r.kind==='new'
     ? { key:'en:'+r.dealId, mode:'accept_new', dealId:r.dealId, column:(colSel[r.dealId]||r.proposedColumn) }
     : { key:'eu:'+r.leadId, mode:'accept_entrant', leadId:r.leadId };
@@ -3630,10 +3642,21 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
                       <button className="btn btn-accent" disabled={!!busy[k]} onClick={()=>push([sortItem(r)],'Envoyé vers HubSpot')}>{busy[k]?'…':'Envoyer'}</button>
                     </div>
                   </div>
-                  {r.note && <div className="sync-note">
-                    <div className="sync-note-h">📋 Note qui sera écrite dans HubSpot{r.noteChanged?<span className="sync-note-tag">modifiée</span>:<span className="sync-note-tag muted">inchangée</span>}</div>
-                    <pre className="sync-note-b">{r.note}</pre>
-                  </div>}
+                  {r.note && (()=>{ const val=noteEdits[r.leadId]!==undefined?noteEdits[r.leadId]:r.note; const edited=noteEdits[r.leadId]!==undefined && noteEdits[r.leadId]!==r.note; return (
+                    <div className="sync-note">
+                      <div className="sync-note-h">📋 Note HubSpot — éditable
+                        {edited && <span className="sync-note-tag">éditée (sera envoyée)</span>}
+                        {!edited && r.hasOverride && <span className="sync-note-tag">note manuelle</span>}
+                        <span style={{marginLeft:'auto',display:'flex',gap:8}}>
+                          {edited && <button className="sync-note-link" onClick={()=>setNoteEdits(s=>{ const n={...s}; delete n[r.leadId]; return n; })}>Annuler mes modifs</button>}
+                          {r.hasOverride && <button className="sync-note-link" disabled={!!busy[k]} onClick={()=>{ if(window.confirm('Revenir à la note auto-générée ? Ta note manuelle sera remplacée dans HubSpot.')) resetNote(r); }}>Revenir à l’auto</button>}
+                        </span>
+                      </div>
+                      <textarea className="sync-note-edit" value={val} spellCheck={false}
+                        onChange={e=>setNoteEdits(s=>({...s,[r.leadId]:e.target.value}))}
+                        rows={Math.min(12, Math.max(4, val.split('\n').length+1))}/>
+                    </div>
+                  );})()}
                 </div>
               );})}
             </div>
