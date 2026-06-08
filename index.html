@@ -1562,6 +1562,8 @@ function CopyField({value, icon, copyVal, title}){
 function fmtRdv(iso){ try{ const s=new Date(iso).toLocaleString('fr-FR',{weekday:'short',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}); return s.replace(':',' h '); }catch(e){ return ''; } }
 // date jour (ex. « 6 juin 2026 ») — utilisée pour le tag de date du lead dans la fiche
 function fmtDay(d){ try{ return new Date(d).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}); }catch(e){ return ''; } }
+// normalise pour la recherche : minuscules + sans accents (é→e, ô→o…) -> recherche insensible accents/casse
+const deburr = (s)=> String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 // ISO -> valeur d'un <input type="datetime-local"> (heure locale) — pour pré-remplir la reprogrammation
 function toLocalInput(iso){ const d=new Date(iso); if(isNaN(d)) return ''; const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }
 
@@ -1914,8 +1916,8 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
   const visible = useMemo(()=> leads.filter(l=>{
     // manager : voit tout (filtrage par closer ajouté au câblage des comptes)
     if(search.trim()){
-      const q=search.toLowerCase();
-      if(!(`${l.prenom} ${l.nom} ${l.metier} ${l.email} ${l.tel}`.toLowerCase().includes(q))) return false;
+      const q=deburr(search.trim());
+      if(!deburr(`${l.prenom} ${l.nom} ${l.metier} ${l.email} ${l.tel}`).includes(q)) return false;
     }
     return true;
   }),[leads,search]);
@@ -2602,7 +2604,7 @@ Léo Martin — IQ Project`;
 /* ============================================================= RECHERCHE */
 function Recherche({leads, onOpen}){
   const [q,setQ]=useState('');
-  const res = leads.filter(l=> !q.trim() || `${l.prenom} ${l.nom} ${l.metier} ${l.email} ${l.tel}`.toLowerCase().includes(q.toLowerCase()));
+  const res = leads.filter(l=> !q.trim() || deburr(`${l.prenom} ${l.nom} ${l.metier} ${l.email} ${l.tel}`).includes(deburr(q.trim())));
   return (
     <>
       <div className="screen-head">
