@@ -3485,9 +3485,13 @@ function TeamScreen({ userId, toast, leads, onOpenLead }){
 const SYNC_FK = { dealstage:'Étape', colonne:'Étape', amount:'Montant', montant:'Montant', qui_paie:'Qui paie ?', qui_paie__:'Qui paie ?', firstname:'Prénom', prenom:'Prénom', lastname:'Nom', nom:'Nom', email:'Email', phone:'Téléphone', telephone:'Téléphone' };
 const syncVal = (k,v)=> (v===null||v===undefined||v==='') ? '—' : ((k==='amount'||k==='montant') ? (v+' €') : String(v));
 
+// cache HORS React : survit au démontage du composant -> la synchro ne se relance PAS à chaque retour sur la page.
+// Le diff ne tourne qu'au 1er chargement ou via « Rafraîchir » (jamais automatiquement en changeant d'onglet).
+const CONSOLE_CACHE = { data:null, loaded:false };
+
 function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
-  const [data,setData]=React.useState(null);
-  const [loading,setLoading]=React.useState(true);
+  const [data,setData]=React.useState(CONSOLE_CACHE.data);
+  const [loading,setLoading]=React.useState(!CONSOLE_CACHE.loaded);
   const [error,setError]=React.useState(null);
   const [tab,setTab]=React.useState('sortants');
   const [busy,setBusy]=React.useState({});      // key -> en cours
@@ -3499,11 +3503,14 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
 
   const load=React.useCallback(async(silent)=>{
     if(!silent) setLoading(true); setError(null);
-    try{ const d=await callFn('hubspot-sync',{action:'diff'}); setData(d); }
+    try{ const d=await callFn('hubspot-sync',{action:'diff'}); setData(d); CONSOLE_CACHE.data=d; CONSOLE_CACHE.loaded=true; }
     catch(e){ setError(e.message||'Lecture impossible'); }
     finally{ setLoading(false); }
   },[]);
-  React.useEffect(()=>{ load(); },[load]);
+  // garde le cache module à jour à chaque changement de data (retrait optimiste, etc.)
+  React.useEffect(()=>{ CONSOLE_CACHE.data=data; },[data]);
+  // 1er montage SEULEMENT : si jamais chargé, on lance le diff. Sinon on réaffiche le cache, sans relancer.
+  React.useEffect(()=>{ if(!CONSOLE_CACHE.loaded) load(); },[load]);
 
   const doInit=async()=>{
     setLoading(true); setSyncBusy(true);
