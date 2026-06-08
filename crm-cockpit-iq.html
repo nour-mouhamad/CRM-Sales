@@ -3594,6 +3594,12 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     if(rows.length>10){ const a=window.prompt('Tu vas écrire dans HubSpot sur '+rows.length+' deals.\nTape '+rows.length+' pour confirmer :'); if(String(a||'').trim()!==String(rows.length)){ toast('Annulé',null,'info'); return; } }
     push(rows.map(sortItem),'Tout envoyé vers HubSpot');
   };
+  // Tout accepter (entrants) : ajoute les nouveaux leads au CRM + adopte les modifs HubSpot. AUCUNE écriture HubSpot -> pas de garde.
+  const acceptAllEntrants=()=>{
+    const rows=(data.entrants||[]);
+    if(!rows.length) return;
+    push(rows.map(entrItem),'Tout accepté');
+  };
 
   const head=(
     <div className="screen-head">
@@ -3699,7 +3705,11 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
         )}
 
         {tab==='entrants' && (
-          entrants.length===0 ? <div className="lb-empty">Rien de nouveau côté HubSpot.</div> : (
+          entrants.length===0 ? <div className="lb-empty">Rien de nouveau côté HubSpot.</div> : (<>
+            <div className="sync-toolbar">
+              <button className="btn btn-accent" disabled={!!bulk} onClick={acceptAllEntrants}>Tout accepter ({entrants.length})</button>
+              <span className="sync-prog">Les nouveaux leads sont ajoutés au CRM, les modifs HubSpot adoptées.</span>
+            </div>
             <div className="sync-list">
               {entrants.map(r=>{ const k=r.kind==='new'?('en:'+r.dealId):('eu:'+r.leadId); return (
                 <div key={k} className="syncrow">
@@ -3723,7 +3733,7 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
                 </div>
               );})}
             </div>
-          )
+          </>)
         )}
 
         {tab==='conflits' && (
