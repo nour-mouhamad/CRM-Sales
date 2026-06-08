@@ -1078,6 +1078,16 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .hs-title{font-size:12.5px; font-weight:700; color:var(--t1)}
 .hs-body{font-size:12.5px; color:var(--t2); line-height:1.55}
 .hs-body img{max-width:100%}
+/* badge source dans la timeline unifiée */
+.tl-src{font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; padding:1px 6px; border-radius:999px; flex-shrink:0; margin-left:2px}
+.tl-src.crm{background:var(--accent-tint); color:var(--accent)}
+.tl-src.hs{background:rgba(127,127,127,.16); color:var(--t3)}
+/* mini infos HubSpot dans SITUATION (contact/paiement) */
+.hs-mini{display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:10px}
+.hs-mini-kv{display:inline-flex; gap:6px; align-items:baseline; font-size:12.5px; font-weight:600; color:var(--t1)}
+.hs-mini-k{font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--t3)}
+.hs-mini-link{font-size:12px; font-weight:700; color:var(--accent); text-decoration:none}
+.hs-mini-link:hover{text-decoration:underline}
 .sync-note-b{margin:0; padding:11px 13px; font:500 13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--t1); white-space:pre-wrap; word-break:break-word}
 .sync-note-edit{display:block; width:100%; box-sizing:border-box; border:0; border-radius:0 0 11px 11px; padding:11px 13px; background:var(--bg); color:var(--t1); font:500 13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; resize:vertical; outline:none}
 .sync-note-edit:focus{box-shadow:inset 0 0 0 2px var(--accent)}
@@ -2126,6 +2136,11 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
                     : <span className="contact"><I.phone/><span className="mono">—</span></span>}
                   <CopyField value={lead.email} icon={I.mail} title="Copier l’email"/>
                 </div>
+                {lead.hsImport&&lead.hsImport.contact&&(()=>{ const c=lead.hsImport.contact; const r=[['Poste',c.poste],['Entreprise',c.entreprise],['Ville',c.ville]].filter(x=>x[1]); return (r.length||c.linkedin)?(
+                  <div className="hs-mini">
+                    {r.map((x,i)=><span key={i} className="hs-mini-kv"><span className="hs-mini-k">{x[0]}</span>{x[1]}</span>)}
+                    {c.linkedin && <a className="hs-mini-link" href={c.linkedin} target="_blank" rel="noopener">LinkedIn ↗</a>}
+                  </div>):null; })()}
               </div>
               <div className="field">
                 <span className="eyebrow">Source du lead</span>
@@ -2144,6 +2159,9 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
                     {QUI_PAIE_OPTS.map(o=><option key={o} value={o}>{o}</option>)}
                   </select>
                 </div>
+                {lead.hsImport&&lead.hsImport.deal&&(()=>{ const d=lead.hsImport.deal; const money=n=>(n||n===0)?(Number(n).toLocaleString('fr-FR')+' €'):null; const r=[['Montant HT',money(d.montant_ht)],['Montant TTC',money(d.montant_ttc)],['CPF',money(d.cpf)],['Fermé le',d.date_fermeture?fmtDay(d.date_fermeture):null],['Encaissé le',d.date_encaissement?fmtDay(d.date_encaissement):null]].filter(x=>x[1]); return r.length?(
+                  <div className="hs-mini" style={{marginTop:10}}>{r.map((x,i)=><span key={i} className="hs-mini-kv"><span className="hs-mini-k">{x[0]}</span>{x[1]}</span>)}</div>
+                ):null; })()}
               </div>
               <ManualRdvField lead={lead} calendiqRdvs={lead.rdvs||[]}
                 onCalModify={calendiqReady?openEditRdv:null}
@@ -2207,14 +2225,21 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
             </div>
           </div>
           <div className="panel-body">
-            <div className="tl">
-              {lead.timeline.filter(ev=>!(ev.title&&ev.title.indexOf('Étape :')===0)).map((ev,i)=>(
-                <TlCard key={ev.id||i} ev={ev} onEditNote={onEditNote} onDeleteNote={onDeleteNote}/>
-              ))}
-              {lead.timeline.filter(ev=>!(ev.title&&ev.title.indexOf('Étape :')===0)).length===0 && (
-                <div className="tl-empty">Aucune note pour l’instant.</div>
-              )}
-            </div>
+            {(()=>{
+              // HISTORIQUE UNIFIÉ : activités CRM + entrées importées de HubSpot, triées par date (récent en haut).
+              const crm = lead.timeline.filter(ev=>!(ev.title&&ev.title.indexOf('Étape :')===0)).map(ev=>({...ev, _src:'crm', _at:ev.at||''}));
+              const HSTYPE={ 'réunion':'rdv', 'appel':'appel', 'email':'mail', 'note':'note' };
+              const HSLBL={ 'réunion':'Réunion', 'appel':'Appel', 'email':'E-mail', 'note':'Note HubSpot' };
+              const hs = (((lead.hsImport||{}).historique)||[]).map(h=>({
+                id:'hs:'+h.id, _src:'hs', readOnly:true, html:true, type:HSTYPE[h.type]||'note',
+                title:h.title||HSLBL[h.type]||'Note HubSpot', when:h.at?fmtRdv(h.at):'', at:h.at, _at:h.at||'', text:h.body
+              }));
+              const all=[...crm,...hs].sort((a,b)=>String(b._at||'').localeCompare(String(a._at||'')));
+              return (<div className="tl">
+                {all.map((ev,i)=><TlCard key={ev.id||i} ev={ev} onEditNote={onEditNote} onDeleteNote={onDeleteNote}/>)}
+                {all.length===0 && <div className="tl-empty">Aucune note pour l’instant.</div>}
+              </div>);
+            })()}
             {(()=>{
               // Parcours = origine (source + date de création) → étapes loguées (chaque move logue une étape dans la DB) → étape actuelle.
               // Toujours affiché, EN BAS de l'historique, pour TOUS les leads (même importés sans historique de moves).
@@ -2285,42 +2310,6 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
           </div>
         </div>
 
-        {lead.hsImport && <HsInfoPanel hs={lead.hsImport}/>}
-      </div>
-    </div>
-  );
-}
-
-// Panneau LECTURE SEULE des infos importées de HubSpot (contact + deal + tout l'historique). Jamais réécrit dans HubSpot.
-function HsInfoPanel({ hs }){
-  const c=hs.contact||{}, d=hs.deal||{}, hist=Array.isArray(hs.historique)?hs.historique:[];
-  const money=n=> (n||n===0)?(Number(n).toLocaleString('fr-FR')+' €'):null;
-  const rows=[
-    ['Poste',c.poste],['Entreprise',c.entreprise],['Ville',c.ville],['LinkedIn',c.linkedin],
-    ['Étape',d.etape],['Payé',money(d.paye)],['Qui paie',d.qui_paie],['Montant HT',money(d.montant_ht)],['Montant TTC',money(d.montant_ttc)],['CPF',money(d.cpf)],
-    ['Créé le',d.date_creation?fmtDay(d.date_creation):null],['Fermé le',d.date_fermeture?fmtDay(d.date_fermeture):null],['Encaissé le',d.date_encaissement?fmtDay(d.date_encaissement):null]
-  ].filter(r=>r[1]);
-  return (
-    <div className="panel" style={{gridColumn:'1 / -1'}}>
-      <div className="panel-head"><span className="eyebrow">Infos HubSpot</span><span className="hs-count">{hist.length} élément{hist.length>1?'s':''}</span></div>
-      <div className="panel-body">
-        {rows.length>0 && <div className="hs-grid">
-          {rows.map((r,i)=><div key={i} className="hs-kv"><span className="hs-k">{r[0]}</span><span className="hs-v">{r[1]}</span></div>)}
-        </div>}
-        {hist.length===0
-          ? <div className="hs-empty">Aucun historique HubSpot pour ce lead.</div>
-          : <div className="hs-hist">
-              {hist.map((h,i)=>(
-                <div key={h.id||i} className="hs-item">
-                  <div className="hs-item-h">
-                    <span className={'hs-tag hs-'+(h.type||'note')}>{h.type||'note'}</span>
-                    {h.at && <span className="hs-date">{fmtRdv(h.at)}</span>}
-                    {h.title && <span className="hs-title">{h.title}</span>}
-                  </div>
-                  {h.body && <div className="hs-body"><MdText text={h.body}/></div>}
-                </div>
-              ))}
-            </div>}
       </div>
     </div>
   );
@@ -2550,7 +2539,7 @@ function TlCard({ ev, onEditNote, onDeleteNote }){
   const [draft,setDraft]=useState('');
   const tone = isRecap ? 'accent' : (tlTone[ev.type] || (ev.paid?'ok':''));
   const Icon = isRecap ? I.spark : (tlIcon[ev.type] || I.note);
-  const canEdit = !!ev.id && !isRecap;
+  const canEdit = !!ev.id && !isRecap && !ev.readOnly;
   const startEdit=(e)=>{ e.stopPropagation(); setDraft(ev.text||''); setEditing(true); setOpen(true); };
   const save=()=>{ onEditNote(ev.id, draft.trim()); setEditing(false); };
   const toggle=()=>{ if(editing) return; if(hasBody) setOpen(o=>!o); };
@@ -2560,10 +2549,11 @@ function TlCard({ ev, onEditNote, onDeleteNote }){
         <svg className="tl-recap-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6"><path d="m9 18 6-6-6-6"/></svg>
         <span className="tl-recap-ic">{Icon({})}</span>
         <span className="tl-recap-title">{ev.title}</span>
+        <span className={'tl-src '+(ev._src==='hs'?'hs':'crm')}>{ev._src==='hs'?'HubSpot':'CRM'}</span>
         <span className="tl-recap-right">
           {isRecap && ev.result && RESULT_META[ev.result] && (()=>{ const rk=RESULT_META[ev.result]; return <span className="chip sm" style={{color:rk.color, background:'color-mix(in srgb, currentColor 14%, transparent)'}}><span className="cdot"></span>{rk.label}</span>; })()}
           <span className="tl-when">{ev.when}</span>
-          {ev.id && <span className="tl-recap-actions">
+          {ev.id && !ev.readOnly && <span className="tl-recap-actions">
             {canEdit && <button title="Modifier" onClick={startEdit}>{I.pencil({})}</button>}
             <button className="del" title="Supprimer" onClick={e=>{ e.stopPropagation(); onDeleteNote(ev.id); }}>{I.trash({})}</button>
           </span>}
@@ -2597,7 +2587,7 @@ function TlCard({ ev, onEditNote, onDeleteNote }){
               </div>
             )}
           </>) : (<>
-            {ev.text && <div className="tl-card-text">{ev.text}</div>}
+            {ev.text && (ev.html ? <MdText text={ev.text}/> : <div className="tl-card-text">{ev.text}</div>)}
             {ev.granola && (
               <div className="tl-granola">
                 <div className="g-head"><I.spark style={{width:13,height:13,strokeWidth:2,color:'var(--accent)'}}/><span className="eyebrow">Recap Granola</span></div>
