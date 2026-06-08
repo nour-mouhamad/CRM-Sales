@@ -1045,6 +1045,7 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .sync-note-h{font-size:11.5px; font-weight:700; color:var(--t2); text-transform:uppercase; letter-spacing:.04em; padding:9px 12px; border-bottom:1px solid var(--b1); display:flex; align-items:center; gap:8px; background:var(--surface)}
 .sync-note-tag{font-size:10px; font-weight:700; text-transform:none; letter-spacing:0; padding:2px 7px; border-radius:999px; background:var(--accent-tint); color:var(--accent)}
 .sync-note-tag.muted{background:rgba(127,127,127,.14); color:var(--t3)}
+.sync-note-tag.danger{background:rgba(229,72,77,.16); color:var(--danger)}
 .sync-note-b{margin:0; padding:11px 13px; font:500 13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--t1); white-space:pre-wrap; word-break:break-word}
 .sync-note-edit{display:block; width:100%; box-sizing:border-box; border:0; border-radius:0 0 11px 11px; padding:11px 13px; background:var(--bg); color:var(--t1); font:500 13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; resize:vertical; outline:none}
 .sync-note-edit:focus{box-shadow:inset 0 0 0 2px var(--accent)}
@@ -3571,8 +3572,12 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
   const sortItem = r => {
     if(r.mode==='lost') return { key:'l:'+r.leadId, mode:'lost', leadId:r.leadId, token:r.lastModified };
     const it={ key:'s:'+r.leadId, mode:'commit', leadId:r.leadId, token:r.lastModified };
+    const base=r.note||'';
     const e=noteEdits[r.leadId];
-    if(e!==undefined && e!==r.note) it.noteText=e; // note éditée inline -> override persistant côté serveur
+    if(e!==undefined && e!==base){
+      if(e.trim()==='') it.noteDelete=true;  // vidée -> SUPPRIMER la note dans HubSpot (et ne pas la recréer)
+      else it.noteText=e;                     // texte manuel -> override persistant
+    }
     return it;
   };
   // revenir à la note auto-générée (efface l'override côté serveur) — pousse vers HubSpot
@@ -3671,20 +3676,22 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
                       <button className="btn btn-accent" disabled={!!busy[k]} onClick={()=>push([sortItem(r)],'Envoyé vers HubSpot')}>{busy[k]?'…':'Envoyer'}</button>
                     </div>
                   </div>
-                  {r.note && (()=>{ const val=noteEdits[r.leadId]!==undefined?noteEdits[r.leadId]:r.note; const edited=noteEdits[r.leadId]!==undefined && noteEdits[r.leadId]!==r.note; return (
+                  {(()=>{ const base=r.note||''; const val=noteEdits[r.leadId]!==undefined?noteEdits[r.leadId]:base; const edited=noteEdits[r.leadId]!==undefined && noteEdits[r.leadId]!==base; const willDelete=edited && !val.trim(); return (
                     <div className="sync-note">
                       <div className="sync-note-h">📋 Note HubSpot — éditable
-                        {edited && <span className="sync-note-tag">éditée (sera envoyée)</span>}
-                        {!edited && r.hasOverride && <span className="sync-note-tag">note manuelle</span>}
+                        {willDelete && <span className="sync-note-tag danger">sera SUPPRIMÉE de HubSpot</span>}
+                        {edited && !willDelete && <span className="sync-note-tag">éditée (sera envoyée)</span>}
+                        {!edited && r.noteSuppressed && <span className="sync-note-tag danger">note supprimée</span>}
+                        {!edited && !r.noteSuppressed && r.hasOverride && <span className="sync-note-tag">note manuelle</span>}
                         <span style={{marginLeft:'auto',display:'flex',gap:10}}>
-                          {val.trim() && <button className="sync-note-link" onClick={()=>setNoteEdits(s=>({...s,[r.leadId]:''}))} title="Vider le champ d’un clic">Vider</button>}
+                          {val.trim() && <button className="sync-note-link" onClick={()=>setNoteEdits(s=>({...s,[r.leadId]:''}))} title="Vider = supprimer la note dans HubSpot">Vider</button>}
                           {edited && <button className="sync-note-link" onClick={()=>setNoteEdits(s=>{ const n={...s}; delete n[r.leadId]; return n; })}>Annuler mes modifs</button>}
-                          {r.hasOverride && <button className="sync-note-link" disabled={!!busy[k]} onClick={()=>{ if(window.confirm('Revenir à la note auto-générée ? Ta note manuelle sera remplacée dans HubSpot.')) resetNote(r); }}>Revenir à l’auto</button>}
+                          {(r.hasOverride||r.noteSuppressed) && <button className="sync-note-link" disabled={!!busy[k]} onClick={()=>{ if(window.confirm('Revenir à la note auto-générée ? Elle remplacera dans HubSpot.')) resetNote(r); }}>Revenir à l’auto</button>}
                         </span>
                       </div>
-                      <textarea className="sync-note-edit" value={val} spellCheck={false}
+                      <textarea className="sync-note-edit" value={val} spellCheck={false} placeholder="Note vide → aucune note dans HubSpot. Écris ici pour en mettre une."
                         onChange={e=>setNoteEdits(s=>({...s,[r.leadId]:e.target.value}))}
-                        rows={Math.min(12, Math.max(4, val.split('\n').length+1))}/>
+                        rows={Math.min(12, Math.max(3, (val||'').split('\n').length+1))}/>
                     </div>
                   );})()}
                 </div>
