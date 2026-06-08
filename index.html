@@ -1046,6 +1046,7 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .sync-note-tag{font-size:10px; font-weight:700; text-transform:none; letter-spacing:0; padding:2px 7px; border-radius:999px; background:var(--accent-tint); color:var(--accent)}
 .sync-note-tag.muted{background:rgba(127,127,127,.14); color:var(--t3)}
 .sync-note-tag.danger{background:rgba(229,72,77,.16); color:var(--danger)}
+.sync-fail{margin-top:10px; padding:9px 12px; border-radius:10px; background:rgba(229,72,77,.12); border:1px solid rgba(229,72,77,.3); color:var(--danger); font-size:12.5px; font-weight:600; line-height:1.45}
 .sync-note-b{margin:0; padding:11px 13px; font:500 13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--t1); white-space:pre-wrap; word-break:break-word}
 .sync-note-edit{display:block; width:100%; box-sizing:border-box; border:0; border-radius:0 0 11px 11px; padding:11px 13px; background:var(--bg); color:var(--t1); font:500 13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; resize:vertical; outline:none}
 .sync-note-edit:focus{box-shadow:inset 0 0 0 2px var(--accent)}
@@ -3485,6 +3486,15 @@ function TeamScreen({ userId, toast, leads, onOpenLead }){
 // les écritures. Ici on AFFICHE et on déclenche — le navigateur n'envoie que des décisions (jamais de champ brut).
 const SYNC_FK = { dealstage:'Étape', colonne:'Étape', amount:'Montant', montant:'Montant', qui_paie:'Qui paie ?', qui_paie__:'Qui paie ?', firstname:'Prénom', prenom:'Prénom', lastname:'Nom', nom:'Nom', email:'Email', phone:'Téléphone', telephone:'Téléphone' };
 const syncVal = (k,v)=> (v===null||v===undefined||v==='') ? '—' : ((k==='amount'||k==='montant') ? (v+' €') : String(v));
+// message d'échec lisible à partir du résultat serveur (stage/error)
+const failMsg = (res)=>{
+  if(!res) return '';
+  if(res.stale || res.stage==='concurrency') return 'Le deal a changé dans HubSpot entre-temps — clique « Rafraîchir » puis renvoie.';
+  if(res.stage==='contact_conflict') return res.error || 'Email/téléphone déjà utilisé par un autre contact HubSpot.';
+  if(res.stage==='pipeline_mismatch') return 'Ce deal n’est plus dans le pipeline IQ Project.';
+  if(res.stage==='bad_mode') return 'Action non autorisée.';
+  return res.error || 'Échec inconnu (réessaie ou rafraîchis).';
+};
 
 // cache HORS React : survit au démontage du composant -> la synchro ne se relance PAS à chaque retour sur la page.
 // Le diff ne tourne qu'au 1er chargement ou via « Rafraîchir » (jamais automatiquement en changeant d'onglet).
@@ -3510,6 +3520,7 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
   const [confl,setConfl]=React.useState({});     // leadId -> { champ: 'crm'|'hubspot' }
   const [bulk,setBulk]=React.useState(null);     // { done, total } pendant un envoi groupé
   const [noteEdits,setNoteEdits]=React.useState({}); // leadId -> texte de note édité inline (avant envoi)
+  const [fails,setFails]=React.useState({});     // key -> { stage, error, stale } du dernier échec
   const oneCommit=React.useRef(false);
 
   // abonnement : toute mutation du cache (notify) re-rend cette instance. Désabo au démontage (pas de setState fantôme).
@@ -3541,20 +3552,22 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     if(!items.length) return;
     const keys=items.map(i=>i.key);
     setBusy(b=>{ const n={...b}; keys.forEach(k=>n[k]=true); return n; });
+    setFails(f=>{ const n={...f}; keys.forEach(k=>delete n[k]); return n; }); // on retente -> on efface l'ancien échec
     setSyncBusy(true);
-    let ok=0, fail=0; const okKeys=new Set();
+    let ok=0, fail=0; const okKeys=new Set(); const failInfo={};
     if(items.length>1) setBulk({done:0,total:items.length});
     try{
       for(let i=0;i<items.length;i+=8){
         const chunk=items.slice(i,i+8);
         const r=await callFn('hubspot-sync',{action:'push',items:chunk,confirmBulk:true});
-        (r.results||[]).forEach(res=>{ if(res.ok){ ok++; if(res.key) okKeys.add(res.key); } else fail++; });
+        (r.results||[]).forEach(res=>{ if(res.ok){ ok++; if(res.key) okKeys.add(res.key); } else { fail++; if(res.key) failInfo[res.key]=res; } });
         if(items.length>1) setBulk({done:Math.min(i+chunk.length,items.length),total:items.length});
       }
     }catch(e){ toast('Envoi échoué', e.message||'', 'info'); fail+=items.length-ok-fail; }
     setBulk(null);
     setBusy(b=>{ const n={...b}; keys.forEach(k=>delete n[k]); return n; });
     if(ok) oneCommit.current=true;
+    if(Object.keys(failInfo).length) setFails(f=>({...f,...failInfo})); // mémorise les échecs pour les afficher sur la ligne
     // RETRAIT OPTIMISTE : les lignes réussies disparaissent IMMÉDIATEMENT (sans attendre le re-diff complet ~3 s)
     if(okKeys.size) setData(d=>{ if(!d) return d; const keep=(arr,kf)=>(arr||[]).filter(r=>!okKeys.has(kf(r)));
       return { ...d,
@@ -3694,6 +3707,7 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
                         rows={Math.min(12, Math.max(3, (val||'').split('\n').length+1))}/>
                     </div>
                   );})()}
+                  {fails[k] && <div className="sync-fail">⚠️ Échec : {failMsg(fails[k])}</div>}
                 </div>
               );})}
             </div>
@@ -3701,9 +3715,12 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
               <div className="sync-sec">Suppressions — à marquer « Perdu » dans HubSpot</div>
               <div className="sync-list">
                 {sortLost.map(r=>{ const k='l:'+r.leadId; return (
-                  <div key={k} className="syncrow danger">
-                    <div className="sync-main"><b>{r.name}</b><div className="sync-reasons"><span className="sync-chip">{(r.reasons||[])[0]||'supprimé'}</span></div></div>
-                    <div className="sync-act"><button className="btn btn-soft" disabled={!!busy[k]} onClick={()=>{ if(window.confirm('Marquer ce deal « Perdu » dans HubSpot ? (jamais supprimé)')) push([sortItem(r)],'Marqué Perdu'); }}>{busy[k]?'…':'Marquer Perdu'}</button></div>
+                  <div key={k} className="syncrow danger" style={{display:'block'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:14}}>
+                      <div className="sync-main" style={{cursor:'default'}}><b>{r.name}</b><div className="sync-reasons"><span className="sync-chip">{(r.reasons||[])[0]||'supprimé'}</span></div></div>
+                      <div className="sync-act" style={{flexShrink:0}}><button className="btn btn-soft" disabled={!!busy[k]} onClick={()=>{ if(window.confirm('Marquer ce deal « Perdu » dans HubSpot ? (jamais supprimé)')) push([sortItem(r)],'Marqué Perdu'); }}>{busy[k]?'…':'Marquer Perdu'}</button></div>
+                    </div>
+                    {fails[k] && <div className="sync-fail">⚠️ Échec : {failMsg(fails[k])}</div>}
                   </div>
                 );})}
               </div>
@@ -3719,24 +3736,27 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
             </div>
             <div className="sync-list">
               {entrants.map(r=>{ const k=r.kind==='new'?('en:'+r.dealId):('eu:'+r.leadId); return (
-                <div key={k} className="syncrow">
-                  <div className="sync-main" onClick={()=>r.leadId&&onOpenLead(r.leadId)}>
-                    <b>{r.name}</b>
-                    <div className="sync-reasons">{r.kind==='new'?<span className="sync-chip note">Nouveau lead</span>:<span className="sync-chip">Modifié dans HubSpot</span>}</div>
-                    {r.kind==='new' ? (
-                      <div className="sync-chg"><span><span className="k">Contact :</span> {r.email||'—'}{r.phone?(' · '+r.phone):''}</span></div>
-                    ) : (
-                      <div className="sync-chg">{(r.fields||[]).map((f,i)=><span key={i}><span className="k">{SYNC_FK[f.k]||f.k} :</span> {syncVal(f.k,f.from)}<span className="ar">→</span>{syncVal(f.k,f.to)}</span>)}</div>
-                    )}
+                <div key={k} className="syncrow" style={{display:'block'}}>
+                  <div style={{display:'flex',alignItems:'flex-start',gap:14}}>
+                    <div className="sync-main" onClick={()=>r.leadId&&onOpenLead(r.leadId)}>
+                      <b>{r.name}</b>
+                      <div className="sync-reasons">{r.kind==='new'?<span className="sync-chip note">Nouveau lead</span>:<span className="sync-chip">Modifié dans HubSpot</span>}</div>
+                      {r.kind==='new' ? (
+                        <div className="sync-chg"><span><span className="k">Contact :</span> {r.email||'—'}{r.phone?(' · '+r.phone):''}</span></div>
+                      ) : (
+                        <div className="sync-chg">{(r.fields||[]).map((f,i)=><span key={i}><span className="k">{SYNC_FK[f.k]||f.k} :</span> {syncVal(f.k,f.from)}<span className="ar">→</span>{syncVal(f.k,f.to)}</span>)}</div>
+                      )}
+                    </div>
+                    <div className="sync-act" style={{flexShrink:0}}>
+                      {r.kind==='new' && (
+                        <select className="sync-sel" value={colSel[r.dealId]||r.proposedColumn} onChange={e=>setColSel(s=>({...s,[r.dealId]:e.target.value}))}>
+                          {COLUMNS.map(c=><option key={c.id} value={c.id}>{c.label}</option>)}
+                        </select>
+                      )}
+                      <button className="btn btn-accent" disabled={!!busy[k]} onClick={()=>push([entrItem(r)], r.kind==='new'?'Lead ajouté au CRM':'Modif acceptée')}>{busy[k]?'…':'Accepter'}</button>
+                    </div>
                   </div>
-                  <div className="sync-act">
-                    {r.kind==='new' && (
-                      <select className="sync-sel" value={colSel[r.dealId]||r.proposedColumn} onChange={e=>setColSel(s=>({...s,[r.dealId]:e.target.value}))}>
-                        {COLUMNS.map(c=><option key={c.id} value={c.id}>{c.label}</option>)}
-                      </select>
-                    )}
-                    <button className="btn btn-accent" disabled={!!busy[k]} onClick={()=>push([entrItem(r)], r.kind==='new'?'Lead ajouté au CRM':'Modif acceptée')}>{busy[k]?'…':'Accepter'}</button>
-                  </div>
+                  {fails[k] && <div className="sync-fail">⚠️ Échec : {failMsg(fails[k])}</div>}
                 </div>
               );})}
             </div>
@@ -3761,6 +3781,7 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
                     );})}
                   </div>
                   <div className="sync-act" style={{marginTop:12,justifyContent:'flex-end'}}><button className="btn btn-accent" disabled={!!busy[k]} onClick={()=>push([conflItem(r)],'Conflit résolu')}>{busy[k]?'…':'Valider'}</button></div>
+                  {fails[k] && <div className="sync-fail">⚠️ Échec : {failMsg(fails[k])}</div>}
                 </div>
               );})}
             </div>
