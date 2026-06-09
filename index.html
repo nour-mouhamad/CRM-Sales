@@ -1342,8 +1342,8 @@ function dbToLead(r, acts){
     id:r.id, prenom:r.prenom||'', nom:r.nom||'', tel:r.telephone||'', email:r.email||'',
     source:r.source, heat:r.heat||null, column:COL_DB2UI(r.colonne), owner:r.owner_closer_id||null,
     nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, nextActionDue:r.next_action_due||null, extraActions:Array.isArray(r.extra_actions)?r.extra_actions:[], live:false, noShow,
-    offer:r.montant||0, aPayer:(r.montant_a_payer==null?'':r.montant_a_payer), quiPaie:r.qui_paie||'', paid:r.statut_paiement==='paye',
-    cpf:r.cpf_dispo||0, metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'',
+    offer:(r.montant==null||r.montant==='')?0:(Number(r.montant)||0), aPayer:(r.montant_a_payer==null?'':r.montant_a_payer), quiPaie:r.qui_paie||'', paid:r.statut_paiement==='paye', statut_paiement:r.statut_paiement||'aucun',
+    cpf:(Number(r.cpf_dispo)||0), metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'',
     rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, rdvMeetLink:r.rdv_meet_link||null, rdvMeta, hubspot_deal_id:r.hubspot_deal_id||null, date_creation:r.date_creation||null, hsImport:r.hs_import||null,
     timeline:actsToTimeline(acts2)
   };
@@ -1361,6 +1361,7 @@ async function loadLeadTimeline(id){
 }
 
 // écriture ciblée d'un champ pilotage (UI -> colonnes DB)
+let saveErrHandler=null; // branché par App -> toast si une sauvegarde échoue (réseau/RLS), au lieu d'échouer en silence
 async function saveLead(id, uiPatch){
   const m={};
   if('column' in uiPatch) m.colonne=COL_UI2DB(uiPatch.column);
@@ -1383,7 +1384,7 @@ async function saveLead(id, uiPatch){
   if('rdvType' in uiPatch) m.rdv_type=uiPatch.rdvType;
   if('rdvMeetLink' in uiPatch) m.rdv_meet_link=uiPatch.rdvMeetLink;
   if('rdvMeta' in uiPatch) m.rdv_meta=uiPatch.rdvMeta;
-  try{ if(Object.keys(m).length) await SB.from('leads').update(m).eq('id',id); }catch(e){ console.warn('saveLead',e); }
+  try{ if(Object.keys(m).length){ const { error } = await SB.from('leads').update(m).eq('id',id); if(error) throw error; } }catch(e){ console.warn('saveLead',e); if(saveErrHandler) saveErrHandler(e); }
 }
 // écriture DÉDIÉE du résultat de RDV (rdv_meta) qui REMONTE l'erreur (≠ saveLead silencieux) → permet rollback + toast.
 async function saveLeadRdvMeta(id, map){
@@ -1989,10 +1990,10 @@ function ActionCard({ label, done, editing, onToggle, onEditStart, onEditCancel,
 const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDragEnd, dragging, onCardDragOver, dropPos, onDelete}){
   const col = lead.column;
   let actionEl;
-  if(col==='apayer'){
-    actionEl = <div className="card-action money"><span className="amt">{eur(lead.offer)}</span> envoyé — en attente</div>;
-  } else if(col==='paye'){
-    actionEl = <div className="card-action paid"><I.check style={{width:13,height:13,strokeWidth:2.4}}/><span className="amt">{eur(lead.offer)}</span> payé</div>;
+  if(col==='encaisser'){
+    actionEl = <div className={'card-action '+(lead.paid?'paid':'money')}>{lead.paid?<I.check style={{width:13,height:13,strokeWidth:2.4}}/>:null}<span className="amt">{eur(lead.offer)}</span> {lead.paid?'payé':(lead.statut_paiement==='lien_envoye'?'lien envoyé — en attente':'à encaisser')}</div>;
+  } else if(col==='won'){
+    actionEl = <div className="card-action paid"><I.check style={{width:13,height:13,strokeWidth:2.4}}/><span className="amt">{eur(lead.offer)}</span> gagné</div>;
   } else if(col==='cpf'){
     actionEl = <div className="card-action"><span className="live idle"></span>{lead.admStatus==='secured'?'Dossier sécurisé':'Dossier CPF — admission'}</div>;
   } else {
@@ -2181,7 +2182,7 @@ function MoneyField({label, value, onSave, accent}){
   );
 }
 
-function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onToggleAction, onActions, onClaim, meId, onAddRdv, onCancelRdv, onManualRdv, onManualRemoveRdv, onRdvOutcome, onClearRdvOutcome, onCpfRdv, calendiqReady, calendiqOrganizer}){
+function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onToggleAction, onActions, onClaim, meId, onAddRdv, onCancelRdv, onManualRdv, onManualRemoveRdv, onRdvOutcome, onClearRdvOutcome, onCpfRdv, isAdminView, closers, onAssign, calendiqReady, calendiqOrganizer}){
   const [moveOpen,setMoveOpen]=useState(false);
   const [noteOpen,setNoteOpen]=useState(false);
   const [noteMode,setNoteMode]=useState('note'); // 'note' = note écrite | 'nrp' = appel sans réponse
@@ -2287,7 +2288,17 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
               </div>
               <div className="field">
                 <span className="eyebrow">Closer</span>
-                {!lead.owner ? (
+                {isAdminView ? (
+                  <div className="claim" style={{cursor:'default',alignItems:'flex-start'}}>
+                    <span className="claim-box on">{I.users({})}</span>
+                    <div className="claim-tx" style={{flex:1,minWidth:0}}><b>Assigner à un closer</b>
+                      <select className="todo-closer" style={{marginTop:6,maxWidth:'none',width:'100%'}} value={lead.owner||''} onChange={e=>onAssign(lead.id, e.target.value||null)}>
+                        <option value="">— non attribué (pool) —</option>
+                        {(closers||[]).map(c=><option key={c.id} value={c.id}>{c.name||'Closer'}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                ) : !lead.owner ? (
                   <div className="claim" onClick={onClaim} role="button" tabIndex={0}
                     onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault(); onClaim();}}}
                     title="S’approprier ce lead">
@@ -2748,16 +2759,18 @@ Le solde est pris en charge par ton CPF, géré de A à Z par notre équipe admi
   const [body,setBody]=useState('');
   const pick=(o)=>{ setOffer(o); setSubject(defSubject); setBody(defBody(o)); };
 
+  const [popErr,setPopErr]=useState(null);
   const ready = !!(offer && offer.link && hasEmail);
   // ouvre le COMPOSE GMAIL pré-rempli dans un nouvel onglet (fiable : pas de dépendance au gestionnaire mailto du navigateur).
-  // Le closer (connecté à Gmail) voit l'email tout prêt, vérifie et clique « Envoyer ».
+  // On ne marque le lead « lien envoyé » QUE si Gmail s'est réellement ouvert (sinon faux « envoyé »).
   const send=()=>{
     if(!ready) return;
     const url='https://mail.google.com/mail/?view=cm&fs=1'
       +'&to='+encodeURIComponent(lead.email)
       +'&su='+encodeURIComponent(subject)
       +'&body='+encodeURIComponent(body);
-    window.open(url,'_blank','noopener,noreferrer');
+    const w=window.open(url,'_blank');
+    if(!w){ setPopErr('Ton navigateur a bloqué l’ouverture de Gmail — autorise les pop-ups pour ce site, puis réessaie.'); return; }
     onSend(amount, offer.tag);
   };
 
@@ -2802,6 +2815,7 @@ Le solde est pris en charge par ton CPF, géré de A à Z par notre équipe admi
               : <div className="rdv-err">⚠️ Lien Stripe non configuré pour cette offre — préviens l’admin avant d’envoyer.</div>}
             {!hasEmail && <div className="rdv-err">⚠️ Ce lead n’a pas d’email — impossible d’envoyer.</div>}
             <p className="modal-note">Ton client mail s’ouvre pré-rempli (objet + message + lien). Tu vérifies et tu cliques « Envoyer ». Le lead passe en « À encaisser ».</p>
+            {popErr && <div className="rdv-err">⚠️ {popErr}</div>}
           </>}
         </div>
         <div className="m-fixfoot">
@@ -3248,6 +3262,9 @@ function App({session, onLogout}){
       .catch(()=>{ if(!alive) return; setProfile({role:'closer'}); setProfileLoaded(true); });
     return ()=>{alive=false;}; },[userId,isDev]);
   const isAdmin = (profile?.role||'closer')==='admin';
+  // liste des closers (admin) — pour assigner un lead à un closer depuis la fiche
+  const [closers,setClosers]=useState([]);
+  useEffect(()=>{ if(!isAdmin){ setClosers([]); return; } let on=true; SB.from('profiles').select('id,name,role').then(({data})=>{ if(on) setClosers((data||[]).filter(p=>p.role==='closer')); }); return ()=>{on=false;}; },[isAdmin]);
   // onboarding : un closer sans CalendIQ doit le connecter avant d'entrer (puis il a ses leads)
   const [onbActive,setOnbActive]=useState(false);
   const [onbDone,setOnbDone]=useState(false);
@@ -3300,6 +3317,8 @@ function App({session, onLogout}){
     setToasts(t=>[...t,{id,title,sub,tone,action}]);
     setTimeout(()=>setToasts(t=>t.filter(x=>x.id!==id)), action?6500:3800);
   },[]);
+  // branche le toast d'échec de saveLead (sinon une sauvegarde ratée passait en silence)
+  useEffect(()=>{ saveErrHandler=()=>toast('Sauvegarde échouée','Vérifie ta connexion et réessaie','info'); return ()=>{ saveErrHandler=null; }; },[toast]);
 
   // pile d'annulation invisible + Ctrl/Cmd+Z
   const undoRef=useRef([]);
@@ -3784,7 +3803,7 @@ function App({session, onLogout}){
         {screen==='leads' && <Board leads={leadsCq} search={search} setSearch={setSearch} view={view||'mine'} setView={setView} userId={userId}
             onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col)=>setAddTarget(col)} onDelete={deleteLead}/>}
         {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen('leads')} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
-            onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} onManualRdv={setManualRdv} onManualRemoveRdv={removeManualRdv} onRdvOutcome={setRdvOutcome} onClearRdvOutcome={clearRdvOutcome} onCpfRdv={bookCpfRdv} calendiqReady={!!(profile&&profile.calendiq_organizer_id)} calendiqOrganizer={profile&&profile.calendiq_organizer_id}/>}
+            onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} onManualRdv={setManualRdv} onManualRemoveRdv={removeManualRdv} onRdvOutcome={setRdvOutcome} onClearRdvOutcome={clearRdvOutcome} onCpfRdv={bookCpfRdv} isAdminView={isAdmin} closers={closers} onAssign={reassignOwner} calendiqReady={!!(profile&&profile.calendiq_organizer_id)} calendiqOrganizer={profile&&profile.calendiq_organizer_id}/>}
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen('leads')}>Retour au board</button></div>}
         {screen==='agenda' && <Agenda meetings={cqMeetings} sources={cqSources} loading={cqLoading} error={cqError}
             isAdmin={isAdmin} profile={profile} onConnect={connectCalendiq} onDisconnect={disconnectCalendiq}
