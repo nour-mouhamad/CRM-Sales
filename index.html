@@ -3812,6 +3812,8 @@ const failMsg = (res)=>{
   if(res.stale || res.stage==='concurrency') return 'Le deal a changé dans HubSpot entre-temps — clique « Rafraîchir » puis renvoie.';
   if(res.stage==='contact_conflict') return res.error || 'Email/téléphone déjà utilisé par un autre contact HubSpot.';
   if(res.stage==='pipeline_mismatch') return 'Ce deal n’est plus dans le pipeline IQ Project.';
+  if(res.stage==='deal_alive') return res.error || 'Le deal existe encore dans HubSpot — rafraîchis.';
+  if(res.stage==='hs_error') return res.error || 'Lecture HubSpot impossible — réessaie.';
   if(res.stage==='bad_mode') return 'Action non autorisée.';
   return res.error || 'Échec inconnu (réessaie ou rafraîchis).';
 };
@@ -3847,6 +3849,8 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
   React.useEffect(()=>{ CONSOLE_CACHE.subs.add(bump); return ()=>{ CONSOLE_CACHE.subs.delete(bump); }; },[]);
   // 1er montage : charge SI pas déjà chargé ni en cours. Sinon no-op -> réaffiche le cache, zéro rechargement au retour.
   React.useEffect(()=>{ consoleLoad(false); },[]);
+  // si l'onglet courant est vide mais qu'un autre a des items -> on bascule auto (évite de tomber sur un onglet vide à l'ouverture)
+  React.useEffect(()=>{ if(!CONSOLE_CACHE.data) return; const d=CONSOLE_CACHE.data; const c={sortants:(d.sortants||[]).length,entrants:(d.entrants||[]).length,conflits:(d.conflits||[]).length,disparus:(d.disparus||[]).length}; if(c[tab]===0){ const first=['sortants','entrants','conflits','disparus'].find(t=>c[t]>0); if(first) setTab(first); } },[CONSOLE_CACHE.data]);
 
   const data=CONSOLE_CACHE.data, error=CONSOLE_CACHE.error, loading=CONSOLE_CACHE.inflight||op;
   const setData=(u)=>{ CONSOLE_CACHE.data = (typeof u==='function') ? u(CONSOLE_CACHE.data) : u; consoleNotify(); };
@@ -3894,6 +3898,7 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
         sortants: keep(d.sortants, r=> r.mode==='lost'?'l:'+r.leadId:'s:'+r.leadId),
         entrants: keep(d.entrants, r=> r.kind==='new'?'en:'+r.dealId:'eu:'+r.leadId),
         conflits: keep(d.conflits, r=> 'c:'+r.leadId),
+        disparus: keep(d.disparus, r=> 'd:'+r.leadId),
       };
     });
     setSyncBusy(false);
@@ -3944,6 +3949,14 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     if(!window.confirm('Refuser cette modif HubSpot ?\n\nTa version du CRM sera renvoyée vers HubSpot (la modification faite dans HubSpot est annulée). Lead « '+r.name+' ».')) return;
     push([{ key:'eu:'+r.leadId, mode:'commit', leadId:r.leadId, token:r.lastModified }],'Modif HubSpot refusée — CRM renvoyé');
   };
+  // DISPARUS : le deal a été supprimé (ou sorti du pipe) dans HubSpot -> supprimer le lead du CRM (soft-delete, réversible, 0 écriture HubSpot)
+  const delItem = r => ({ key:'d:'+r.leadId, mode:'accept_deleted', leadId:r.leadId, dealId:r.dealId });
+  const deleteAllDisparus=()=>{
+    const rows=(data.disparus||[]);
+    if(!rows.length) return;
+    if(!window.confirm('Supprimer du CRM les '+rows.length+' lead(s) dont le deal a disparu de HubSpot ?\n\nSuppression réversible, AUCUNE écriture dans HubSpot.')) return;
+    push(rows.map(delItem),'Supprimés du CRM');
+  };
 
   const head=(
     <div className="screen-head">
@@ -3968,14 +3981,15 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     </div>
   );
 
-  const sortants=(data&&data.sortants)||[], entrants=(data&&data.entrants)||[], conflits=(data&&data.conflits)||[];
+  const sortants=(data&&data.sortants)||[], entrants=(data&&data.entrants)||[], conflits=(data&&data.conflits)||[], disparus=(data&&data.disparus)||[];
   const sortNormal=sortants.filter(r=>r.mode!=='lost'), sortLost=sortants.filter(r=>r.mode==='lost');
-  const total=sortants.length+entrants.length+conflits.length;
+  const total=sortants.length+entrants.length+conflits.length+disparus.length;
 
   const tabs=[
     {id:'sortants', label:'À envoyer', n:sortants.length},
     {id:'entrants', label:'Reçus de HubSpot', n:entrants.length},
     {id:'conflits', label:'Conflits', n:conflits.length, warn:true},
+    {id:'disparus', label:'Supprimés de HubSpot', n:disparus.length, warn:true},
   ];
 
   return (
@@ -4114,6 +4128,32 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
               );})}
             </div>
           )
+        )}
+
+        {tab==='disparus' && (
+          disparus.length===0 ? <div className="lb-empty">Aucun lead supprimé de HubSpot.</div> : (<>
+            <div className="sync-toolbar">
+              <button className="btn btn-accent" disabled={!!bulk} onClick={deleteAllDisparus}>Tout supprimer ({disparus.length})</button>
+              <span className="sync-prog">Leur deal n’existe plus dans HubSpot. Supprimer = retirer du CRM (réversible, 0 écriture HubSpot).</span>
+            </div>
+            <div className="sync-list">
+              {disparus.map(r=>{ const k='d:'+r.leadId; return (
+                <div key={k} className="syncrow danger" style={{display:'block'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:14}}>
+                    <div className="sync-main" onClick={()=>onOpenLead(r.leadId)}>
+                      <b>{r.name}</b>
+                      <div className="sync-reasons"><span className="sync-chip" style={{background:'var(--danger-tint)',color:'var(--danger)'}}>{r.reason}</span>{r.colonne&&<span className="sync-chip">{r.colonne}</span>}</div>
+                    </div>
+                    <div className="sync-act" style={{flexShrink:0}}>
+                      <button className="btn btn-ghost" disabled={!!busy[k]} onClick={()=>onOpenLead(r.leadId)}>Voir</button>
+                      <button className="btn btn-accent" disabled={!!busy[k]} onClick={()=>{ if(window.confirm('Supprimer « '+r.name+' » du CRM ?\n\nSon deal a disparu de HubSpot. Suppression réversible, 0 écriture HubSpot.')) push([delItem(r)],'Supprimé du CRM'); }}>{busy[k]?'…':'Supprimer du CRM'}</button>
+                    </div>
+                  </div>
+                  {fails[k] && <div className="sync-fail">⚠️ Échec : {failMsg(fails[k])}</div>}
+                </div>
+              );})}
+            </div>
+          </>)
         )}
       </>)}
     </div>
