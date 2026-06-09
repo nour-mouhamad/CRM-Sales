@@ -4181,7 +4181,6 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     <div className="screen-head">
       <div className="screen-title"><h1>CRM — Synchro HubSpot</h1><p>Page de contrôle : tu valides chaque changement avant qu’il parte dans HubSpot. Rien ne part sans ton clic.</p></div>
       <div style={{display:'flex',gap:8}}>
-        <button className="btn btn-ghost" disabled={loading} onClick={doRebaseline} title="Relit HubSpot et adopte ses montants comme Payé (0 écriture HubSpot)">Re-synchroniser la base</button>
         <button className="btn btn-ghost" disabled={loading} onClick={()=>load()}>{loading?'…':'Rafraîchir'}</button>
       </div>
     </div>
