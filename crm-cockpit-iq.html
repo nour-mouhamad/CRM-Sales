@@ -2238,23 +2238,6 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
                 <span className="eyebrow">Source du lead</span>
                 <div className="val" style={{fontWeight:700}}>{si.label}</div>
               </div>
-              <div className="field">
-                <span className="eyebrow">Paiement</span>
-                <div className="pay-grid">
-                  <MoneyField label="Payé" value={lead.offer===0?'':lead.offer} accent onSave={v=>onEditField('offer','offer', v===''?0:v)}/>
-                  <MoneyField label="Reste à payer" value={lead.aPayer} onSave={v=>onEditField('aPayer','aPayer', v)}/>
-                </div>
-                <div className="pay-cell" style={{marginTop:8}}>
-                  <span className="pay-lbl">Qui paie ?</span>
-                  <select className="pay-sel" value={lead.quiPaie||''} onChange={e=>onEditField('quiPaie','quiPaie', e.target.value)}>
-                    <option value="">—</option>
-                    {QUI_PAIE_OPTS.map(o=><option key={o} value={o}>{o}</option>)}
-                  </select>
-                </div>
-                {lead.hsImport&&lead.hsImport.deal&&(()=>{ const d=lead.hsImport.deal; const money=n=>(n||n===0)?(Number(n).toLocaleString('fr-FR')+' €'):null; const r=[['Montant HT',money(d.montant_ht)],['Montant TTC',money(d.montant_ttc)],['CPF',money(d.cpf)],['Fermé le',d.date_fermeture?fmtDay(d.date_fermeture):null],['Encaissé le',d.date_encaissement?fmtDay(d.date_encaissement):null]].filter(x=>x[1]); return r.length?(
-                  <div className="hs-mini" style={{marginTop:10}}>{r.map((x,i)=><span key={i} className="hs-mini-kv"><span className="hs-mini-k">{x[0]}</span>{x[1]}</span>)}</div>
-                ):null; })()}
-              </div>
               <ManualRdvField lead={lead} calendiqRdvs={lead.rdvs||[]}
                 onCalModify={calendiqReady?openEditRdv:null}
                 onCalCancel={calendiqReady?(rdv=>{ if(window.confirm('Annuler ce RDV dans CalendIQ ? Le créneau Google + l’email d’annulation seront gérés par CalendIQ.')) onCancelRdv(rdv.id); }):null}
@@ -2282,6 +2265,23 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
                   ))}
                 </div>
                 <button className="action-add" onClick={()=>{ const n=(lead.extraActions||[]).length; onActions([...(lead.extraActions||[]), {label:'',done:false}], false); setEditAct(n); }}>+ Ajouter une action</button>
+              </div>
+              <div className="field">
+                <span className="eyebrow">Paiement</span>
+                <div className="pay-grid">
+                  <MoneyField label="Payé" value={lead.offer===0?'':lead.offer} accent onSave={v=>onEditField('offer','offer', v===''?0:v)}/>
+                  <MoneyField label="Reste à payer" value={lead.aPayer} onSave={v=>onEditField('aPayer','aPayer', v)}/>
+                </div>
+                <div className="pay-cell" style={{marginTop:8}}>
+                  <span className="pay-lbl">Qui paie ?</span>
+                  <select className="pay-sel" value={lead.quiPaie||''} onChange={e=>onEditField('quiPaie','quiPaie', e.target.value)}>
+                    <option value="">—</option>
+                    {QUI_PAIE_OPTS.map(o=><option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
+                {lead.hsImport&&lead.hsImport.deal&&(()=>{ const d=lead.hsImport.deal; const money=n=>(n||n===0)?(Number(n).toLocaleString('fr-FR')+' €'):null; const r=[['Montant HT',money(d.montant_ht)],['Montant TTC',money(d.montant_ttc)],['CPF',money(d.cpf)],['Fermé le',d.date_fermeture?fmtDay(d.date_fermeture):null],['Encaissé le',d.date_encaissement?fmtDay(d.date_encaissement):null]].filter(x=>x[1]); return r.length?(
+                  <div className="hs-mini" style={{marginTop:10}}>{r.map((x,i)=><span key={i} className="hs-mini-kv"><span className="hs-mini-k">{x[0]}</span>{x[1]}</span>)}</div>
+                ):null; })()}
               </div>
               <div className="field">
                 <span className="eyebrow">Closer</span>
