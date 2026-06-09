@@ -3158,9 +3158,15 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onReassign }
       // 2) actions ajoutées non cochées
       (l.extraActions||[]).forEach((a,i)=>{ if(a&&a.label&&a.label.trim()&&!a.done)
         out.push({ key:l.id+':x'+i, kind:'action', lead:l, label:a.label, due:a.due_at||null, onCheck:()=>onToggleExtra(l,i) }); });
-      // 3) RDV à venir (miroir de la section RENDEZ-VOUS de la fiche)
-      const rdv = (l.calendiqRdv && new Date(l.calendiqRdv.start_at).getTime()>=now-3600000) ? l.calendiqRdv : null;
-      if(rdv) out.push({ key:l.id+':rdv', kind:'rdv', lead:l, label:'RDV · '+cqTime(rdv.start_at), due:rdv.start_at, meet:rdv.meet_link||null });
+      // 3) RDV à venir (CalendIQ matché OU manuel/CPF stocké sur le lead) — miroir de la section RENDEZ-VOUS
+      const allRdv=[];
+      if(l.calendiqRdv && l.calendiqRdv.start_at) allRdv.push({ start_at:l.calendiqRdv.start_at, meet:l.calendiqRdv.meet_link||null, type:l.calendiqRdv.type });
+      const rmeta=l.rdvMeta||{};
+      for(const k in rmeta){ if(k.indexOf('m:')===0 && rmeta[k] && rmeta[k].start_at) allRdv.push({ start_at:rmeta[k].start_at, meet:rmeta[k].meet_link||null, type:rmeta[k].type }); }
+      if(l.rdv_at) allRdv.push({ start_at:l.rdv_at, meet:l.rdvMeetLink||null, type:l.rdvType });
+      const up=allRdv.filter(r=>new Date(r.start_at).getTime()>=now-3600000).sort((a,b)=>new Date(a.start_at)-new Date(b.start_at));
+      const rdv=up[0]||null;
+      if(rdv) out.push({ key:l.id+':rdv', kind:'rdv', lead:l, label:(rdv.type==='cpf'?'RDV CPF':'RDV')+' · '+cqTime(rdv.start_at), due:rdv.start_at, meet:rdv.meet||null });
       // PAS de relance auto (no-show / lead chaud) : la page reflète UNIQUEMENT les actions+RDV de la fiche -> zéro doublon, zéro ligne inventée.
     }
     return (filter==='all') ? out : out.filter(it=>it.lead.owner===filter);
@@ -3603,10 +3609,11 @@ function App({session, onLogout}){
     if(!sel) return;
     const name=`${sel.prenom||''} ${sel.nom||''}`.trim()||sel.email||'Lead';
     const booked=await cqBookMeeting(CPF_OWNER.organizer, { title:'CPF · '+name+' × '+CPF_OWNER.name, description:'RDV CPF / admission', start_at:startIso, duration_minutes:durationMin, booker_name:name, booker_email:sel.email||null, booker_phone:sel.tel||null, booker_timezone:'Europe/Paris' });
-    // marqueur CRM = une ACTION datée (visible « À faire » + fiche). Le RDV vit sur l'agenda de NM (email + Meet envoyés au lead).
-    const label='CPF → NM · RDV '+fmtRdv(startIso);
-    const extra=[ ...(sel.extraActions||[]), { label, done:false, due_at:startIso } ];
-    patch(sel.id,{ extraActions:extra }); saveLead(sel.id,{ extraActions:extra });
+    // le RDV CPF est stocké SUR LE LEAD (rdv_meta, type 'cpf') -> il s'affiche dans la section RENDEZ-VOUS pour TOUT LE MONDE,
+    // sans dépendre du chargement d'un agenda. Catégorie RENDEZ-VOUS, jamais ACTION.
+    const key='m:cpf'+(booked.id||Math.random().toString(36).slice(2));
+    const meta={ ...(sel.rdvMeta||{}), [key]:{ type:'cpf', start_at:startIso, meet_link:booked.meet_link||null } };
+    patch(sel.id,{ rdvMeta:meta }); saveLead(sel.id,{ rdvMeta:meta });
     const title='RDV CPF calé avec '+CPF_OWNER.name+' — '+fmtRdv(startIso);
     addActivite(sel.id,'rdv',title,null).catch(()=>null);
     patch(sel.id,prev=>({ timeline:[{type:'rdv',when:'à l’instant',title,text:''},...prev.timeline] }));
