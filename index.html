@@ -1287,7 +1287,9 @@ async function cqBookMeeting(organizerId, m){
   const row=await cqCreateMeeting(organizerId, m);
   let meetLink=null, meetError=null;
   try{
-    const res=await cqInvoke('google-calendar-create-event', { organizer_id:organizerId, meeting_id:row.id, title:m.title, description:m.description||null, start_at:m.start_at, duration_minutes:m.duration_minutes, attendee_email:m.booker_email||null, organizer_timezone:m.booker_timezone||'Europe/Paris' });
+    // PAS d'invité sur l'event Google : sinon Google envoie SA propre invitation au lead, en doublon du mail CalendIQ brandé (send-booking-emails ci-dessous).
+    // Le lead reçoit donc UN seul mail (CalendIQ), avec le lien Meet + bouton "Ajouter à Google Calendar". Le créneau reste sur l'agenda du closer/organizer. Vérifié : le lien Meet se génère même sans invité.
+    const res=await cqInvoke('google-calendar-create-event', { organizer_id:organizerId, meeting_id:row.id, title:m.title, description:m.description||null, start_at:m.start_at, duration_minutes:m.duration_minutes, attendee_email:null, organizer_timezone:m.booker_timezone||'Europe/Paris' });
     meetLink=(res&&res.meetLink)||null;
     cqUpdateMeeting(row.id, { meet_link:meetLink }).catch(()=>{}); // best-effort (l'UPDATE anon est souvent bloqué par RLS CalendIQ ; le lien est stocké côté CRM)
   }catch(e){ meetError=e.message||'Meet non généré'; console.warn('GCal create-event', e); }
