@@ -2738,12 +2738,15 @@ Le solde est pris en charge par ton CPF, géré de A à Z par notre équipe admi
   const pick=(o)=>{ setOffer(o); setSubject(defSubject); setBody(defBody(o)); };
 
   const ready = !!(offer && offer.link && hasEmail);
-  // ouvre le client mail du closer (Gmail/Apple Mail) pré-rempli — il vérifie et clique « Envoyer »
+  // ouvre le COMPOSE GMAIL pré-rempli dans un nouvel onglet (fiable : pas de dépendance au gestionnaire mailto du navigateur).
+  // Le closer (connecté à Gmail) voit l'email tout prêt, vérifie et clique « Envoyer ».
   const send=()=>{
     if(!ready) return;
-    const a=document.createElement('a');
-    a.href='mailto:'+encodeURIComponent(lead.email)+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
-    document.body.appendChild(a); a.click(); a.remove();
+    const url='https://mail.google.com/mail/?view=cm&fs=1'
+      +'&to='+encodeURIComponent(lead.email)
+      +'&su='+encodeURIComponent(subject)
+      +'&body='+encodeURIComponent(body);
+    window.open(url,'_blank','noopener,noreferrer');
     onSend(amount, offer.tag);
   };
 
@@ -2792,7 +2795,7 @@ Le solde est pris en charge par ton CPF, géré de A à Z par notre équipe admi
         </div>
         <div className="m-fixfoot">
           <button className="btn btn-ghost" onClick={onClose}>Annuler</button>
-          <button className="btn btn-accent" disabled={!ready} onClick={send}><I.send/>{offer?`Ouvrir l’email · ${eur(amount)}`:'Choisis une offre'}</button>
+          <button className="btn btn-accent" disabled={!ready} onClick={send}><I.send/>{offer?`Ouvrir dans Gmail · ${eur(amount)}`:'Choisis une offre'}</button>
         </div>
       </div>
     </>
