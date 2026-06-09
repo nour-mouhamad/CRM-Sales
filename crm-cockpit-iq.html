@@ -3432,7 +3432,7 @@ function App({session, onLogout}){
     const tnow=Date.now();
     const emM=new Map(), phM=new Map();
     for(const m of cqMeetings){ if(m.status!=='confirmed') continue;
-      if(String(m.title||'').indexOf('CPF · ')===0) continue; // RDV CPF (agenda NM) -> jamais une carte RDV du lead (suivi via l'action « CPF → NM »). Reste visible dans l'Agenda.
+      { const t=String(m.title||''); if(t.indexOf('Admission · ')===0||t.indexOf('CPF · ')===0) continue; } // RDV admission (agenda NM) -> jamais une carte RDV du lead (suivi via l'action « CPF → NM »). Reste visible dans l'Agenda. ('CPF · ' = anciens bookings, gardés pour rétro-compat.
       const e=(m.booker_email||'').trim().toLowerCase(); if(e){ if(!emM.has(e)) emM.set(e,[]); emM.get(e).push(m); }
       const k=cqPhoneKey(m.booker_phone); if(k){ if(!phM.has(k)) phM.set(k,[]); phM.get(k).push(m); }
     }
@@ -3627,7 +3627,7 @@ function App({session, onLogout}){
   const bookCpfRdv=useCallback(async(startIso, durationMin)=>{
     if(!sel) return;
     const name=`${sel.prenom||''} ${sel.nom||''}`.trim()||sel.email||'Lead';
-    const booked=await cqBookMeeting(CPF_OWNER.organizer, { title:'CPF · '+name+' × '+CPF_OWNER.name, description:'RDV CPF / admission', start_at:startIso, duration_minutes:durationMin, booker_name:name, booker_email:sel.email||null, booker_phone:sel.tel||null, booker_timezone:'Europe/Paris' });
+    const booked=await cqBookMeeting(CPF_OWNER.organizer, { title:'Admission · '+name+' × '+CPF_OWNER.name, description:'RDV admission', start_at:startIso, duration_minutes:durationMin, booker_name:name, booker_email:sel.email||null, booker_phone:sel.tel||null, booker_timezone:'Europe/Paris' });
     // le RDV CPF est stocké SUR LE LEAD (rdv_meta, type 'cpf') -> il s'affiche dans la section RENDEZ-VOUS pour TOUT LE MONDE,
     // sans dépendre du chargement d'un agenda. Catégorie RENDEZ-VOUS, jamais ACTION.
     const key='m:cpf'+(booked.id||Math.random().toString(36).slice(2));
