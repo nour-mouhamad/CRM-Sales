@@ -303,6 +303,38 @@ input,textarea{font-family:inherit; color:inherit}
 .actcard-btn svg{width:14px; height:14px; stroke-width:2}
 .actcard.editing{padding:7px 9px; gap:7px}
 .actcard-input{flex:1; min-width:0; background:var(--surface); border:1.5px solid var(--accent); border-radius:7px; padding:6px 9px; color:var(--t1); font-size:13.5px; font-weight:600; font-family:inherit; outline:none}
+/* date « quand ? » sur une action */
+.actcard-date{display:inline-flex; align-items:center; gap:3px; color:var(--t3); cursor:pointer; border-radius:7px; padding:3px 5px; flex:none}
+.actcard-date.set{color:var(--accent)}
+.actcard-date svg{width:15px; height:15px}
+.actcard-date input{background:transparent; border:none; color:inherit; font-size:11.5px; font-family:inherit; cursor:pointer; outline:none; color-scheme:dark; width:108px}
+.actcard-date input::-webkit-calendar-picker-indicator{filter:invert(.6); cursor:pointer}
+/* ===== PAGE À FAIRE ===== */
+.todo-filters{display:flex; gap:7px; flex-wrap:wrap}
+.todo-chip{padding:7px 14px; border-radius:9px; border:1px solid var(--b1); background:var(--surface); color:var(--t2); font-size:13px; font-weight:600; cursor:pointer; transition:all var(--speed)}
+.todo-chip:hover{border-color:var(--b3)}
+.todo-chip.on{background:var(--accent); border-color:var(--accent); color:#fff}
+.todo-sec{display:flex; align-items:center; gap:10px; margin:20px 0 9px; font-size:11.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--t3)}
+.todo-sec.late{color:var(--danger)}
+.todo-sec .n{background:var(--b1); color:var(--t2); border-radius:20px; padding:1px 9px; font-size:11px}
+.todo-sec .ln{flex:1; height:1px; background:var(--b1)}
+.todo-row{display:flex; align-items:center; gap:13px; padding:12px 15px; background:var(--surface); border:1px solid var(--b1); border-radius:13px; margin-bottom:8px; cursor:pointer; transition:border-color var(--speed)}
+.todo-row:hover{border-color:var(--b3)}
+.todo-row.rel{border-left:3px solid var(--danger)}
+.todo-chk{width:22px; height:22px; border-radius:7px; border:2px solid var(--b2); display:grid; place-items:center; flex:none; color:transparent; transition:all var(--speed)}
+.todo-chk:hover{border-color:var(--accent); color:var(--accent)}
+.todo-chk svg{width:14px; height:14px; stroke-width:2.4}
+.todo-ic{width:30px; height:30px; border-radius:9px; display:grid; place-items:center; font-size:15px; flex:none; background:var(--surface-2)}
+.todo-main{flex:1; min-width:0}
+.todo-main b{display:block; font-size:14.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.todo-main span{font-size:12.5px; color:var(--t2)}
+.todo-meet{display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:700; color:var(--accent); background:var(--accent-tint); padding:5px 9px; border-radius:8px; flex:none; text-decoration:none}
+.todo-meet svg{width:14px; height:14px}
+.todo-closer{flex:none; background:var(--surface-2); border:1px solid var(--b1); color:var(--t2); border-radius:8px; padding:5px 8px; font-size:12px; max-width:130px; font-family:inherit; cursor:pointer}
+.todo-due{font-size:12.5px; color:var(--t3); width:78px; text-align:right; flex:none}
+.todo-due.late{color:var(--danger); font-weight:700}
+.todo-due.today{color:var(--accent); font-weight:700}
+.todo-go{color:var(--t3); flex:none; width:16px; text-align:center}
 /* Parcours — historique des étapes du lead */
 .parcours{padding:14px 0 2px; border-top:1px solid var(--b1); margin-top:14px}
 .parcours .eyebrow{display:block; margin-bottom:9px}
@@ -1306,7 +1338,7 @@ function dbToLead(r, acts){
   return {
     id:r.id, prenom:r.prenom||'', nom:r.nom||'', tel:r.telephone||'', email:r.email||'',
     source:r.source, heat:r.heat||null, column:COL_DB2UI(r.colonne), owner:r.owner_closer_id||null,
-    nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, extraActions:Array.isArray(r.extra_actions)?r.extra_actions:[], live:false, noShow,
+    nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, nextActionDue:r.next_action_due||null, extraActions:Array.isArray(r.extra_actions)?r.extra_actions:[], live:false, noShow,
     offer:r.montant||0, aPayer:(r.montant_a_payer==null?'':r.montant_a_payer), quiPaie:r.qui_paie||'', paid:r.statut_paiement==='paye',
     cpf:r.cpf_dispo||0, metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'',
     rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, rdvMeetLink:r.rdv_meet_link||null, rdvMeta, hubspot_deal_id:r.hubspot_deal_id||null, date_creation:r.date_creation||null, hsImport:r.hs_import||null,
@@ -1331,6 +1363,7 @@ async function saveLead(id, uiPatch){
   if('column' in uiPatch) m.colonne=COL_UI2DB(uiPatch.column);
   if('nextAction' in uiPatch) m.next_action=uiPatch.nextAction;
   if('actionDoneFor' in uiPatch) m.action_done_for=uiPatch.actionDoneFor;
+  if('nextActionDue' in uiPatch) m.next_action_due=uiPatch.nextActionDue;
   if('extraActions' in uiPatch) m.extra_actions=uiPatch.extraActions;
   if('heat' in uiPatch) m.heat=uiPatch.heat;
   if('offer' in uiPatch) m.montant=uiPatch.offer;
@@ -1466,6 +1499,8 @@ const COL_LABEL = Object.fromEntries(COLUMNS.map(c=>[c.id,c.label]));
 const COL_COLOR = {contacter:'var(--accent)', perso:'var(--cold)', atc:'var(--cold)', rdv1:'var(--warm)', contacte:'var(--warm)', qualifie:'var(--warm)', closing:'var(--accent)', encaisser:'var(--accent)', won:'var(--ok)', lost:'var(--t4)', desabonne:'var(--t4)'};
 // libellé d'action par défaut quand un lead change de colonne
 const NEXT_BY_COL = {contacter:'À contacter', perso:'Contact perso à traiter', atc:'Sans réponse — à relancer', rdv1:'R1 à faire', contacte:'À qualifier', qualifie:'À closer', closing:'Closing en cours', encaisser:'Paiement à encaisser', won:'Gagné', lost:'Perdu', desabonne:'Désabonné'};
+// une action « réelle » = décidée (manuelle ou recap), PAS le libellé d'étape par défaut. Sert à exclure le bruit de la page « À faire » et de la fiche.
+function isRealAction(nextAction, col){ if(!nextAction) return false; const s=String(nextAction).trim(); return s!=='' && s!=='À contacter' && s!==(NEXT_BY_COL[col]||''); }
 
 // Résultat de call standardisé (le VERDICT) — valable pour n'importe quel call (R1, R2…), jamais lié au numéro du call.
 const RESULT_META = {
@@ -1917,7 +1952,7 @@ function ManualRdvField({ lead, calendiqRdvs, onCalModify, onCalCancel, onSave, 
 }
 
 /* Carte action (format rectangle, comme les notes Historique) : cocher (réalisée) + éditer + supprimer */
-function ActionCard({ label, done, editing, onToggle, onEditStart, onEditCancel, onEditSave, onDelete, placeholder }){
+function ActionCard({ label, done, editing, onToggle, onEditStart, onEditCancel, onEditSave, onDelete, placeholder, due, onDate }){
   const [v,setV]=useState(label||'');
   useEffect(()=>{ if(editing) setV(label||''); },[editing]);
   if(editing){
@@ -1935,6 +1970,9 @@ function ActionCard({ label, done, editing, onToggle, onEditStart, onEditCancel,
     <div className={'actcard'+(done?' done':'')}>
       <span className="actcard-box" onClick={onToggle} role="checkbox" aria-checked={done} title={done?'Marquer non fait':'Marquer comme fait'}>{I.check({})}</span>
       <span className="actcard-tx" onClick={onEditStart} title="Cliquer pour modifier">{label||placeholder}</span>
+      {onDate && <label className={'actcard-date'+(due?' set':'')} title="Quand ? (échéance de l’action)" onClick={e=>e.stopPropagation()}>{I.agenda({})}
+        <input type="date" value={due?toLocalInput(due).slice(0,10):''} onChange={e=>onDate(e.target.value?new Date(e.target.value+'T09:00').toISOString():null)}/>
+      </label>}
       <button className="actcard-btn" title="Modifier" onClick={onEditStart}>{I.pencil({})}</button>
       <button className="actcard-btn del" title="Supprimer" onClick={onDelete}>{I.trash({})}</button>
     </div>
@@ -2218,14 +2256,18 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
               <div className="field">
                 <span className="eyebrow">Action</span>
                 <div className="actlist">
-                  <ActionCard label={lead.nextAction} done={actionDone} editing={editAct==='main'}
-                    onToggle={()=>lead.nextAction && onToggleAction(!actionDone)}
-                    onEditStart={()=>setEditAct('main')} onEditCancel={()=>setEditAct(null)}
-                    onEditSave={(v)=>{ onEditField('nextAction','nextAction', v||null); setEditAct(null); }}
-                    onDelete={()=>{ onEditField('nextAction','nextAction', null); setEditAct(null); }}
-                    placeholder="Définir une action"/>
+                  {(isRealAction(lead.nextAction, lead.column) || editAct==='main') && (
+                    <ActionCard label={lead.nextAction} done={actionDone} editing={editAct==='main'}
+                      due={lead.nextActionDue} onDate={(iso)=>onEditField('nextActionDue','nextActionDue', iso)}
+                      onToggle={()=>lead.nextAction && onToggleAction(!actionDone)}
+                      onEditStart={()=>setEditAct('main')} onEditCancel={()=>setEditAct(null)}
+                      onEditSave={(v)=>{ onEditField('nextAction','nextAction', v||null); setEditAct(null); }}
+                      onDelete={()=>{ onEditField('nextAction','nextAction', null); onEditField('nextActionDue','nextActionDue', null); setEditAct(null); }}
+                      placeholder="Définir une action"/>
+                  )}
                   {(lead.extraActions||[]).map((a,i)=>(
                     <ActionCard key={i} label={a.label} done={a.done} editing={editAct===i}
+                      due={a.due_at} onDate={(iso)=>onActions(lead.extraActions.map((x,j)=>j===i?{...x,due_at:iso}:x), true)}
                       onToggle={()=>onActions(lead.extraActions.map((x,j)=>j===i?{...x,done:!x.done}:x), true)}
                       onEditStart={()=>setEditAct(i)} onEditCancel={()=>setEditAct(null)}
                       onEditSave={(v)=>{ onActions(lead.extraActions.map((x,j)=>j===i?{...x,label:v}:x).filter(x=>x.label.trim()), true); setEditAct(null); }}
@@ -3072,6 +3114,101 @@ function Onboarding({ profile, onConnect, loadCalendiq, myLeadsCount, onFinish, 
   );
 }
 
+/* ============================================================= PAGE « À FAIRE » (admin)
+   Agrège, sur TOUS les leads : actions réelles (manuelles + recap, JAMAIS les défauts d'étape),
+   RDV à venir, relances (no-show / lead chaud). Groupé par échéance, filtre + réassignation par closer,
+   case à cocher bidirectionnelle avec la fiche. Lecture des leads existants : ne modifie aucune autre structure. */
+function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onReassign }){
+  const [closers,setClosers]=React.useState([]);
+  const [filter,setFilter]=React.useState('all'); // 'all' | closerId
+  React.useEffect(()=>{ let on=true; SB.from('profiles').select('id,name,role').then(({data})=>{ if(on) setClosers((data||[]).filter(p=>p.role==='closer')); }); return ()=>{on=false;}; },[]);
+
+  const ACTIVE=['contacter','perso','atc','rdv1','contacte','qualifie','closing','encaisser'];
+  const items=React.useMemo(()=>{
+    const now=Date.now(); const out=[];
+    for(const l of (leads||[])){
+      // 1) action principale RÉELLE (manuelle/recap), non cochée — jamais le défaut d'étape
+      if(isRealAction(l.nextAction, l.column) && l.actionDoneFor!==l.nextAction)
+        out.push({ key:l.id+':main', kind:'action', lead:l, label:l.nextAction, due:l.nextActionDue||null, onCheck:()=>onToggleAction(l,true) });
+      // 2) actions ajoutées non cochées
+      (l.extraActions||[]).forEach((a,i)=>{ if(a&&a.label&&a.label.trim()&&!a.done)
+        out.push({ key:l.id+':x'+i, kind:'action', lead:l, label:a.label, due:a.due_at||null, onCheck:()=>onToggleExtra(l,i) }); });
+      // 3) RDV à venir
+      const rdv = (l.calendiqRdv && new Date(l.calendiqRdv.start_at).getTime()>=now-3600000) ? l.calendiqRdv : null;
+      if(rdv) out.push({ key:l.id+':rdv', kind:'rdv', lead:l, label:'RDV · '+cqTime(rdv.start_at), due:rdv.start_at, meet:rdv.meet_link||null });
+      // 4) relance : no-show ou lead chaud (colonnes actives), sans RDV à venir
+      else if(ACTIVE.includes(l.column)){
+        if(l.noShow) out.push({ key:l.id+':rel', kind:'relance', lead:l, label:'No-show → rappeler', due:null });
+        else if(l.heat==='chaud') out.push({ key:l.id+':rel', kind:'relance', lead:l, label:'Lead chaud à rappeler', due:null });
+      }
+    }
+    return (filter==='all') ? out : out.filter(it=>it.lead.owner===filter);
+  },[leads,filter,onToggleAction,onToggleExtra]);
+
+  const buckets=React.useMemo(()=>{
+    const d=new Date(); const startToday=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();
+    const endToday=startToday+86400000, endWeek=startToday+7*86400000;
+    const g={late:[],today:[],week:[],later:[],none:[]};
+    for(const it of items){
+      if(!it.due){ g.none.push(it); continue; }
+      const t=new Date(it.due).getTime();
+      if(t<startToday) g.late.push(it); else if(t<endToday) g.today.push(it); else if(t<endWeek) g.week.push(it); else g.later.push(it);
+    }
+    const bySoon=(a,b)=>new Date(a.due||0)-new Date(b.due||0);
+    g.late.sort(bySoon); g.today.sort(bySoon); g.week.sort(bySoon); g.later.sort(bySoon);
+    return g;
+  },[items]);
+
+  const ICON={rdv:'🗓',relance:'🔁'};
+  const startToday=(()=>{ const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime(); })();
+  const dueCls=(due)=>{ if(!due) return ''; const t=new Date(due).getTime(); return t<startToday?'late':(t<startToday+86400000?'today':''); };
+  const dueLabel=(due)=>{ if(!due) return '—'; const t=new Date(due); return (t.getTime()>=startToday && t.getTime()<startToday+86400000) ? cqTime(due) : cqDayLabel(due); };
+
+  const Row=(it)=>(
+    <div key={it.key} className={'todo-row'+(it.kind==='relance'?' rel':'')} onClick={()=>onOpenLead(it.lead.id)} role="button" tabIndex={0}
+      onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); onOpenLead(it.lead.id); } }}>
+      {it.kind==='action'
+        ? <span className="todo-chk" onClick={e=>{ e.stopPropagation(); it.onCheck(); }} title="Marquer comme fait">{I.check({})}</span>
+        : <span className={'todo-ic '+it.kind}>{ICON[it.kind]}</span>}
+      <div className="todo-main"><b>{((it.lead.prenom||'')+' '+(it.lead.nom||'')).trim()||'Lead'}</b><span>{it.label}</span></div>
+      {it.kind==='rdv' && it.meet && <a className="todo-meet" href={it.meet} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}>{I.video({})}Rejoindre</a>}
+      <select className="todo-closer" value={it.lead.owner||''} onClick={e=>e.stopPropagation()} onChange={e=>onReassign(it.lead.id, e.target.value||null)} title="Attribuer à un closer">
+        <option value="">— non attribué —</option>
+        {closers.map(c=><option key={c.id} value={c.id}>{c.name||'Closer'}</option>)}
+      </select>
+      <span className={'todo-due '+dueCls(it.due)}>{dueLabel(it.due)}</span>
+      <span className="todo-go">↗</span>
+    </div>
+  );
+  const Section=(title,arr,cls)=> arr.length ? (
+    <React.Fragment key={title}>
+      <div className={'todo-sec'+(cls?' '+cls:'')}>{title}<span className="n">{arr.length}</span><span className="ln"></span></div>
+      {arr.map(Row)}
+    </React.Fragment>
+  ) : null;
+
+  return (
+    <div className="mgr-pad">
+      <div className="screen-head">
+        <div className="screen-title"><h1>À faire</h1><p>Toutes les actions de tous les leads — pour piloter et ne rien oublier</p></div>
+        <div className="todo-filters">
+          <button className={'todo-chip'+(filter==='all'?' on':'')} onClick={()=>setFilter('all')}>Tous</button>
+          {closers.map(c=><button key={c.id} className={'todo-chip'+(filter===c.id?' on':'')} onClick={()=>setFilter(c.id)}>{c.name||'Closer'}</button>)}
+        </div>
+      </div>
+      {items.length===0
+        ? <div className="sync-ok">{I.check({})}<div><b style={{fontSize:16,color:'var(--t1)'}}>Rien à faire</b><div style={{fontSize:13,marginTop:4}}>Aucune action en attente. Ajoute une action sur une fiche, ou un RDV apparaîtra ici.</div></div></div>
+        : <>
+            {Section('⚠ En retard', buckets.late, 'late')}
+            {Section("Aujourd'hui", buckets.today)}
+            {Section('Cette semaine', buckets.week)}
+            {Section('Plus tard', buckets.later)}
+            {Section('Sans date', buckets.none)}
+          </>}
+    </div>
+  );
+}
+
 function App({session, onLogout}){
   const userEmail = session.user.email;
   const userId = session.user.id;
@@ -3090,7 +3227,7 @@ function App({session, onLogout}){
   useEffect(()=>{ if(!isDev && profile && !isAdmin && !profile.calendiq_organizer_id && !onbDone) setOnbActive(true); },[profile,isAdmin,isDev,onbDone]);
   const [leads,setLeads]=useState([]);
   const [loaded,setLoaded]=useState(false);
-  const [screen,setScreen]=useState(()=>{ const s=persistedState('iqcrm_screen','leads'); return ['leads','fiche','agenda','team','console'].includes(s)?s:'leads'; });
+  const [screen,setScreen]=useState(()=>{ const s=persistedState('iqcrm_screen','leads'); return ['leads','fiche','agenda','team','console','todo'].includes(s)?s:'leads'; });
   const [selId,setSelId]=useState(()=>persistedState('iqcrm_sel',null));
   const [theme,setTheme]=useState(()=>persistedState('iqcrm_theme_v2','dark'));
   const [density,setDensity]=useState(()=>persistedState('iqcrm_density','standard'));
@@ -3385,6 +3522,10 @@ function App({session, onLogout}){
   const editField=(uiKey,saveKey,value)=>{ if(!sel) return; patch(sel.id,{[uiKey]:value}); saveLead(sel.id,{[saveKey]:value}); };
   const toggleAction=(checked)=>{ if(!sel) return; const v=checked?(sel.nextAction||null):null; patch(sel.id,{actionDoneFor:v}); saveLead(sel.id,{actionDoneFor:v}); };
   const setActions=(arr,persist)=>{ if(!sel) return; patch(sel.id,{extraActions:arr}); if(persist) saveLead(sel.id,{extraActions:arr}); };
+  // versions PAR-LEAD (page « À faire » : agit sur n'importe quel lead, pas seulement la fiche ouverte)
+  const toggleActionFor=(lead,checked)=>{ const v=checked?(lead.nextAction||null):null; patch(lead.id,{actionDoneFor:v}); saveLead(lead.id,{actionDoneFor:v}); };
+  const toggleExtraFor=(lead,idx)=>{ const arr=(lead.extraActions||[]).map((x,j)=>j===idx?{...x,done:!x.done}:x); patch(lead.id,{extraActions:arr}); saveLead(lead.id,{extraActions:arr}); };
+  const reassignOwner=(id,closerId)=>{ patch(id,{owner:closerId||null}); saveLead(id,{owner:closerId||null}); };
   // appropriation du lead par le closer connecté (toggle) — owner_closer_id = id de l'utilisateur auth
   // 3 états : libre -> je m'approprie ; à moi -> je libère ; à un autre closer -> bloqué (pas de vol)
   const claimLead=()=>{ if(!sel) return; const uid=session.user.id; if(sel.owner && sel.owner!==uid){ toast('Lead déjà approprié','Par un autre closer','info'); return; } const next=sel.owner?null:uid; patch(sel.id,{owner:next}); saveLead(sel.id,{owner:next}); toast(next?'Lead approprié':'Lead libéré', `${sel.prenom||''} ${sel.nom||''}`.trim()||null, next?'ok':'info'); };
@@ -3553,9 +3694,9 @@ function App({session, onLogout}){
   const navItems=[
     {id:'leads', label:'Mes leads', icon:I.leads, badge:rappelerCount},
     {id:'agenda', label:'Agenda', icon:I.agenda},
-    ...(isAdmin?[{id:'team', label:'Closers', icon:I.users},{id:'console', label:'Synchro HubSpot', icon:I.sync}]:[]),
+    ...(isAdmin?[{id:'todo', label:'À faire', icon:I.check},{id:'team', label:'Closers', icon:I.users},{id:'console', label:'Synchro HubSpot', icon:I.sync}]:[]),
   ];
-  useEffect(()=>{ if(!isAdmin && (screen==='team'||screen==='console')) setScreen('leads'); },[isAdmin,screen]);
+  useEffect(()=>{ if(!isAdmin && (screen==='team'||screen==='console'||screen==='todo')) setScreen('leads'); },[isAdmin,screen]);
   const navActive = screen==='fiche'?'leads':screen;
 
   // splash bref UNIQUEMENT pendant la requête profil (évite un flash board/nav) ; ne bloque jamais après réponse
@@ -3604,6 +3745,7 @@ function App({session, onLogout}){
         {screen==='agenda' && <Agenda meetings={cqMeetings} sources={cqSources} loading={cqLoading} error={cqError}
             isAdmin={isAdmin} profile={profile} onConnect={connectCalendiq} onDisconnect={disconnectCalendiq}
             onRefresh={loadCalendiq} onOpenLead={openLead} meetingLeadId={meetingLeadId}/>}
+        {screen==='todo' && isAdmin && <AFaire leads={leadsCq} onOpenLead={openLead} onToggleAction={toggleActionFor} onToggleExtra={toggleExtraFor} onReassign={reassignOwner}/>}
         {screen==='team' && isAdmin && <TeamScreen userId={userId} toast={toast} leads={leadsCq} onOpenLead={openLead}/>}
         {screen==='console' && isAdmin && <Console toast={toast} onOpenLead={openLead} setSyncBusy={setSyncBusy} reloadLeads={reload}/>}
       </main>
