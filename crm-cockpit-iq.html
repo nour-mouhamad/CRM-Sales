@@ -101,6 +101,10 @@ input,textarea{font-family:inherit; color:inherit}
 }
 .nav-badge{margin-left:auto; font-size:11px; font-weight:700; background:var(--accent); color:var(--on-accent);
   border-radius:99px; min-width:19px; height:19px; padding:0 6px; display:grid; place-items:center}
+.nav-item.soon{opacity:.4; cursor:not-allowed}
+.nav-item.soon:hover{background:transparent; color:var(--t2)}
+.nav-soon{margin-left:auto; font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--t3); background:var(--surface-3); border-radius:6px; padding:2px 7px; opacity:0; transition:opacity var(--speed)}
+.nav-item.soon:hover .nav-soon{opacity:1}
 .rail-spacer{flex:1}
 .rail-tools{display:flex; gap:6px; padding:0 4px 8px}
 .icon-btn{
@@ -3753,7 +3757,7 @@ function App({session, onLogout}){
 
   const navItems=[
     {id:'leads', label:'Mes leads', icon:I.leads, badge:rappelerCount},
-    {id:'agenda', label:'Agenda', icon:I.agenda},
+    {id:'agenda', label:'Agenda', icon:I.agenda, soon:true},
     ...(isAdmin?[{id:'todo', label:'À faire', icon:I.check},{id:'team', label:'Closers', icon:I.users},{id:'console', label:'Synchro HubSpot', icon:I.sync}]:[]),
   ];
   useEffect(()=>{ if(!isAdmin && (screen==='team'||screen==='console'||screen==='todo')) setScreen('leads'); },[isAdmin,screen]);
@@ -3779,8 +3783,8 @@ function App({session, onLogout}){
             </svg>
         </div>
         {navItems.map(n=>(
-          <button key={n.id} className={`nav-item ${navActive===n.id?'active':''}`} onClick={()=>{setScreen(n.id);}}>
-            {n.icon({})}<span>{n.label}</span>{n.badge?<span className="nav-badge">{n.badge}</span>:null}
+          <button key={n.id} className={`nav-item ${navActive===n.id?'active':''} ${n.soon?'soon':''}`} onClick={()=>{ if(n.soon) return; setScreen(n.id); }} aria-disabled={n.soon?true:undefined} title={n.soon?'Bientôt disponible':undefined}>
+            {n.icon({})}<span>{n.label}</span>{n.soon?<span className="nav-soon">Bientôt</span>:(n.badge?<span className="nav-badge">{n.badge}</span>:null)}
           </button>
         ))}
         <div className="rail-spacer"></div>
