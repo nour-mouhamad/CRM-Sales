@@ -3126,6 +3126,7 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onReassign }
   const items=React.useMemo(()=>{
     const now=Date.now(); const out=[];
     for(const l of (leads||[])){
+      if(l.column==='lost' || l.column==='desabonne') continue; // lead abandonné -> AUCUNE action à faire (pas de relance auto)
       // 1) action principale RÉELLE (manuelle/recap), non cochée — jamais le défaut d'étape
       if(isRealAction(l.nextAction, l.column) && l.actionDoneFor!==l.nextAction)
         out.push({ key:l.id+':main', kind:'action', lead:l, label:l.nextAction, due:l.nextActionDue||null, onCheck:()=>onToggleAction(l,true) });
