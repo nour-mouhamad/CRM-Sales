@@ -3720,7 +3720,9 @@ function TeamScreen({ userId, toast, leads, onOpenLead }){
     all.forEach(l=>{
       if(!l.owner){ un.push(l); return; }
       if(l.owner===userId) return; // les leads du manager lui-même ne comptent pas comme « closer »
-      if(!byKey[l.owner]) byKey[l.owner]={key:l.owner, name:nameById[l.owner]||l.owner, leads:[]};
+      // owner sans profil (closer supprimé) -> orphelin : traité comme non attribué, JAMAIS de carte UUID fantôme
+      if(!Object.prototype.hasOwnProperty.call(nameById, l.owner)){ un.push(l); return; }
+      if(!byKey[l.owner]) byKey[l.owner]={key:l.owner, name:nameById[l.owner]||'—', leads:[]};
       byKey[l.owner].leads.push(l);
     });
     return { rosterClosers:Object.values(byKey), unassigned:un };
