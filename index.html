@@ -395,6 +395,14 @@ input,textarea{font-family:inherit; color:inherit}
 .lb-card.open .lb-chev{transform:rotate(90deg)}
 .lb-body{border-top:1px solid var(--b1); padding:8px 10px; background:var(--surface-2)}
 .lb-empty{font-size:12.5px; color:var(--t3); padding:12px 8px}
+.cl-danger{margin-top:6px; padding:10px 10px 4px; border-top:1px dashed var(--b2); display:flex; flex-direction:column; gap:9px}
+.cl-del{display:inline-flex; align-items:center; gap:7px; align-self:flex-start; background:none; color:var(--t3); font-size:12.5px; font-weight:600; padding:6px 8px; border-radius:8px; cursor:pointer; transition:all var(--speed)}
+.cl-del svg{width:15px; height:15px}
+.cl-del:hover{color:var(--danger); background:var(--danger-tint)}
+.cl-del-warn{font-size:12.5px; color:var(--t2); line-height:1.5}
+.cl-del-act{display:flex; gap:8px}
+.cl-del-confirm{background:var(--danger); color:#fff; border:none; font-size:12.5px; font-weight:700; padding:8px 14px; border-radius:9px; cursor:pointer}
+.cl-del-confirm:disabled{opacity:.6; cursor:default}
 .cl-lead{display:flex; align-items:center; gap:10px; width:100%; text-align:left; padding:9px 10px; border-radius:9px; cursor:pointer; transition:background var(--speed) var(--ease)}
 .cl-lead:hover{background:var(--surface)}
 .cl-lead-name{font-size:13.5px; font-weight:700; width:150px; flex:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
@@ -3616,8 +3624,11 @@ function ManagerLeadRow({ lead, onOpenLead }){
   );
 }
 
-function CloserCard({ rank, name, leads, maxCa, onOpenLead, defaultOpen }){
+function CloserCard({ rank, name, leads, maxCa, onOpenLead, defaultOpen, closerId, onDelete }){
   const [open,setOpen]=useState(!!defaultOpen);
+  const [confirm,setConfirm]=useState(false);
+  const [del,setDel]=useState(false);
+  const doDelete=async()=>{ setDel(true); try{ await onDelete(closerId,name); }catch(e){ setDel(false); setConfirm(false); } };
   const m=useMemo(()=>{
     let rdv=0,closing=0,won=0,ca=0,lost=0;
     leads.forEach(l=>{ const s=leadStatus(l);
@@ -3652,6 +3663,19 @@ function CloserCard({ rank, name, leads, maxCa, onOpenLead, defaultOpen }){
         <div className="lb-body">
           {sorted.length===0 ? <div className="lb-empty">Aucun lead attribué.</div>
             : sorted.map(l=><ManagerLeadRow key={l.id} lead={l} onOpenLead={onOpenLead}/>)}
+          {onDelete && closerId && (
+            <div className="cl-danger">
+              {!confirm
+                ? <button className="cl-del" onClick={()=>setConfirm(true)}>{I.trash({})}Supprimer l’accès de ce closer</button>
+                : <>
+                    <span className="cl-del-warn">Révoquer définitivement l’accès de <b>{name}</b> ? Son compte est supprimé (email ré-invitable) et ses leads sont libérés.</span>
+                    <div className="cl-del-act">
+                      <button className="btn btn-ghost" disabled={del} onClick={()=>setConfirm(false)}>Annuler</button>
+                      <button className="cl-del-confirm" disabled={del} onClick={doDelete}>{del?'Suppression…':'Confirmer la suppression'}</button>
+                    </div>
+                  </>}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -3676,6 +3700,14 @@ function TeamScreen({ userId, toast, leads, onOpenLead }){
     toast('Lien d’invitation créé','Copié — envoie-le au closer','ok'); load();
   }catch(e){ toast('Erreur', e.message, 'info'); } finally{ setBusy(false); } };
   const copy=t=>{ try{ navigator.clipboard.writeText(linkFor(t)); toast('Lien copié',null,'ok'); }catch(e){} };
+  const delCloser=async(closerId,nm)=>{
+    try{
+      const r=await callFn('admin-closer',{action:'delete_closer',closerId});
+      const n=r.unassigned||0;
+      toast('Closer supprimé', (nm||'')+' — accès révoqué'+(n?(' · '+n+' lead'+(n>1?'s':'')+' libéré'+(n>1?'s':'')):''), 'ok');
+      load();
+    }catch(e){ toast('Suppression impossible', e.message, 'info'); throw e; } // rethrow -> CloserCard réinitialise
+  };
   const pending = invites.filter(i=>!i.used_at);
 
   const all = leads||[];
@@ -3728,7 +3760,7 @@ function TeamScreen({ userId, toast, leads, onOpenLead }){
       <div className="lb-list">
         {ranked.length===0
           ? <div className="lb-card"><div className="lb-empty" style={{padding:'18px 16px'}}>Aucun closer pour l’instant. Clique « Inviter un closer » pour démarrer.</div></div>
-          : ranked.map((c,i)=><CloserCard key={c.key} rank={i+1} name={c.name} leads={c.leads} maxCa={maxCa} onOpenLead={onOpenLead} defaultOpen={i===0&&ranked.length<=2}/>)}
+          : ranked.map((c,i)=><CloserCard key={c.key} closerId={c.key} rank={i+1} name={c.name} leads={c.leads} maxCa={maxCa} onOpenLead={onOpenLead} onDelete={delCloser} defaultOpen={i===0&&ranked.length<=2}/>)}
       </div>
 
       <div className="mgr-sec"><span className="eyebrow">Invitations en attente</span><span className="mgr-count">{pending.length}</span></div>
