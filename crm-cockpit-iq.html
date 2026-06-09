@@ -1161,8 +1161,9 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .sync-note-link{font-size:11.5px; font-weight:700; color:var(--accent); background:none; border:0; cursor:pointer; padding:0; text-transform:none; letter-spacing:0}
 .sync-note-link:hover{text-decoration:underline}
 .sync-note-link:disabled{opacity:.5; cursor:default}
-.fiche-date{display:inline-flex; align-items:center; gap:6px; margin-top:6px; font-size:12.5px; font-weight:600; color:var(--t3)}
+.fiche-date{display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; color:var(--t3)}
 .fiche-date svg{color:var(--t3)}
+.fiche-meta{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px}
 .sync-list{display:flex; flex-direction:column; gap:9px}
 .sync-sec{font-size:11px; font-weight:700; color:var(--t3); text-transform:uppercase; letter-spacing:.05em; margin:16px 0 8px; display:flex; align-items:center; gap:8px}
 .syncrow{background:var(--surface); border:1px solid var(--b1); border-radius:13px; padding:13px 15px; display:flex; align-items:center; gap:14px; transition:border-color var(--speed) var(--ease)}
@@ -2213,7 +2214,16 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
         <button className="back" onClick={onBack}><I.back/>Mes leads</button>
         <div className="fiche-id">
           <h1>{lead.prenom} {lead.nom}</h1>
-          {lead.date_creation && <div className="fiche-date"><I.agenda style={{width:13,height:13}}/>Lead créé le {fmtDay(lead.date_creation)}</div>}
+          <div className="fiche-meta">
+            {lead.date_creation && <span className="fiche-date"><I.agenda style={{width:13,height:13}}/>Lead créé le {fmtDay(lead.date_creation)}</span>}
+            {lead.tel && <CopyField value={fmtPhone(lead.tel)} copyVal={lead.tel} icon={I.phone} title="Copier le numéro"/>}
+            {lead.email && <CopyField value={lead.email} icon={I.mail} title="Copier l’email"/>}
+          </div>
+          {lead.hsImport&&lead.hsImport.contact&&(()=>{ const c=lead.hsImport.contact; const r=[['Poste',c.poste],['Entreprise',c.entreprise],['Ville',c.ville]].filter(x=>x[1]); return (r.length||c.linkedin)?(
+            <div className="hs-mini">
+              {r.map((x,i)=><span key={i} className="hs-mini-kv"><span className="hs-mini-k">{x[0]}</span>{x[1]}</span>)}
+              {c.linkedin && <a className="hs-mini-link" href={c.linkedin} target="_blank" rel="noopener">LinkedIn ↗</a>}
+            </div>):null; })()}
         </div>
         <div className="status-pill"><span className="sdot" style={{background:statusColor}}></span>{COL_LABEL[lead.column]}</div>
       </div>
@@ -2224,21 +2234,6 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
           <div className="panel-head"><span className="eyebrow">Situation</span></div>
           <div className="panel-body">
             {(()=>{ const si=SOURCE_INFO[lead.source]||{label:lead.source||'—'}; return (<>
-              <div className="field">
-                <span className="eyebrow">Contact</span>
-                <div className="val" style={{fontWeight:800,fontSize:18,letterSpacing:'-.02em',marginBottom:10}}>{lead.prenom} {lead.nom}</div>
-                <div className="fiche-contacts">
-                  {lead.tel
-                    ? <CopyField value={fmtPhone(lead.tel)} copyVal={lead.tel} icon={I.phone} title="Copier le numéro"/>
-                    : <span className="contact"><I.phone/><span className="mono">—</span></span>}
-                  <CopyField value={lead.email} icon={I.mail} title="Copier l’email"/>
-                </div>
-                {lead.hsImport&&lead.hsImport.contact&&(()=>{ const c=lead.hsImport.contact; const r=[['Poste',c.poste],['Entreprise',c.entreprise],['Ville',c.ville]].filter(x=>x[1]); return (r.length||c.linkedin)?(
-                  <div className="hs-mini">
-                    {r.map((x,i)=><span key={i} className="hs-mini-kv"><span className="hs-mini-k">{x[0]}</span>{x[1]}</span>)}
-                    {c.linkedin && <a className="hs-mini-link" href={c.linkedin} target="_blank" rel="noopener">LinkedIn ↗</a>}
-                  </div>):null; })()}
-              </div>
               <div className="field">
                 <span className="eyebrow">Source du lead</span>
                 <div className="val" style={{fontWeight:700}}>{si.label}</div>
