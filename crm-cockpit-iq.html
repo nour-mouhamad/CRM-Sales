@@ -1561,8 +1561,9 @@ function pickRecapTargetRdv(rdvs, callKind){
 }
 
 const OFFERS = [
-  {id:'1400', amount:1400, tag:'Non chômeur (France Travail)'},
-  {id:'1250', amount:1250, tag:'Chômeur (France Travail)'},
+  // link = Stripe Payment Link FIXE de l'offre (créé une fois dans Stripe). Vide = envoi bloqué (garde-fou).
+  {id:'1400', amount:1400, tag:'Non chômeur (France Travail)', link:'https://buy.stripe.com/cNicN52Uh9iX7SFfU68Zq07'},
+  {id:'1250', amount:1250, tag:'Chômeur (France Travail)', link:'https://buy.stripe.com/fZubJ1fH366LdcZ8rE8Zq08'},
 ];
 
 /* ----------- seed data (réaliste FR — formation closing/vente, CPF) ----------- */
@@ -2385,7 +2386,7 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
                 <span className="act-ic"><I.mail/></span>
                 <span className="act-tx"><b>Envoyer un mail</b><span>Bientôt disponible</span></span>
               </button>
-              <button className="act" disabled title="Bientôt disponible">
+              <button className="act" onClick={onPay} disabled={!lead.email} title={lead.email?'Envoyer un lien de paiement par email':'Aucun email — impossible'}>
                 <span className="act-ic"><I.euro/></span>
                 <span className="act-tx"><b>Envoyer lien paiement</b><span className="mono">1 400 · 1 250</span></span>
               </button>
@@ -2718,22 +2719,33 @@ function AddLeadModal({ column, onClose, onAdd }){
 function PaymentModal({lead, onClose, onSend}){
   const [offer,setOffer]=useState(null);
   const amount = offer?offer.amount:0;
-  const link = offer?`pay.iq-project.ai/${lead.id}-${amount}`:'';
+  const link = offer ? (offer.link||'') : ''; // vrai Stripe Payment Link de l'offre
+  const hasEmail = !!(lead.email||'').trim();
   const defSubject = 'Ton accès — Bootcamp Closing / Vente · IQ Project';
   const defBody = (o)=>
 `Bonjour ${lead.prenom},
 
-Ravi de notre échange. Comme convenu, voici ton lien sécurisé pour valider ta place à l'édition du 15 juin (8 sessions / 2 semaines, hybride — 136 rue d'Aboukir, Paris 2e + distanciel).
+Ravi de notre échange. Comme convenu, voici ton lien sécurisé pour valider ta place à l'édition du 15 juin (8 sessions / 2 semaines, hybride — 136 rue d'Aboukir, Paris 2e + distanciel) :
+
+${o.link||'[lien de paiement — à configurer]'}
 
 Montant : ${eur(o.amount)} — reste à charge ${o.tag.includes('Non')?'(salarié / activité)':'(demandeur d\'emploi)'}.
 Le solde est pris en charge par ton CPF, géré de A à Z par notre équipe admission.
 
-À très vite,
-Léo Martin — IQ Project`;
+À très vite,`;
   const [subject,setSubject]=useState(defSubject);
   const [body,setBody]=useState('');
-
   const pick=(o)=>{ setOffer(o); setSubject(defSubject); setBody(defBody(o)); };
+
+  const ready = !!(offer && offer.link && hasEmail);
+  // ouvre le client mail du closer (Gmail/Apple Mail) pré-rempli — il vérifie et clique « Envoyer »
+  const send=()=>{
+    if(!ready) return;
+    const a=document.createElement('a');
+    a.href='mailto:'+encodeURIComponent(lead.email)+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+    document.body.appendChild(a); a.click(); a.remove();
+    onSend(amount, offer.tag);
+  };
 
   return (
     <>
@@ -2746,7 +2758,7 @@ Léo Martin — IQ Project`;
           <div className="m-for">pour {lead.prenom} {lead.nom}</div>
         </div>
         <div className="m-scroll">
-          <span className="eyebrow" style={{display:'block',marginBottom:10}}>Les 2 liens de paiement possibles</span>
+          <span className="eyebrow" style={{display:'block',marginBottom:10}}>Choisis le lien à envoyer</span>
           <div className="pay-offers">
             {OFFERS.map(o=>(
               <button key={o.id} className={`pay-offer ${offer&&offer.id===o.id?'sel':''}`} onClick={()=>pick(o)}>
@@ -2760,11 +2772,7 @@ Léo Martin — IQ Project`;
           {offer && <>
             <div className="chan main" style={{marginTop:18}}>
               <span className="chan-ic"><I.mail/></span>
-              <div className="chan-tx"><b>Email <span className="chan-main-pill">Canal principal</span></b><span className="mono">{lead.email}</span></div>
-            </div>
-            <div className="chan soon">
-              <span className="chan-ic"><I.sms/></span>
-              <div className="chan-tx"><b>SMS <span className="soon-pill">Bientôt</span></b><span className="mono">{lead.tel}</span></div>
+              <div className="chan-tx"><b>Email <span className="chan-main-pill">depuis ta boîte</span></b><span className="mono">{lead.email||'aucun email'}</span></div>
             </div>
 
             <div className="edit-field">
@@ -2775,13 +2783,16 @@ Léo Martin — IQ Project`;
               <span className="eyebrow">Corps du mail (modifiable)</span>
               <textarea className="edit-body" value={body} onChange={e=>setBody(e.target.value)}/>
             </div>
-            <div className="link-tag"><I.euro style={{width:14,height:14,color:'var(--accent)'}}/><span className="mono">{link}</span></div>
-            <p className="modal-note">Le lien de paiement est ajouté automatiquement au mail. Au paiement, la carte passe en « Payé » + notification.</p>
+            {link
+              ? <div className="link-tag"><I.euro style={{width:14,height:14,color:'var(--accent)'}}/><span className="mono">{link}</span></div>
+              : <div className="rdv-err">⚠️ Lien Stripe non configuré pour cette offre — préviens l’admin avant d’envoyer.</div>}
+            {!hasEmail && <div className="rdv-err">⚠️ Ce lead n’a pas d’email — impossible d’envoyer.</div>}
+            <p className="modal-note">Ton client mail s’ouvre pré-rempli (objet + message + lien). Tu vérifies et tu cliques « Envoyer ». Le lead passe en « À encaisser ».</p>
           </>}
         </div>
         <div className="m-fixfoot">
           <button className="btn btn-ghost" onClick={onClose}>Annuler</button>
-          <button className="btn btn-accent" disabled={!offer} onClick={()=>onSend(amount,offer.tag)}><I.send/>{offer?`Envoyer par email · ${eur(amount)}`:'Choisis une offre'}</button>
+          <button className="btn btn-accent" disabled={!ready} onClick={send}><I.send/>{offer?`Ouvrir l’email · ${eur(amount)}`:'Choisis une offre'}</button>
         </div>
       </div>
     </>
