@@ -3150,6 +3150,26 @@ function App({session, onLogout}){
 
   const patch=useCallback((id,fn)=>setLeads(ls=>ls.map(l=>l.id===id?{...l,...(typeof fn==='function'?fn(l):fn)}:l)),[]);
 
+  // AUTO-NETTOYAGE (admin) : un lead rattaché à un closer SUPPRIMÉ (owner sans profil) est libéré (owner -> null)
+  // pour qu'il se ré-attribue normalement. Tourne 1× par session, avec garde-fou : si la lecture des profils
+  // échoue, on ne touche à RIEN (jamais de désassignation massive accidentelle).
+  const healedRef=useRef(false);
+  useEffect(()=>{
+    if(isDev || !isAdmin || healedRef.current || !leads.length) return;
+    healedRef.current=true;
+    (async()=>{
+      const { data, error }=await SB.from('profiles').select('id');
+      if(error || !data || !data.length){ healedRef.current=false; return; } // sécurité : pas de liste fiable -> abstention
+      const valid=new Set(data.map(p=>p.id));
+      const orphanIds=leads.filter(l=>l.owner && l.owner!==userId && !valid.has(l.owner)).map(l=>l.id);
+      if(!orphanIds.length) return;
+      const { error:uerr }=await SB.from('leads').update({owner_closer_id:null}).in('id',orphanIds);
+      if(uerr) return;
+      setLeads(ls=>ls.map(l=>orphanIds.includes(l.id)?{...l,owner:null}:l));
+      toast('Nettoyage', orphanIds.length+' lead'+(orphanIds.length>1?'s':'')+' rattaché'+(orphanIds.length>1?'s':'')+' à un closer supprimé → libéré'+(orphanIds.length>1?'s':''),'ok');
+    })();
+  },[isDev,isAdmin,leads,userId,toast]);
+
   /* ---------- CalendIQ : agendas externes des closers ---------- */
   const [cqMeetings,setCqMeetings]=useState([]);   // RDV (closer = les siens ; admin = tous, agrégés)
   const [cqSources,setCqSources]=useState([]);     // [{id,name,organizer,slug}]
