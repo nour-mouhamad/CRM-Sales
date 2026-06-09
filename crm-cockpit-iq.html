@@ -1868,8 +1868,12 @@ function ManualRdvField({ lead, calendiqRdvs, onCalModify, onCalCancel, onSave, 
   // liste combinée : RDV CalendIQ (cq=true) + RDV manuels (legacy rdv_at + clés 'm:*')
   const list=[];
   (calendiqRdvs||[]).forEach(r=> list.push({ cq:true, rdv:r }));
-  if(lead.rdv_at){ const mk='manual:'+lead.id; const meta=(lead.rdvMeta&&lead.rdvMeta[mk])||{}; list.push({ cq:false, rdv:{ id:mk, source:'manual', type:lead.rdvType||'r1', start_at:lead.rdv_at, duration_minutes:RDV_DUR[lead.rdvType||'r1']||45, meet_link:lead.rdvMeetLink||null, outcome:meta.outcome||null } }); }
-  for(const k in (lead.rdvMeta||{})){ if(k.indexOf('m:')===0){ const e=lead.rdvMeta[k]||{}; if(e.start_at) list.push({ cq:false, rdv:{ id:k, source:'manual', type:e.type||'r1', start_at:e.start_at, duration_minutes:RDV_DUR[e.type||'r1']||45, meet_link:e.meet_link||null, outcome:e.outcome||null } }); } }
+  // ANTI-DOUBLON : un RDV CalendIQ matché et un créneau legacy/manuel au MÊME horaire (±90 s) = le MÊME RDV.
+  // On n'affiche alors que la version CalendIQ (corrige les leads où rdv_at a été écrit en plus du meeting).
+  const cqTimes=(calendiqRdvs||[]).map(r=>new Date(r.start_at).getTime());
+  const dupOfCq=(iso)=>{ const t=new Date(iso).getTime(); return cqTimes.some(ct=>Math.abs(ct-t)<90000); };
+  if(lead.rdv_at && !dupOfCq(lead.rdv_at)){ const mk='manual:'+lead.id; const meta=(lead.rdvMeta&&lead.rdvMeta[mk])||{}; list.push({ cq:false, rdv:{ id:mk, source:'manual', type:lead.rdvType||'r1', start_at:lead.rdv_at, duration_minutes:RDV_DUR[lead.rdvType||'r1']||45, meet_link:lead.rdvMeetLink||null, outcome:meta.outcome||null } }); }
+  for(const k in (lead.rdvMeta||{})){ if(k.indexOf('m:')===0){ const e=lead.rdvMeta[k]||{}; if(e.start_at && !dupOfCq(e.start_at)) list.push({ cq:false, rdv:{ id:k, source:'manual', type:e.type||'r1', start_at:e.start_at, duration_minutes:RDV_DUR[e.type||'r1']||45, meet_link:e.meet_link||null, outcome:e.outcome||null } }); } }
   list.sort((a,b)=>new Date(a.rdv.start_at)-new Date(b.rdv.start_at));
   const openNew=()=>{ setType('r1'); setDt(''); setMeet(''); setEditing('new'); };
   const openEdit=(r)=>{ setType(r.type||'r1'); setDt(toLocalInput(r.start_at)); setMeet(r.meet_link||''); setEditing({key:r.id}); };
@@ -3406,9 +3410,19 @@ function App({session, onLogout}){
     if(replaceMeetingId) delete nextMeta[replaceMeetingId]; // reprogrammation : purge l'ancienne clé (cohérent avec cancelCalendiqRdv, zéro orphelin)
     nextMeta[booked.id] = { ...(baseMeta[booked.id]||{}), type, ...(booked.meet_link?{meet_link:booked.meet_link}:{}) };
     // le lien Meet est stocké dans crm-sales (rdvMeetLink) car l'UPDATE anon sur la base CalendIQ est bloqué
-    const p={ rdv_at:startIso, rdvType:type, rdvMeetLink:booked.meet_link||null, rdvMeta:nextMeta, ...(claim?{owner:userId}:{}), ...stagePatch };
-    // reflet immédiat du RDV (avec le lien Meet) sur la fiche, sans attendre le refetch
-    patch(sel.id,prev=>({ ...p, calendiqRdv:{ id:booked.id, title:'IQ Project × '+(sel.prenom||name), start_at:startIso, duration_minutes:durationMin, status:'confirmed', meet_link:booked.meet_link||null } }));
+    // Le RDV est représenté par le MEETING CalendIQ matché (lead.rdvs) + le type figé dans rdvMeta[booked.id].
+    // On N'ÉCRIT PAS le legacy rdv_at quand le lead est matchable (email/tél) : sinon DOUBLON (1 carte legacy + 1 carte CalendIQ).
+    // Fallback legacy UNIQUEMENT si le lead n'a ni email ni tél (impossible à matcher → sans ça le RDV n'apparaîtrait pas).
+    const matchable = !!(sel.email || sel.tel);
+    const p = matchable
+      ? { rdvMeta:nextMeta, ...(claim?{owner:userId}:{}), ...stagePatch }
+      : { rdv_at:startIso, rdvType:type, rdvMeetLink:booked.meet_link||null, rdvMeta:nextMeta, ...(claim?{owner:userId}:{}), ...stagePatch };
+    // reflet immédiat : on injecte le meeting fraîchement booké dans la liste CalendIQ (sans attendre le refetch ~20 s)
+    setCqMeetings(ms=>[ ...ms.filter(x=>x.id!==booked.id),
+      { id:booked.id, title:'IQ Project × '+(sel.prenom||name), start_at:startIso, duration_minutes:durationMin,
+        booker_name:name, booker_email:sel.email||null, booker_phone:sel.tel||null, status:'confirmed',
+        meet_link:booked.meet_link||null, _closerId:userId, _closerName:(profile&&profile.name)||'Moi' } ]);
+    patch(sel.id,p);
     saveLead(sel.id,p);
     if(tgt){ const stTitle='Étape : '+(COL_LABEL[tgt]||tgt); addActivite(sel.id,'note',stTitle,null).catch(()=>null); patch(sel.id,prev=>({timeline:[{type:'note',when:'à l’instant',title:stTitle,text:''},...prev.timeline]})); }
     const verb=replaceMeetingId?'reprogrammé':'calé';
