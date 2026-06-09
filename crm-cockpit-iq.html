@@ -4248,7 +4248,7 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
                       <button className="btn btn-accent" disabled={!!busy[k]} onClick={()=>push([sortItem(r)],'Envoyé vers HubSpot')}>{busy[k]?'…':'Envoyer'}</button>
                     </div>
                   </div>
-                  {(()=>{ const base=r.note||''; const val=noteEdits[r.leadId]!==undefined?noteEdits[r.leadId]:base; const edited=noteEdits[r.leadId]!==undefined && noteEdits[r.leadId]!==base; const willDelete=edited && !val.trim(); return (
+                  {r.noteChanged && (()=>{ const base=r.note||''; const val=noteEdits[r.leadId]!==undefined?noteEdits[r.leadId]:base; const edited=noteEdits[r.leadId]!==undefined && noteEdits[r.leadId]!==base; const willDelete=edited && !val.trim(); return (
                     <div className="sync-note">
                       <div className="sync-note-h">📋 Note HubSpot — éditable
                         {willDelete && <span className="sync-note-tag danger">sera SUPPRIMÉE de HubSpot</span>}
