@@ -3123,7 +3123,6 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onReassign }
   const [filter,setFilter]=React.useState('all'); // 'all' | closerId
   React.useEffect(()=>{ let on=true; SB.from('profiles').select('id,name,role').then(({data})=>{ if(on) setClosers((data||[]).filter(p=>p.role==='closer')); }); return ()=>{on=false;}; },[]);
 
-  const ACTIVE=['contacter','perso','atc','rdv1','contacte','qualifie','closing','encaisser'];
   const items=React.useMemo(()=>{
     const now=Date.now(); const out=[];
     for(const l of (leads||[])){
@@ -3133,14 +3132,10 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onReassign }
       // 2) actions ajoutées non cochées
       (l.extraActions||[]).forEach((a,i)=>{ if(a&&a.label&&a.label.trim()&&!a.done)
         out.push({ key:l.id+':x'+i, kind:'action', lead:l, label:a.label, due:a.due_at||null, onCheck:()=>onToggleExtra(l,i) }); });
-      // 3) RDV à venir
+      // 3) RDV à venir (miroir de la section RENDEZ-VOUS de la fiche)
       const rdv = (l.calendiqRdv && new Date(l.calendiqRdv.start_at).getTime()>=now-3600000) ? l.calendiqRdv : null;
       if(rdv) out.push({ key:l.id+':rdv', kind:'rdv', lead:l, label:'RDV · '+cqTime(rdv.start_at), due:rdv.start_at, meet:rdv.meet_link||null });
-      // 4) relance : no-show ou lead chaud (colonnes actives), sans RDV à venir
-      else if(ACTIVE.includes(l.column)){
-        if(l.noShow) out.push({ key:l.id+':rel', kind:'relance', lead:l, label:'No-show → rappeler', due:null });
-        else if(l.heat==='chaud') out.push({ key:l.id+':rel', kind:'relance', lead:l, label:'Lead chaud à rappeler', due:null });
-      }
+      // PAS de relance auto (no-show / lead chaud) : la page reflète UNIQUEMENT les actions+RDV de la fiche -> zéro doublon, zéro ligne inventée.
     }
     return (filter==='all') ? out : out.filter(it=>it.lead.owner===filter);
   },[leads,filter,onToggleAction,onToggleExtra]);
