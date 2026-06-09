@@ -879,6 +879,30 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .login-msg.ok{background:var(--ok-tint); color:var(--ok)}
 .login-switch{margin-top:4px; font-size:12.5px; color:var(--t2); font-weight:600; background:none}
 .login-switch:hover{color:var(--accent)}
+/* ===== ONBOARDING CLOSER ===== */
+.onb-wrap{height:100vh; display:grid; place-items:center; background:var(--page); padding:20px; animation:fade .25s ease}
+.onb-card{width:444px; max-width:100%; background:var(--surface); border:1px solid var(--b1); border-radius:20px; box-shadow:var(--sh-pop); padding:32px 32px 24px; display:flex; flex-direction:column; align-items:center; text-align:center; animation:pop .3s ease}
+.onb-logo{width:118px; height:auto; margin-bottom:18px}
+.onb-steps{display:flex; align-items:center; gap:7px; margin-bottom:22px}
+.onb-dot{width:8px; height:8px; border-radius:50%; background:var(--b2); transition:all var(--speed)}
+.onb-dot.on{background:var(--accent); width:22px; border-radius:5px}
+.onb-dot.done{background:var(--accent)}
+.onb-ic{width:60px; height:60px; border-radius:17px; background:var(--accent-tint); color:var(--accent); display:grid; place-items:center; margin-bottom:16px}
+.onb-ic svg{width:30px; height:30px}
+.onb-ic.ok{background:var(--ok-tint); color:var(--ok)}
+.onb-card h2{font-family:'Gabarito',system-ui,sans-serif; font-size:23px; font-weight:800; letter-spacing:-.02em; margin-bottom:8px}
+.onb-card p{color:var(--t3); font-size:13.5px; line-height:1.6; margin:0 0 16px; max-width:344px}
+.onb-card .login-input{width:100%; text-align:center}
+.onb-err{font-size:12.5px; color:var(--danger); background:var(--danger-tint); padding:9px 12px; border-radius:9px; width:100%; margin-top:8px; font-weight:500}
+.onb-card .btn-accent{width:100%; justify-content:center; gap:7px; padding:13px; margin-top:14px; font-size:14px}
+.onb-card .btn-accent svg{width:17px; height:17px}
+.onb-hint{font-size:12px; color:var(--t3); margin-top:14px; line-height:1.55}
+.onb-hint a{color:var(--accent); font-weight:600}
+.onb-foot{margin-top:18px}
+.onb-foot button{font-size:12px; color:var(--t3); font-weight:500; background:none; cursor:pointer}
+.onb-foot button:hover{color:var(--t2)}
+.onb-spin{width:42px; height:42px; border-radius:50%; border:3px solid var(--b2); border-top-color:var(--accent); animation:iqspin .8s linear infinite; margin-bottom:18px}
+.onb-count{font-size:38px; font-weight:800; color:var(--accent); font-family:'Gabarito',system-ui,sans-serif; line-height:1; display:block; margin-bottom:4px}
 
 /* ---- filtre par source : sélecteur unique (colonne « Lead à contacter ») ---- */
 .srcdd{position:relative; padding:0 2px 10px}
@@ -2962,13 +2986,96 @@ function persistedState(key,fallback){
   try{ const v=localStorage.getItem(key); return v!==null?JSON.parse(v):fallback; }catch(e){ return fallback; }
 }
 
+/* ============================================================= ONBOARDING CLOSER
+   1ère connexion d'un closer sans CalendIQ : on force la connexion en 2 écrans
+   (Bienvenue + Connecter → Import + C'est prêt). Bam : il connecte, il a ses leads. */
+function Onboarding({ profile, onConnect, loadCalendiq, myLeadsCount, onFinish, onLogout }){
+  const [step,setStep]=useState('connect'); // 'connect' | 'done'
+  const [v,setV]=useState('');
+  const [busy,setBusy]=useState(false);
+  const [err,setErr]=useState(null);
+  const [importing,setImporting]=useState(true);
+  const first=((profile&&profile.name)||'').trim().split(' ')[0]||'closer';
+
+  const connect=async()=>{
+    if(!v.trim()||busy) return; setBusy(true); setErr(null);
+    try{ await onConnect(v); setStep('done'); }
+    catch(e){ setErr(e.message||'Connexion impossible'); setBusy(false); }
+  };
+  // écran 'done' : on récupère les RDV (et min. 1,4 s pour que ça respire)
+  useEffect(()=>{
+    if(step!=='done') return;
+    let alive=true; setImporting(true);
+    Promise.all([
+      Promise.resolve(loadCalendiq&&loadCalendiq()).catch(()=>{}),
+      new Promise(r=>setTimeout(r,1400)),
+    ]).then(()=>{ if(alive) setImporting(false); });
+    return ()=>{alive=false;};
+  },[step,loadCalendiq]);
+
+  const logo=(
+    <svg viewBox="0 0 208 58" className="onb-logo" aria-label="IQ Project">
+      <rect x="0" y="7" width="60" height="44" rx="9" fill="#f35c04"/>
+      <text x="30" y="40" textAnchor="middle" fill="#fff" fontFamily="Gabarito, system-ui, sans-serif" fontWeight="900" fontSize="30" letterSpacing="-1">IQ</text>
+      <text x="69" y="40" fill="var(--t1)" fontFamily="Gabarito, system-ui, sans-serif" fontWeight="800" fontSize="30" letterSpacing="-1">Project.</text>
+    </svg>
+  );
+
+  return (
+    <div className="onb-wrap">
+      <div className="onb-card">
+        {logo}
+        <div className="onb-steps">
+          <span className={'onb-dot '+(step==='connect'?'on':'done')}></span>
+          <span className={'onb-dot '+(step==='done'?'on':'')}></span>
+        </div>
+
+        {step==='connect' && (<>
+          <div className="onb-ic">{I.calPlus({})}</div>
+          <h2>Bienvenue, {first}</h2>
+          <p>Une étape et c’est parti. Connecte ton agenda CalendIQ : tous tes rendez-vous et tes leads remontent ici, automatiquement.</p>
+          <input className="login-input" placeholder="https://calendiq.lovable.app/cal/ton-nom" value={v} autoFocus
+            onChange={e=>setV(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') connect(); }}/>
+          {err && <div className="onb-err">{err}</div>}
+          <button className="btn btn-accent" disabled={busy||!v.trim()} onClick={connect}>{busy?'Connexion…':'Connecter mon agenda'}</button>
+          <div className="onb-hint">Ton lien est dans CalendIQ → <b>Partager</b>. <a href={CALENDIQ.app} target="_blank" rel="noreferrer">Ouvrir CalendIQ</a></div>
+        </>)}
+
+        {step==='done' && (importing ? (<>
+          <div className="onb-spin"></div>
+          <h2>On récupère tes rendez-vous…</h2>
+          <p>Quelques secondes — on relie tes RDV CalendIQ à tes leads.</p>
+        </>) : (<>
+          <div className="onb-ic ok">{I.check({})}</div>
+          <h2>Tout est prêt, {first}</h2>
+          {myLeadsCount>0
+            ? <p><span className="onb-count">{myLeadsCount}</span>lead{myLeadsCount>1?'s':''} {myLeadsCount>1?'t’attendent':'t’attend'} dans ton cockpit.</p>
+            : <p>Ton cockpit est prêt. Tes prochains rendez-vous apparaîtront ici dès qu’ils sont pris dans CalendIQ.</p>}
+          <button className="btn btn-accent" onClick={onFinish}>Entrer dans mon cockpit{I.arrowR({})}</button>
+        </>))}
+
+        <div className="onb-foot"><button onClick={onLogout}>Ce n’est pas toi ? Se déconnecter</button></div>
+      </div>
+    </div>
+  );
+}
+
 function App({session, onLogout}){
   const userEmail = session.user.email;
   const userId = session.user.id;
   const isDev = userId===DEV_ID;
   const [profile,setProfile]=useState(isDev?{role:'admin',name:'Manager (dev)'}:null);
-  useEffect(()=>{ if(isDev) return; let alive=true; SB.from('profiles').select('role,name,calendiq_slug,calendiq_organizer_id,calendiq_name').eq('id',userId).single().then(({data})=>{ if(alive&&data) setProfile(data); }); return ()=>{alive=false;}; },[userId,isDev]);
+  const [profileLoaded,setProfileLoaded]=useState(isDev); // true dès que la requête profil a répondu (succès, vide OU erreur) — jamais de blocage
+  useEffect(()=>{ if(isDev) return; let alive=true;
+    SB.from('profiles').select('role,name,calendiq_slug,calendiq_organizer_id,calendiq_name').eq('id',userId).single()
+      .then(({data})=>{ if(!alive) return; setProfile(data||{role:'closer'}); setProfileLoaded(true); })
+      .catch(()=>{ if(!alive) return; setProfile({role:'closer'}); setProfileLoaded(true); });
+    return ()=>{alive=false;}; },[userId,isDev]);
   const isAdmin = (profile?.role||'closer')==='admin';
+  // onboarding : un closer sans CalendIQ doit le connecter avant d'entrer (puis il a ses leads)
+  const [onbActive,setOnbActive]=useState(false);
+  const [onbDone,setOnbDone]=useState(false);
+  useEffect(()=>{ if(!isDev && profile && !isAdmin && !profile.calendiq_organizer_id && !onbDone) setOnbActive(true); },[profile,isAdmin,isDev,onbDone]);
   const [leads,setLeads]=useState([]);
   const [loaded,setLoaded]=useState(false);
   const [screen,setScreen]=useState(()=>{ const s=persistedState('iqcrm_screen','leads'); return ['leads','fiche','agenda','team','console'].includes(s)?s:'leads'; });
@@ -3134,6 +3241,7 @@ function App({session, onLogout}){
     });
   },[leads,cqMeetings]);
   const sel = leadsCq.find(l=>l.id===selId);
+  const myLeadsCount = useMemo(()=>leadsCq.filter(l=>l.owner===userId||l._cqCloserId===userId).length,[leadsCq,userId]);
   // défaut de la vue selon le rôle (une fois le profil chargé) : closer = Mes leads, admin = Global
   useEffect(()=>{ if(view==null && profile) setView(isAdmin?'global':'mine'); },[profile,isAdmin,view]);
   // ATTRIBUTION AUTO : un RDV CalendIQ calé pour un lead -> il revient au closer (owner) + passe « 1er RDV pris ».
@@ -3407,6 +3515,13 @@ function App({session, onLogout}){
   ];
   useEffect(()=>{ if(!isAdmin && (screen==='team'||screen==='console')) setScreen('leads'); },[isAdmin,screen]);
   const navActive = screen==='fiche'?'leads':screen;
+
+  // splash bref UNIQUEMENT pendant la requête profil (évite un flash board/nav) ; ne bloque jamais après réponse
+  if(!isDev && !profileLoaded) return <div className="onb-wrap"><div className="onb-spin"></div></div>;
+  // gate onboarding : connexion CalendIQ obligatoire avant d'entrer
+  if(onbActive) return <Onboarding profile={profile} onConnect={connectCalendiq} loadCalendiq={loadCalendiq}
+    myLeadsCount={myLeadsCount} onLogout={onLogout}
+    onFinish={()=>{ setView('mine'); setScreen('leads'); setOnbActive(false); setOnbDone(true); }}/>;
 
   return (
     <div className="app">
