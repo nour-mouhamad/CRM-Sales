@@ -838,10 +838,10 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .rdvcard-ic svg{width:18px; height:18px; stroke-width:2}
 .rdvcard-info{min-width:0; display:flex; flex-direction:column; gap:3px}
 .rdvcard-info b{font-size:14px; font-weight:700; letter-spacing:-.01em; color:var(--t1); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-transform:capitalize}
-.rdvcard-info > span{display:inline-flex; align-items:center; gap:5px; font-size:12px; color:var(--t2); font-variant-numeric:tabular-nums}
+.rdvcard-info > span{display:inline-flex; align-items:center; gap:5px; font-size:12px; color:var(--t2); font-variant-numeric:tabular-nums; white-space:nowrap}
 .rdvcard-info > span svg{width:13px; height:13px; opacity:.7}
-.rdvcard-actions{display:flex; align-items:center; gap:8px}
-.rdvcard-join{display:inline-flex; align-items:center; justify-content:center; gap:6px; height:34px; padding:0 16px; border-radius:9px; background:var(--accent-tint); color:var(--accent); font-size:13px; font-weight:700; text-decoration:none; cursor:pointer; transition:background var(--speed),color var(--speed)}
+.rdvcard-actions{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.rdvcard-join{flex:1 0 100%; display:inline-flex; align-items:center; justify-content:center; gap:6px; height:36px; padding:0 16px; border-radius:9px; background:var(--accent-tint); color:var(--accent); font-size:13px; font-weight:700; white-space:nowrap; text-decoration:none; cursor:pointer; transition:background var(--speed),color var(--speed)}
 .rdvcard-join:hover{background:var(--accent); color:var(--on-accent)}
 .rdvcard-join svg{width:15px; height:15px}
 .rdvcard-tools{display:flex; gap:8px; margin-left:auto}
@@ -868,8 +868,8 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 /* prompt « que s'est-il passé ? » */
 .rdv-ask{font-size:12px; font-weight:600; color:var(--warm); padding:1px 1px 0}
 /* boutons résultat (présent / no-show) */
-.rdv-oc{display:inline-flex; gap:7px}
-.rdv-oc-btn{display:inline-flex; align-items:center; gap:6px; height:32px; padding:0 13px; border-radius:9px; border:1.5px solid var(--b1); background:var(--surface); color:var(--t2); font-size:12.5px; font-weight:700; cursor:pointer; transition:all var(--speed)}
+.rdv-oc{display:flex; flex:1 1 auto; gap:7px; min-width:0}
+.rdv-oc-btn{flex:1 1 0; min-width:0; display:inline-flex; align-items:center; justify-content:center; gap:6px; height:34px; padding:0 12px; border-radius:9px; border:1.5px solid var(--b1); background:var(--surface); color:var(--t2); font-size:12.5px; font-weight:700; white-space:nowrap; cursor:pointer; transition:all var(--speed)}
 .rdv-oc-btn svg{width:14px; height:14px; stroke-width:2.4}
 .rdv-oc-btn.present:hover{border-color:var(--ok); color:var(--ok); background:var(--ok-tint)}
 .rdv-oc-btn.noshow:hover{border-color:var(--danger); color:var(--danger); background:var(--danger-tint)}
@@ -877,7 +877,7 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .rdv-oc.prom .rdv-oc-btn.present{border-color:var(--ok); color:var(--ok)}
 .rdv-oc.prom .rdv-oc-btn.noshow{border-color:var(--danger); color:var(--danger)}
 /* corriger le résultat */
-.rdv-redo{display:inline-flex; align-items:center; gap:6px; height:32px; padding:0 11px; border-radius:9px; background:none; border:1px solid transparent; color:var(--t3); font-size:12px; font-weight:600; cursor:pointer; transition:all var(--speed)}
+.rdv-redo{display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 11px; border-radius:9px; background:none; border:1px solid transparent; color:var(--t3); font-size:12px; font-weight:600; white-space:nowrap; cursor:pointer; transition:all var(--speed)}
 .rdv-redo:hover{color:var(--t1); background:var(--surface-2)}
 .rdv-redo svg{width:13px; height:13px}
 
