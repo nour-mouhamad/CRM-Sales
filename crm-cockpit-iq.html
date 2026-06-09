@@ -2744,16 +2744,14 @@ function PaymentModal({lead, onClose, onSend}){
   const amount = offer?offer.amount:0;
   const link = offer ? (offer.link||'') : ''; // vrai Stripe Payment Link de l'offre
   const hasEmail = !!(lead.email||'').trim();
-  const defSubject = 'Ton accès — Bootcamp Closing / Vente · IQ Project';
+  const defSubject = 'Bootcamp IQ Project';
   const defBody = (o)=>
 `Bonjour ${lead.prenom},
 
 Ravi de notre échange. Comme convenu, voici ton lien sécurisé pour valider ta place à l'édition du 15 juin (8 sessions / 2 semaines, hybride — 136 rue d'Aboukir, Paris 2e + distanciel) :
 
 ${o.link||'[lien de paiement — à configurer]'}
-
-Montant : ${eur(o.amount)} — reste à charge ${o.tag.includes('Non')?'(salarié / activité)':'(demandeur d\'emploi)'}.
-Le solde est pris en charge par ton CPF, géré de A à Z par notre équipe admission.
+Montant : ${eur(o.amount)}
 
 À très vite,`;
   const [subject,setSubject]=useState(defSubject);
