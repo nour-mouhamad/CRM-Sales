@@ -216,6 +216,11 @@ input,textarea{font-family:inherit; color:inherit}
 .card.drop-before::before,.card.drop-after::after{content:''; position:absolute; left:0; right:0; height:3px; background:var(--accent); border-radius:3px; box-shadow:0 0 0 3px var(--accent-tint)}
 .card.drop-before::before{top:-6px}
 .card.drop-after::after{bottom:-6px}
+/* perf : les cartes hors écran skippent style/layout/paint (~90% des ~950 cartes) ; `auto` mémorise la taille réelle après 1er rendu */
+.card{content-visibility:auto; contain-intrinsic-size:auto 100px}
+/* exception OBLIGATOIRE : content-visibility implique contain:paint, qui clipperait l'indicateur de drop (::before/::after à -6px hors de la box) */
+.card.dragging,.card.drop-before,.card.drop-after{content-visibility:visible}
+.col-body{contain:layout style}
 .card-top{display:flex; gap:10px; align-items:flex-start}
 .card-id{min-width:0; flex:1}
 .card-name{font-weight:700; font-size:14px; letter-spacing:-.02em; display:flex; align-items:center; gap:6px; flex-wrap:wrap}
@@ -1306,15 +1311,23 @@ async function cqBookMeeting(organizerId, m){
 // helpers d'affichage agenda
 function cqDayKey(iso){ const d=new Date(iso); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function cqSameDay(a,b){ return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate(); }
+// formatters hoistés : 1 construction Intl par session au lieu d'1 par appel (~50x) — sortie identique au caractère près
+const CQ_FMT_DAY=new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+const CQ_FMT_TIME=new Intl.DateTimeFormat('fr-FR',{hour:'2-digit',minute:'2-digit'});
 function cqDayLabel(iso){
   const d=new Date(iso), now=new Date(), tom=new Date(); tom.setDate(now.getDate()+1);
   if(cqSameDay(d,now)) return "Aujourd'hui";
   if(cqSameDay(d,tom)) return 'Demain';
-  return d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  return isNaN(d)?'Invalid Date':CQ_FMT_DAY.format(d); // parité : toLocaleDateString rendait "Invalid Date" (format() jetterait)
 }
-function cqTime(iso){ try{ return new Date(iso).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+function cqTime(iso){ try{ const d=new Date(iso); return isNaN(d)?'Invalid Date':CQ_FMT_TIME.format(d); }catch(e){ return ''; } }
 // téléphone -> 9 derniers chiffres (matche +33 6… et 06…)
 function cqPhoneKey(p){ const d=(p||'').replace(/\D/g,''); return d.length>=9?d.slice(-9):''; }
+// égalité de CONTENU (ordre ignoré, tri par id avant comparaison) — évite de pousser un tableau neuf
+// identique à chaque poll 20 s (sinon : cascade leadsCq -> objets lead neufs -> re-render des ~950 cartes)
+function cqSameData(a,b){ if(a===b) return true; if(!Array.isArray(a)||!Array.isArray(b)||a.length!==b.length) return false;
+  const k=x=>JSON.stringify(x.slice().sort((m,n)=>String(m.id)<String(n.id)?-1:String(m.id)>String(n.id)?1:0));
+  return k(a)===k(b); }
 function cqGroupByDay(list){
   const g=[], idx={};
   list.forEach(m=>{ const k=cqDayKey(m.start_at); if(idx[k]===undefined){ idx[k]=g.length; g.push({key:k,label:cqDayLabel(m.start_at),items:[]}); } g[idx[k]].items.push(m); });
@@ -1469,7 +1482,8 @@ const I = {
 };
 
 /* ============================================================= HELPERS */
-const eur = (n)=> new Intl.NumberFormat('fr-FR').format(n) + ' €';
+const EUR_FMT = new Intl.NumberFormat('fr-FR'); // hoisté : 1 construction par session au lieu d'1 par appel — sortie identique
+const eur = (n)=> EUR_FMT.format(n) + ' €';
 const initials = (l)=>{
   const a=((l.prenom||'').trim()[0]||''), b=((l.nom||'').trim()[0]||'');
   return ((a+b).toUpperCase()) || ((l.email||'?')[0].toUpperCase());
@@ -2052,25 +2066,38 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
     return c;
   },[leads]);
 
-  const visible = useMemo(()=> leads.filter(l=>{
-    // vue « Mes leads » = lead qui m'appartient OU dont un RDV CalendIQ est calé avec moi (option B)
-    if(view==='mine' && !(l.owner===userId || l._cqCloserId===userId)) return false;
-    if(search.trim()){
-      const q=deburr(search.trim());
-      if(!deburr(`${l.prenom} ${l.nom} ${l.metier} ${l.email} ${l.tel}`).includes(q)) return false;
-    }
-    return true;
-  }),[leads,search,view,userId]);
+  // index de recherche pré-normalisé : 1 deburr par lead par changement de DATA (au lieu de ~950 par frappe) — mêmes 5 champs, mêmes résultats
+  const hay = useMemo(()=>{ const m=new Map(); for(const l of leads) m.set(l, deburr(`${l.prenom} ${l.nom} ${l.metier} ${l.email} ${l.tel}`)); return m; },[leads]);
+  const visible = useMemo(()=>{
+    const q = search.trim() ? deburr(search.trim()) : '';
+    return leads.filter(l=>{
+      // vue « Mes leads » = lead qui m'appartient OU dont un RDV CalendIQ est calé avec moi (option B)
+      if(view==='mine' && !(l.owner===userId || l._cqCloserId===userId)) return false;
+      if(q && !hay.get(l).includes(q)) return false;
+      return true;
+    });
+  },[leads,hay,search,view,userId]);
 
   // handlers STABLES (useCallback) + regroupement mémoïsé : avec ~949 cartes, seules
   // les cartes réellement concernées (carte tirée / survolée) se re-rendent pendant un drag.
-  const handleCardDragOver=useCallback((cardId,pos,colId)=>{ setOver({cardId,pos}); setOverCol(c=>c!==colId?colId:c); },[]);
+  // guard d'égalité : dragover fire à 60-125/s — sans lui, chaque événement pousse un objet NEUF
+  // (même cardId/pos) -> re-render complet du Board par événement = LE lag du drag. Mêmes valeurs, zéro render redondant.
+  const handleCardDragOver=useCallback((cardId,pos,colId)=>{ setOver(o=>(o&&o.cardId===cardId&&o.pos===pos)?o:{cardId,pos}); setOverCol(c=>c!==colId?colId:c); },[]);
   const startDrag=useCallback((id)=>setDragId(id),[]);
   const endDrag=useCallback(()=>{ setDragId(null); setOverCol(null); setOver(null); },[]);
-  const openCard=useCallback((id)=>onOpenLead(id),[onOpenLead]);
+  // latest-ref : openCard/delCard gardent la MÊME identité même quand App re-rend (frappe, toast, poll)
+  // -> le React.memo des ~950 cartes tient (openLead/deleteLead sont recréés à chaque render d'App).
+  const onOpenRef=useRef(onOpenLead); onOpenRef.current=onOpenLead;
+  const onDeleteRef=useRef(onDelete); onDeleteRef.current=onDelete;
+  const openCard=useCallback((id)=>onOpenRef.current(id),[]);
+  const delCard=useCallback((id)=>onDeleteRef.current(id),[]);
   // ordre chronologique d'apparition : le plus RÉCENT d'abord, dans TOUTES les colonnes (tri par date_creation desc, id en départage)
-  const byDateDesc=(a,b)=>{ const da=a.date_creation?Date.parse(a.date_creation):0, db=b.date_creation?Date.parse(b.date_creation):0; if(db!==da) return db-da; return String(b.id).localeCompare(String(a.id)); };
-  const byCol=useMemo(()=>{ const m={}; for(const c of COLUMNS) m[c.id]=[]; visible.forEach(l=>{ (m[l.column]||(m[l.column]=[])).push(l); }); for(const k in m) m[k].sort(byDateDesc); return m; },[visible]);
+  // timestamps précalculés : 1 Date.parse par lead au lieu d'1 par comparaison du sort — ordre strictement identique
+  const byCol=useMemo(()=>{
+    const ts=new Map(); for(const l of visible) ts.set(l, l.date_creation?Date.parse(l.date_creation):0);
+    const byDateDesc=(a,b)=>{ const da=ts.get(a), db=ts.get(b); if(db!==da) return db-da; return String(b.id).localeCompare(String(a.id)); };
+    const m={}; for(const c of COLUMNS) m[c.id]=[]; visible.forEach(l=>{ (m[l.column]||(m[l.column]=[])).push(l); }); for(const k in m) m[k].sort(byDateDesc); return m;
+  },[visible]);
 
   const dropOn=(e,colId)=>{
     e.preventDefault();
@@ -2152,7 +2179,7 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
                       onOpen={openCard}
                       onDragStart={startDrag}
                       onDragEnd={endDrag}
-                      onDelete={onDelete}/>
+                      onDelete={delCard}/>
                   ))}
                 </div>
               </div>
@@ -3371,12 +3398,13 @@ function App({session, onLogout}){
         sources=[{ id:userId, name:profile.name||profile.calendiq_name||'Moi', organizer:profile.calendiq_organizer_id, slug:profile.calendiq_slug }];
       }
     }catch(e){ /* admin sans droit / réseau : on retombe sur vide */ }
-    setCqSources(sources);
-    if(!sources.length){ setCqMeetings([]); setCqError(null); return; }
+    setCqSources(prev=> cqSameData(prev,sources)?prev:sources); // identité préservée si contenu identique -> zéro cascade
+    if(!sources.length){ setCqMeetings(prev=>prev.length?[]:prev); setCqError(null); return; }
     setCqLoading(true);
     try{
       const arrs=await Promise.all(sources.map(s=>cqMeetingsFor(s.organizer).then(ms=>(ms||[]).map(m=>({...m,_closerName:s.name,_closerId:s.id}))).catch(()=>[])));
-      setCqMeetings(arrs.flat()); setCqError(null);
+      const next=arrs.flat();
+      setCqMeetings(prev=> cqSameData(prev,next)?prev:next); setCqError(null); // poll sans changement = même tableau -> leadsCq/board intacts
     }catch(e){ setCqError(e.message||'lecture impossible'); }
     finally{ setCqLoading(false); }
   },[isAdmin,profile,userId]);
