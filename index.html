@@ -105,6 +105,7 @@ input,textarea{font-family:inherit; color:inherit}
 }
 .nav-badge{margin-left:auto; font-size:11px; font-weight:700; background:var(--accent); color:var(--on-accent);
   border-radius:99px; min-width:19px; height:19px; padding:0 6px; display:grid; place-items:center}
+.nav-badge.warn{background:var(--danger)}
 .nav-item.soon{opacity:.4; cursor:not-allowed}
 .nav-item.soon:hover{background:transparent; color:var(--t2)}
 .nav-soon{margin-left:auto; font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--t3); background:var(--surface-3); border-radius:6px; padding:2px 7px; opacity:0; transition:opacity var(--speed)}
@@ -3805,10 +3806,28 @@ function App({session, onLogout}){
 
   const rappelerCount = useMemo(()=> leads.filter(l=>l.owner===userId && ['contacter','perso','atc','rdv1','contacte','qualifie','closing','encaisser'].includes(l.column) && (l.heat==='chaud'||l.noShow)).length,[leads,userId]);
 
+  // NOTIFICATION SYNCHRO : badge « changements en attente » (sortants + entrants + conflits + disparus) sur le nav.
+  // Alimenté par le diff en cache + un rafraîchissement de fond (admin only, LECTURE SEULE HubSpot, throttlé 60s,
+  // au focus + toutes les 5 min tant que l'onglet est visible). N'écrit JAMAIS dans HubSpot (action 'diff' = lecture).
+  const [syncPending,setSyncPending]=useState(0);
+  const [syncWarn,setSyncWarn]=useState(false);
+  useEffect(()=>{
+    if(!isAdmin) return;
+    const recompute=()=>{ const d=CONSOLE_CACHE.data; if(!d){ setSyncPending(0); setSyncWarn(false); return; }
+      const c=(d.conflits||[]).length+(d.disparus||[]).length;
+      setSyncPending((d.sortants||[]).length+(d.entrants||[]).length+c); setSyncWarn(c>0); };
+    CONSOLE_CACHE.subs.add(recompute); recompute();
+    const tick=()=>{ if(document.visibilityState!=='visible') return; const now=Date.now(); if(now-(CONSOLE_CACHE.lastBg||0)<60000) return; CONSOLE_CACHE.lastBg=now; consoleLoad(true); };
+    tick();
+    const timer=setInterval(tick,300000);
+    window.addEventListener('focus',tick); document.addEventListener('visibilitychange',tick);
+    return ()=>{ CONSOLE_CACHE.subs.delete(recompute); clearInterval(timer); window.removeEventListener('focus',tick); document.removeEventListener('visibilitychange',tick); };
+  },[isAdmin]);
+
   const navItems=[
     {id:'leads', label:'Mes leads', icon:I.leads, badge:rappelerCount},
     {id:'agenda', label:'Agenda', icon:I.agenda, soon:true},
-    ...(isAdmin?[{id:'todo', label:'À faire', icon:I.check},{id:'team', label:'Closers', icon:I.users},{id:'console', label:'Synchro HubSpot', icon:I.sync}]:[]),
+    ...(isAdmin?[{id:'todo', label:'À faire', icon:I.check},{id:'team', label:'Closers', icon:I.users},{id:'console', label:'Synchro HubSpot', icon:I.sync, badge:syncPending||null, badgeWarn:syncWarn}]:[]),
   ];
   useEffect(()=>{ if(!isAdmin && (screen==='team'||screen==='console'||screen==='todo')) setScreen('leads'); },[isAdmin,screen]);
   const navActive = screen==='fiche'?'leads':screen;
@@ -3834,7 +3853,7 @@ function App({session, onLogout}){
         </div>
         {navItems.map(n=>(
           <button key={n.id} className={`nav-item ${navActive===n.id?'active':''} ${n.soon?'soon':''}`} onClick={()=>{ if(n.soon) return; setScreen(n.id); }} aria-disabled={n.soon?true:undefined} title={n.soon?'Bientôt disponible':undefined}>
-            {n.icon({})}<span>{n.label}</span>{n.soon?<span className="nav-soon">Bientôt</span>:(n.badge?<span className="nav-badge">{n.badge}</span>:null)}
+            {n.icon({})}<span>{n.label}</span>{n.soon?<span className="nav-soon">Bientôt</span>:(n.badge?<span className={`nav-badge ${n.badgeWarn?'warn':''}`}>{n.badge}</span>:null)}
           </button>
         ))}
         <div className="rail-spacer"></div>
