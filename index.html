@@ -3404,8 +3404,17 @@ function App({session, onLogout}){
     if(!sources.length){ setCqMeetings(prev=>prev.length?[]:prev); setCqError(null); return; }
     setCqLoading(true);
     try{
-      const arrs=await Promise.all(sources.map(s=>cqMeetingsFor(s.organizer).then(ms=>(ms||[]).map(m=>({...m,_closerName:s.name,_closerId:s.id}))).catch(()=>[])));
-      const next=arrs.flat();
+      // Pont CalendIQ -> CRM : la lecture anonyme directe de CalendIQ est (à juste titre) verrouillée.
+      // On rafraîchit le miroir via l'edge function (session authentifiée, refresh token géré côté serveur),
+      // puis on lit la table miroir crm-sales (calendiq_meetings). Booking/annulation restent directs CalendIQ.
+      try{ await SB.functions.invoke('calendiq-pull'); }catch(e){ /* on lit le miroir même si le refresh échoue */ }
+      const orgIds=sources.map(s=>s.organizer);
+      const byOrg={}; sources.forEach(s=>{ byOrg[s.organizer]={id:s.id,name:s.name}; });
+      const { data, error } = await SB.from('calendiq_meetings')
+        .select('id,organizer_id,title,start_at,duration_minutes,booker_name,booker_email,booker_phone,status,meet_link,payment_status')
+        .in('organizer_id', orgIds);
+      if(error) throw error;
+      const next=(data||[]).map(m=>{ const c=byOrg[m.organizer_id]||{}; return {...m,_closerName:c.name||'Closer',_closerId:c.id||null}; });
       setCqMeetings(prev=> cqSameData(prev,next)?prev:next); setCqError(null); // poll sans changement = même tableau -> leadsCq/board intacts
     }catch(e){ setCqError(e.message||'lecture impossible'); }
     finally{ setCqLoading(false); }
