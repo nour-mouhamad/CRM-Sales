@@ -106,6 +106,10 @@ input,textarea{font-family:inherit; color:inherit}
 .nav-badge{margin-left:auto; font-size:11px; font-weight:700; background:var(--accent); color:var(--on-accent);
   border-radius:99px; min-width:19px; height:19px; padding:0 6px; display:grid; place-items:center}
 .nav-badge.warn{background:var(--danger)}
+.hs-info{display:flex; flex-direction:column; gap:5px; margin-top:2px}
+.hs-info-row{display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:13px}
+.hs-info-row span{color:var(--t3); font-weight:500}
+.hs-info-row b{color:var(--t1); font-weight:600; text-align:right}
 .nav-item.soon{opacity:.4; cursor:not-allowed}
 .nav-item.soon:hover{background:transparent; color:var(--t2)}
 .nav-soon{margin-left:auto; font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--t3); background:var(--surface-3); border-radius:6px; padding:2px 7px; opacity:0; transition:opacity var(--speed)}
@@ -1369,6 +1373,7 @@ function dbToLead(r, acts){
     nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, nextActionDue:r.next_action_due||null, extraActions:Array.isArray(r.extra_actions)?r.extra_actions:[], live:false, noShow,
     offer:(r.montant==null||r.montant==='')?0:(Number(r.montant)||0), aPayer:(r.montant_a_payer==null?'':r.montant_a_payer), quiPaie:r.qui_paie||'', paid:r.statut_paiement==='paye', statut_paiement:r.statut_paiement||'aucun',
     cpf:(Number(r.cpf_dispo)||0), metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'',
+    poste:r.poste||'', entreprise:r.entreprise||'', ville:r.ville||'', montantHt:(r.montant_ht==null?null:Number(r.montant_ht)), dateFermeture:r.date_fermeture||null,
     rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, rdvMeetLink:r.rdv_meet_link||null, rdvMeta, hubspot_deal_id:r.hubspot_deal_id||null, date_creation:r.date_creation||null, hsImport:r.hs_import||null,
     timeline:actsToTimeline(acts2)
   };
@@ -2285,6 +2290,13 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
                 <span className="eyebrow">Source du lead</span>
                 <div className="val" style={{fontWeight:700}}>{si.label}</div>
               </div>
+              {(()=>{ const hs=[['Poste',lead.poste],['Entreprise',lead.entreprise],['Ville',lead.ville],['Montant HT',lead.montantHt!=null?eur(lead.montantHt):''],['CPF dispo',lead.cpf?eur(lead.cpf):''],['Date de fermeture',lead.dateFermeture]].filter(x=>x[1]!=null && String(x[1]).trim()!=='');
+                return hs.length ? (
+                  <div className="field">
+                    <span className="eyebrow">Infos HubSpot</span>
+                    <div className="hs-info">{hs.map(([k,v],i)=>(<div key={i} className="hs-info-row"><span>{k}</span><b>{v}</b></div>))}</div>
+                  </div>
+                ) : null; })()}
               <ManualRdvField lead={lead} calendiqRdvs={lead.rdvs||[]}
                 onCalModify={calendiqReady?openEditRdv:null}
                 onCalCancel={calendiqReady?(rdv=>{ if(window.confirm('Annuler ce RDV dans CalendIQ ? Le créneau Google + l’email d’annulation seront gérés par CalendIQ.')) onCancelRdv(rdv.id); }):null}
@@ -4093,8 +4105,8 @@ function TeamScreen({ userId, toast, leads, onOpenLead }){
 /* ====================== CONSOLE SYNCHRO HUBSPOT (admin) ====================== */
 // Page de contrôle : la fonction Edge 'hubspot-sync' calcule le diff (Sortants / Entrants / Conflits) et exécute
 // les écritures. Ici on AFFICHE et on déclenche — le navigateur n'envoie que des décisions (jamais de champ brut).
-const SYNC_FK = { dealstage:'Étape', colonne:'Étape', amount:'Montant', montant:'Montant', qui_paie:'Qui paie ?', qui_paie__:'Qui paie ?', firstname:'Prénom', prenom:'Prénom', lastname:'Nom', nom:'Nom', email:'Email', phone:'Téléphone', telephone:'Téléphone' };
-const syncVal = (k,v)=> (v===null||v===undefined||v==='') ? '—' : ((k==='amount'||k==='montant') ? (v+' €') : String(v));
+const SYNC_FK = { dealstage:'Étape', colonne:'Étape', amount:'Montant', montant:'Montant', qui_paie:'Qui paie ?', qui_paie__:'Qui paie ?', firstname:'Prénom', prenom:'Prénom', lastname:'Nom', nom:'Nom', email:'Email', phone:'Téléphone', telephone:'Téléphone', poste:'Poste', entreprise:'Entreprise', ville:'Ville', montant_ht:'Montant HT', cpf_dispo:'CPF dispo', date_fermeture:'Date de fermeture' };
+const syncVal = (k,v)=> (v===null||v===undefined||v==='') ? '—' : ((k==='amount'||k==='montant'||k==='montant_ht'||k==='cpf_dispo') ? (v+' €') : String(v));
 // message d'échec lisible à partir du résultat serveur (stage/error)
 const failMsg = (res)=>{
   if(!res) return '';
