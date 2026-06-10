@@ -1488,9 +1488,11 @@ const initials = (l)=>{
   const a=((l.prenom||'').trim()[0]||''), b=((l.nom||'').trim()[0]||'');
   return ((a+b).toUpperCase()) || ((l.email||'?')[0].toUpperCase());
 };
-const srcLabel = {webinaire:'Webinaire','pub insta':'Pub Insta','référé':'Référé',brochure:'Brochure',MFF:'MFF'};
+const srcLabel = {webi_inscrit:'Inscrit webi',webi_participe:'Participé webi',webinaire:'Webinaire','pub insta':'Pub Insta','référé':'Référé',brochure:'Brochure',MFF:'MFF'};
 // Source d'un lead à contacter = opt-in sur le site (ou MFF). Conditionne l'angle d'ouverture.
 const SOURCE_INFO = {
+  webi_participe: {label:'Participé webi', via:'A ASSISTÉ au webinaire Vibe Coding (présent live)', angle:'Le plus chaud : il a vu la promesse en entier → ouvrir sur ce qu’il a retenu, créer le manque, closer vite (fenêtre 24h).'},
+  webi_inscrit:   {label:'Inscrit webi', via:'INSCRIT au webinaire (pas forcément venu)', angle:'Intention forte mais absent du live → re-vendre la promesse du webi avant de qualifier.'},
   webinaire: {label:'Webinaire', via:'Inscrit au webinaire Vibe Coding', angle:'Il a vu la promesse en live → ouvrir sur ce qu’il a retenu, créer le manque.'},
   lead_gen:  {label:'Lead gen', via:'Lead entrant (formulaire / page)', angle:'Qualifier l’intention : pourquoi il s’est inscrit, créer le manque.'},
   atc:       {label:'ATC', via:'Déjà tenté, sans réponse', angle:'Relancer : nouvel angle, autre créneau, garder court.'},
@@ -2053,7 +2055,7 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
   const [overCol, setOverCol] = useState(null);
   const [over, setOver] = useState(null); // {cardId, pos}
   // ATC est désormais une COLONNE à part entière -> retiré du filtre source
-  const SRC_TABS=[{k:'all',label:'Tous'},{k:'lead_gen',label:'Lead gen'},{k:'webinaire',label:'Webinaire'},{k:'mff',label:'MFF'}];
+  const SRC_TABS=[{k:'all',label:'Tous'},{k:'lead_gen',label:'Lead gen'},{k:'webi_participe',label:'Participé webi'},{k:'webi_inscrit',label:'Inscrit webi'},{k:'webinaire',label:'Webinaire'},{k:'mff',label:'MFF'}];
   const [src, setSrc] = useState(()=>{ const s=persistedState('iqcrm_src','all'); return SRC_TABS.some(o=>o.k===s)?s:'all'; }); // filtre par source (persiste)
   const [srcOpen, setSrcOpen] = useState(false); // menu du sélecteur ouvert
   useEffect(()=>localStorage.setItem('iqcrm_src',JSON.stringify(src)),[src]);
@@ -2061,7 +2063,7 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
   // compteurs par source — calculés sur la SEULE colonne « Lead à contacter »
   const srcCounts = useMemo(()=>{
     const base = leads.filter(l=>l.column==='contacter');
-    const c={all:base.length, lead_gen:0, webinaire:0, mff:0};
+    const c={all:base.length, lead_gen:0, webi_participe:0, webi_inscrit:0, webinaire:0, mff:0};
     base.forEach(l=>{ if(c[l.source]!==undefined) c[l.source]++; });
     return c;
   },[leads]);
