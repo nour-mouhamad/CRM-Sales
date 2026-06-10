@@ -1375,8 +1375,17 @@ function dbToLead(r, acts){
 
 // lecture live : LEADS seuls (léger). L'historique (activites) est chargé À LA DEMANDE à l'ouverture d'une fiche.
 async function loadLeads(){
-  const { data:rows } = await SB.from('leads').select('*').is('deleted_at', null).order('date_creation',{ascending:false});
-  return (rows||[]).map(r=>dbToLead(r, []));
+  // PAGINATION OBLIGATOIRE : PostgREST plafonne à 1000 lignes/requête. Sans ça, au-delà de 1000 leads,
+  // les plus VIEUX (tri date_creation desc) ne sont jamais chargés -> introuvables en recherche / cockpit / RDV.
+  const rows=[];
+  for(let from=0;;from+=1000){
+    const { data:page, error } = await SB.from('leads').select('*').is('deleted_at', null)
+      .order('date_creation',{ascending:false}).order('id',{ascending:false}).range(from, from+999);
+    if(error || !page || !page.length) break;
+    rows.push(...page);
+    if(page.length<1000) break;
+  }
+  return rows.map(r=>dbToLead(r, []));
 }
 // historique d'UN lead (à l'ouverture de la fiche)
 async function loadLeadTimeline(id){
