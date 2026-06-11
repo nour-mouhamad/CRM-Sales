@@ -3470,6 +3470,16 @@ function App({session, onLogout}){
     finally{ setCqLoading(false); }
   },[isAdmin,profile,userId]);
   useEffect(()=>{ loadCalendiq(); },[loadCalendiq]);
+  // TEMPS RÉEL CalendIQ : le miroir calendiq_meetings est réécrit par calendiq-pull DÈS qu'un webhook CalendIQ
+  // arrive (booking pris/déplacé/annulé) -> on relit le miroir à l'instant (debounce 300 ms), sans attendre le
+  // poll 20 s. RDV d'un lead à jour en ~1-2 s sur TOUS les écrans (fiche, cockpit, agenda).
+  const cqRtT=useRef(0);
+  useEffect(()=>{
+    const ch=SB.channel('cq-live')
+      .on('postgres_changes',{event:'*',schema:'public',table:'calendiq_meetings'},()=>{ clearTimeout(cqRtT.current); cqRtT.current=setTimeout(loadCalendiq,300); })
+      .subscribe();
+    return ()=>{ SB.removeChannel(ch); clearTimeout(cqRtT.current); };
+  },[loadCalendiq]);
   // rafraîchit l'agenda tant qu'on le regarde (RDV pris/déplacés dans CalendIQ)
   // RDV pris dans CalendIQ (ex : rush post-webi) → visibles dans le CRM en quelques secondes, sur TOUS les écrans.
   // Polling 20 s tant que l'onglet est visible + refresh instantané au focus ; en pause si onglet caché.
