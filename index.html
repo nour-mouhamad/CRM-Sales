@@ -4458,6 +4458,8 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
   };
   // TÂCHES (CRM -> HubSpot) : une action manuelle validée par clic devient une tâche sur la transaction. ÉCRITURE HubSpot.
   const taskItem = r => ({ key:'t:'+r.leadId+':'+r.actionId, mode:(r.op==='update'?'update_task':'create_task'), leadId:r.leadId, actionId:r.actionId });
+  // Refuser : on GARDE l'action dans le CRM mais on ne l'envoie PAS dans HubSpot (elle ne reviendra plus). AUCUNE écriture HubSpot.
+  const refuseTache = r => push([{ key:'t:'+r.leadId+':'+r.actionId, mode:'refuse_task', leadId:r.leadId, actionId:r.actionId }],'Gardée dans le CRM — non envoyée');
   const createAllTaches=()=>{
     const rows=(data.taches||[]);
     if(!rows.length) return;
@@ -4654,6 +4656,7 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
                     </div>
                     <div className="sync-act" style={{flexShrink:0}}>
                       <button className="btn btn-ghost" disabled={!!busy[k]} onClick={()=>r.leadId&&onOpenLead(r.leadId)}>Éditer</button>
+                      <button className="btn btn-soft" disabled={!!busy[k]} title="Garder dans le CRM, ne pas envoyer dans HubSpot" onClick={()=>refuseTache(r)}>{busy[k]?'…':'Refuser'}</button>
                       <button className="btn btn-accent" disabled={!!busy[k]} onClick={()=>push([taskItem(r)],'Tâche créée dans HubSpot')}>{busy[k]?'…':(r.op==='update'?'Mettre à jour':'Envoyer dans HubSpot')}</button>
                     </div>
                   </div>
