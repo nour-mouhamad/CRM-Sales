@@ -2347,7 +2347,7 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
                       placeholder="Action à réaliser…"/>
                   ))}
                 </div>
-                <button className="action-add" onClick={()=>{ const n=(lead.extraActions||[]).length; onActions([...(lead.extraActions||[]), {label:'',done:false}], false); setEditAct(n); }}>+ Ajouter une action</button>
+                <button className="action-add" onClick={()=>{ const n=(lead.extraActions||[]).length; onActions([...(lead.extraActions||[]), {label:'',done:false,id:(window.crypto&&crypto.randomUUID?crypto.randomUUID():'x'+Date.now().toString(36)+Math.random().toString(36).slice(2))}], false); setEditAct(n); }}>+ Ajouter une action</button>
               </div>
               <div className="field">
                 <span className="eyebrow">Paiement</span>
@@ -3861,7 +3861,7 @@ function App({session, onLogout}){
     if(!isAdmin) return;
     const recompute=()=>{ const d=CONSOLE_CACHE.data; if(!d){ setSyncPending(0); setSyncWarn(false); return; }
       const c=(d.conflits||[]).length+(d.disparus||[]).length;
-      setSyncPending((d.sortants||[]).length+(d.entrants||[]).length+c); setSyncWarn(c>0); };
+      setSyncPending((d.sortants||[]).length+(d.taches||[]).length+(d.entrants||[]).length+c); setSyncWarn(c>0); };
     CONSOLE_CACHE.subs.add(recompute); recompute();
     const tick=()=>{ if(document.visibilityState!=='visible') return; const now=Date.now(); if(now-(CONSOLE_CACHE.lastBg||0)<60000) return; CONSOLE_CACHE.lastBg=now; consoleLoad(true); };
     tick();
@@ -4348,7 +4348,7 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
   // 1er montage : charge SI pas déjà chargé ni en cours. Sinon no-op -> réaffiche le cache, zéro rechargement au retour.
   React.useEffect(()=>{ consoleLoad(false); },[]);
   // si l'onglet courant est vide mais qu'un autre a des items -> on bascule auto (évite de tomber sur un onglet vide à l'ouverture)
-  React.useEffect(()=>{ if(!CONSOLE_CACHE.data) return; const d=CONSOLE_CACHE.data; const c={sortants:(d.sortants||[]).length,entrants:(d.entrants||[]).length,conflits:(d.conflits||[]).length,disparus:(d.disparus||[]).length}; if(c[tab]===0){ const first=['sortants','entrants','conflits','disparus'].find(t=>c[t]>0); if(first) setTab(first); } },[CONSOLE_CACHE.data]);
+  React.useEffect(()=>{ if(!CONSOLE_CACHE.data) return; const d=CONSOLE_CACHE.data; const c={sortants:(d.sortants||[]).length,taches:(d.taches||[]).length,entrants:(d.entrants||[]).length,conflits:(d.conflits||[]).length,disparus:(d.disparus||[]).length}; if(c[tab]===0){ const first=['sortants','taches','entrants','conflits','disparus'].find(t=>c[t]>0); if(first) setTab(first); } },[CONSOLE_CACHE.data]);
 
   const data=CONSOLE_CACHE.data, error=CONSOLE_CACHE.error, loading=CONSOLE_CACHE.inflight||op;
   const setData=(u)=>{ CONSOLE_CACHE.data = (typeof u==='function') ? u(CONSOLE_CACHE.data) : u; consoleNotify(); };
@@ -4394,6 +4394,7 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     if(okKeys.size) setData(d=>{ if(!d) return d; const keep=(arr,kf)=>(arr||[]).filter(r=>!okKeys.has(kf(r)));
       return { ...d,
         sortants: keep(d.sortants, r=> r.mode==='lost'?'l:'+r.leadId:'s:'+r.leadId),
+        taches: keep(d.taches, r=> 't:'+r.leadId+':'+r.actionId),
         entrants: keep(d.entrants, r=> r.kind==='new'?'en:'+r.dealId:'eu:'+r.leadId),
         conflits: keep(d.conflits, r=> 'c:'+r.leadId),
         disparus: keep(d.disparus, r=> 'd:'+r.leadId),
@@ -4455,6 +4456,14 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     if(!window.confirm('Supprimer du CRM les '+rows.length+' lead(s) dont le deal a disparu de HubSpot ?\n\nSuppression réversible, AUCUNE écriture dans HubSpot.')) return;
     push(rows.map(delItem),'Supprimés du CRM');
   };
+  // TÂCHES (CRM -> HubSpot) : une action manuelle validée par clic devient une tâche sur la transaction. ÉCRITURE HubSpot.
+  const taskItem = r => ({ key:'t:'+r.leadId+':'+r.actionId, mode:(r.op==='update'?'update_task':'create_task'), leadId:r.leadId, actionId:r.actionId });
+  const createAllTaches=()=>{
+    const rows=(data.taches||[]);
+    if(!rows.length) return;
+    if(rows.length>10){ const a=window.prompt('Tu vas créer/màj '+rows.length+' tâches dans HubSpot.\nTape '+rows.length+' pour confirmer :'); if(String(a||'').trim()!==String(rows.length)){ toast('Annulé',null,'info'); return; } }
+    push(rows.map(taskItem),'Tâches envoyées dans HubSpot');
+  };
 
   const head=(
     <div className="screen-head">
@@ -4478,12 +4487,13 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     </div>
   );
 
-  const sortants=(data&&data.sortants)||[], entrants=(data&&data.entrants)||[], conflits=(data&&data.conflits)||[], disparus=(data&&data.disparus)||[];
+  const sortants=(data&&data.sortants)||[], entrants=(data&&data.entrants)||[], conflits=(data&&data.conflits)||[], disparus=(data&&data.disparus)||[], taches=(data&&data.taches)||[];
   const sortNormal=sortants.filter(r=>r.mode!=='lost'), sortLost=sortants.filter(r=>r.mode==='lost');
-  const total=sortants.length+entrants.length+conflits.length+disparus.length;
+  const total=sortants.length+taches.length+entrants.length+conflits.length+disparus.length;
 
   const tabs=[
     {id:'sortants', label:'À envoyer', n:sortants.length},
+    {id:'taches', label:'Tâches à envoyer', n:taches.length},
     {id:'entrants', label:'Reçus de HubSpot', n:entrants.length},
     {id:'conflits', label:'Conflits', n:conflits.length, warn:true},
     {id:'disparus', label:'Supprimés de HubSpot', n:disparus.length, warn:true},
@@ -4625,6 +4635,33 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
               );})}
             </div>
           )
+        )}
+
+        {tab==='taches' && (
+          taches.length===0 ? <div className="lb-empty">Aucune tâche à envoyer. Les actions que tu ajoutes dans une fiche apparaîtront ici.</div> : (<>
+            <div className="sync-toolbar">
+              <button className="btn btn-accent" disabled={!!bulk} onClick={createAllTaches}>Tout envoyer ({taches.length})</button>
+              <span className="sync-prog">Chaque action devient une tâche sur la transaction HubSpot après ton clic. Rien ne part sans validation.</span>
+            </div>
+            <div className="sync-list">
+              {taches.map(r=>{ const k='t:'+r.leadId+':'+r.actionId; return (
+                <div key={k} className="syncrow" style={{display:'block'}}>
+                  <div style={{display:'flex',alignItems:'flex-start',gap:14}}>
+                    <div className="sync-main" onClick={()=>r.leadId&&onOpenLead(r.leadId)}>
+                      <b>{r.name}</b>
+                      <div className="sync-reasons">{r.op==='update'&&<span className="sync-chip">mise à jour</span>}{(r.reasons||[]).map((x,i)=><span key={i} className="sync-chip note">{x}</span>)}{r.done&&<span className="sync-chip" style={{background:'color-mix(in srgb, var(--ok) 14%, transparent)',color:'var(--ok)'}}>faite → COMPLETED</span>}</div>
+                      {r.detail && <div className="sync-chg"><span>{r.detail}</span></div>}
+                    </div>
+                    <div className="sync-act" style={{flexShrink:0}}>
+                      <button className="btn btn-ghost" disabled={!!busy[k]} onClick={()=>r.leadId&&onOpenLead(r.leadId)}>Éditer</button>
+                      <button className="btn btn-accent" disabled={!!busy[k]} onClick={()=>push([taskItem(r)],'Tâche créée dans HubSpot')}>{busy[k]?'…':(r.op==='update'?'Mettre à jour':'Envoyer dans HubSpot')}</button>
+                    </div>
+                  </div>
+                  {fails[k] && <div className="sync-fail">⚠️ Échec : {failMsg(fails[k])}</div>}
+                </div>
+              );})}
+            </div>
+          </>)
         )}
 
         {tab==='disparus' && (
