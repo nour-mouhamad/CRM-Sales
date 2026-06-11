@@ -3906,7 +3906,7 @@ function App({session, onLogout}){
     if(!isAdmin) return;
     const recompute=()=>{ const d=CONSOLE_CACHE.data; if(!d){ setSyncPending(0); setSyncWarn(false); return; }
       const c=(d.conflits||[]).length+(d.disparus||[]).length;
-      setSyncPending((d.sortants||[]).length+(d.taches||[]).length+(d.entrants||[]).length+c); setSyncWarn(c>0); };
+      setSyncPending((d.sortants||[]).length+(d.acreer||[]).length+(d.taches||[]).length+(d.entrants||[]).length+c); setSyncWarn(c>0); };
     CONSOLE_CACHE.subs.add(recompute); recompute();
     const tick=()=>{ if(document.visibilityState!=='visible') return; const now=Date.now(); if(now-(CONSOLE_CACHE.lastBg||0)<60000) return; CONSOLE_CACHE.lastBg=now; consoleLoad(true); };
     tick();
@@ -4401,7 +4401,7 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
   // 1er montage : charge SI pas déjà chargé ni en cours. Sinon no-op -> réaffiche le cache, zéro rechargement au retour.
   React.useEffect(()=>{ consoleLoad(false); },[]);
   // si l'onglet courant est vide mais qu'un autre a des items -> on bascule auto (évite de tomber sur un onglet vide à l'ouverture)
-  React.useEffect(()=>{ if(!CONSOLE_CACHE.data) return; const d=CONSOLE_CACHE.data; const c={sortants:(d.sortants||[]).length,taches:(d.taches||[]).length,entrants:(d.entrants||[]).length,conflits:(d.conflits||[]).length,disparus:(d.disparus||[]).length}; if(c[tab]===0){ const first=['sortants','taches','entrants','conflits','disparus'].find(t=>c[t]>0); if(first) setTab(first); } },[CONSOLE_CACHE.data]);
+  React.useEffect(()=>{ if(!CONSOLE_CACHE.data) return; const d=CONSOLE_CACHE.data; const c={sortants:(d.sortants||[]).length,acreer:(d.acreer||[]).length,taches:(d.taches||[]).length,entrants:(d.entrants||[]).length,conflits:(d.conflits||[]).length,disparus:(d.disparus||[]).length}; if(c[tab]===0){ const first=['sortants','acreer','taches','entrants','conflits','disparus'].find(t=>c[t]>0); if(first) setTab(first); } },[CONSOLE_CACHE.data]);
 
   const data=CONSOLE_CACHE.data, error=CONSOLE_CACHE.error, loading=CONSOLE_CACHE.inflight||op;
   const setData=(u)=>{ CONSOLE_CACHE.data = (typeof u==='function') ? u(CONSOLE_CACHE.data) : u; consoleNotify(); };
@@ -4447,6 +4447,7 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     if(okKeys.size) setData(d=>{ if(!d) return d; const keep=(arr,kf)=>(arr||[]).filter(r=>!okKeys.has(kf(r)));
       return { ...d,
         sortants: keep(d.sortants, r=> r.mode==='lost'?'l:'+r.leadId:'s:'+r.leadId),
+        acreer: keep(d.acreer, r=> 'cr:'+r.leadId),
         taches: keep(d.taches, r=> 't:'+r.leadId+':'+r.actionId),
         entrants: keep(d.entrants, r=> r.kind==='new'?'en:'+r.dealId:'eu:'+r.leadId),
         conflits: keep(d.conflits, r=> 'c:'+r.leadId),
@@ -4509,6 +4510,14 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     if(!window.confirm('Supprimer du CRM les '+rows.length+' lead(s) dont le deal a disparu de HubSpot ?\n\nSuppression réversible, AUCUNE écriture dans HubSpot.')) return;
     push(rows.map(delItem),'Supprimés du CRM');
   };
+  // À CRÉER (CRM -> HubSpot) : un lead CRM sans deal -> crée contact + transaction dans le pipe IQ. ÉCRITURE HubSpot.
+  const createDealItem = r => ({ key:'cr:'+r.leadId, mode:'create_deal', leadId:r.leadId });
+  const createAllAcreer=()=>{
+    const rows=(data.acreer||[]).filter(r=>!r.incomplete);
+    if(!rows.length){ toast('Rien à créer','Les leads incomplets (sans email ni tél) sont à compléter d’abord','info'); return; }
+    if(rows.length>10){ const a=window.prompt('Tu vas créer '+rows.length+' contacts + transactions dans HubSpot.\nTape '+rows.length+' pour confirmer :'); if(String(a||'').trim()!==String(rows.length)){ toast('Annulé',null,'info'); return; } }
+    push(rows.map(createDealItem),'Créés dans HubSpot');
+  };
   // TÂCHES (CRM -> HubSpot) : une action manuelle validée par clic devient une tâche sur la transaction. ÉCRITURE HubSpot.
   const taskItem = r => ({ key:'t:'+r.leadId+':'+r.actionId, mode:(r.op==='update'?'update_task':'create_task'), leadId:r.leadId, actionId:r.actionId });
   // Refuser : on GARDE l'action dans le CRM mais on ne l'envoie PAS dans HubSpot (elle ne reviendra plus). AUCUNE écriture HubSpot.
@@ -4542,12 +4551,13 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     </div>
   );
 
-  const sortants=(data&&data.sortants)||[], entrants=(data&&data.entrants)||[], conflits=(data&&data.conflits)||[], disparus=(data&&data.disparus)||[], taches=(data&&data.taches)||[];
+  const sortants=(data&&data.sortants)||[], entrants=(data&&data.entrants)||[], conflits=(data&&data.conflits)||[], disparus=(data&&data.disparus)||[], taches=(data&&data.taches)||[], acreer=(data&&data.acreer)||[];
   const sortNormal=sortants.filter(r=>r.mode!=='lost'), sortLost=sortants.filter(r=>r.mode==='lost');
-  const total=sortants.length+taches.length+entrants.length+conflits.length+disparus.length;
+  const total=sortants.length+acreer.length+taches.length+entrants.length+conflits.length+disparus.length;
 
   const tabs=[
     {id:'sortants', label:'À envoyer', n:sortants.length},
+    {id:'acreer', label:'À créer dans HubSpot', n:acreer.length},
     {id:'taches', label:'Tâches à envoyer', n:taches.length},
     {id:'entrants', label:'Reçus de HubSpot', n:entrants.length},
     {id:'conflits', label:'Conflits', n:conflits.length, warn:true},
@@ -4690,6 +4700,37 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
               );})}
             </div>
           )
+        )}
+
+        {tab==='acreer' && (
+          acreer.length===0 ? <div className="lb-empty">Aucun lead à créer. Les leads ajoutés dans le CRM (sans transaction HubSpot) apparaîtront ici.</div> : (<>
+            <div className="sync-toolbar">
+              <button className="btn btn-accent" disabled={!!bulk} onClick={createAllAcreer}>Tout créer ({acreer.filter(r=>!r.incomplete).length})</button>
+              <span className="sync-prog">Chaque lead devient un contact + une transaction dans le pipe IQ Project après ton clic. Anti-doublon par email/téléphone.</span>
+            </div>
+            <div className="sync-list">
+              {acreer.map(r=>{ const k='cr:'+r.leadId; return (
+                <div key={k} className="syncrow" style={{display:'block'}}>
+                  <div style={{display:'flex',alignItems:'flex-start',gap:14}}>
+                    <div className="sync-main" onClick={()=>onOpenLead(r.leadId)}>
+                      <b>{r.name}</b>
+                      <div className="sync-reasons">
+                        <span className="sync-chip">{r.colonne}</span>
+                        {r.saison&&<span className="sync-chip note">{r.saison}</span>}
+                        {r.incomplete&&<span className="sync-chip" style={{background:'var(--danger-tint)',color:'var(--danger)'}}>⚠️ email/tél manquant</span>}
+                      </div>
+                      {(r.email||r.phone)&&<div className="sync-chg"><span>{[r.email,r.phone].filter(Boolean).join(' · ')}</span></div>}
+                    </div>
+                    <div className="sync-act" style={{flexShrink:0}}>
+                      <button className="btn btn-ghost" disabled={!!busy[k]} onClick={()=>onOpenLead(r.leadId)}>Éditer</button>
+                      <button className="btn btn-accent" disabled={!!busy[k]} title={r.incomplete?'Lead sans email ni téléphone — risque de doublon non dédupliquable':'Créer le contact + la transaction dans HubSpot'} onClick={()=>push([createDealItem(r)],'Créé dans HubSpot')}>{busy[k]?'…':'Créer dans HubSpot'}</button>
+                    </div>
+                  </div>
+                  {fails[k] && <div className="sync-fail">⚠️ Échec : {failMsg(fails[k])}</div>}
+                </div>
+              );})}
+            </div>
+          </>)
         )}
 
         {tab==='taches' && (
