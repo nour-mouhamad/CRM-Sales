@@ -405,12 +405,13 @@ input,textarea{font-family:inherit; color:inherit}
 .mgr-head{display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:18px}
 .mgr-head h1{font-size:25px; font-weight:800; letter-spacing:-.02em}
 .mgr-head p{color:var(--t3); font-size:13px; margin-top:3px; font-weight:500}
-.mgr-kpis{display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:24px}
+.mgr-kpis{display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:20px}
 @media(max-width:1000px){.mgr-kpis{grid-template-columns:repeat(2,1fr)}}
 .kpi{background:var(--surface); border:1px solid var(--b1); border-radius:14px; padding:14px 15px; position:relative; overflow:hidden}
 .kpi .kpi-ic{position:absolute; top:12px; right:12px; width:16px; height:16px; color:var(--t4); stroke-width:1.9}
 .kpi .kpi-n{font-family:'Gabarito',sans-serif; font-size:26px; font-weight:800; letter-spacing:-.02em; line-height:1}
 .kpi .kpi-l{font-size:11.5px; color:var(--t3); font-weight:600; margin-top:6px; text-transform:uppercase; letter-spacing:.04em}
+.kpi.danger .kpi-n{color:var(--danger)}
 .kpi.accent .kpi-n{color:var(--accent)} .kpi.ok .kpi-n{color:var(--ok)}
 .mgr-sec{display:flex; align-items:center; gap:9px; margin:4px 0 12px}
 .mgr-sec .eyebrow{color:var(--t3)}
@@ -422,14 +423,14 @@ input,textarea{font-family:inherit; color:inherit}
 .lb-head:hover{background:var(--surface-2)}
 .lb-rank{font-family:'Gabarito',sans-serif; font-weight:800; font-size:15px; color:var(--t4); width:20px; text-align:center; flex:none}
 .lb-card:first-child .lb-rank{color:var(--accent)}
-.lb-id{display:flex; align-items:center; gap:11px; min-width:170px; flex:none}
+.lb-id{display:flex; align-items:center; gap:11px; width:170px; min-width:0; flex:none}
 .lb-id b{font-size:14.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.lb-metrics{display:flex; gap:22px; flex:1; min-width:0}
-@media(max-width:760px){.lb-metrics{display:none}}
+.lb-metrics{display:flex; gap:16px; flex:1; min-width:0}
+@media(max-width:1150px){.lb-metrics{display:none}}
 .lb-m{display:flex; flex-direction:column; gap:2px}
 .lb-m b{font-family:'Gabarito',sans-serif; font-size:17px; font-weight:800; letter-spacing:-.02em; line-height:1}
-.lb-m span{font-size:10px; color:var(--t3); font-weight:600; text-transform:uppercase; letter-spacing:.05em}
-.lb-m.warn b{color:var(--warm)} .lb-m.won b{color:var(--ok)}
+.lb-m span{font-size:10px; color:var(--t3); font-weight:600; text-transform:uppercase; letter-spacing:.05em; white-space:nowrap}
+.lb-m.warn b{color:var(--warm)} .lb-m.won b{color:var(--ok)} .lb-m.bad b{color:var(--danger)}
 .lb-ca{display:flex; flex-direction:column; gap:5px; width:150px; flex:none}
 .lb-ca-top{display:flex; align-items:baseline; justify-content:space-between; gap:8px}
 .lb-ca-top b{font-family:'Gabarito',sans-serif; font-size:17px; font-weight:800; color:var(--accent); letter-spacing:-.02em}
@@ -449,7 +450,7 @@ input,textarea{font-family:inherit; color:inherit}
 .cl-del-act{display:flex; gap:8px}
 .cl-del-confirm{background:var(--danger); color:#fff; border:none; font-size:12.5px; font-weight:700; padding:8px 14px; border-radius:9px; cursor:pointer}
 .cl-del-confirm:disabled{opacity:.6; cursor:default}
-.cl-lead{display:flex; align-items:center; gap:10px; width:100%; text-align:left; padding:9px 10px; border-radius:9px; cursor:pointer; transition:background var(--speed) var(--ease)}
+.cl-lead{display:flex; align-items:center; gap:10px; row-gap:4px; flex-wrap:wrap; width:100%; text-align:left; padding:9px 34px 9px 10px; border-radius:9px; cursor:pointer; position:relative; transition:background var(--speed) var(--ease)}
 .cl-lead:hover{background:var(--surface)}
 .cl-lead-name{font-size:13.5px; font-weight:700; width:150px; flex:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .chip{font-size:11px; font-weight:700; padding:2px 9px; border-radius:99px; white-space:nowrap; flex:none; display:inline-flex; align-items:center; gap:5px}
@@ -458,9 +459,28 @@ input,textarea{font-family:inherit; color:inherit}
 .chip-rdv{font-size:11px; font-weight:700; padding:2px 9px; border-radius:99px; white-space:nowrap; flex:none; background:var(--accent-tint); color:var(--accent); display:inline-flex; align-items:center; gap:5px}
 .chip-rdv svg{width:11px; height:11px; stroke-width:2}
 .chip-rdv.todo{background:var(--surface-3); color:var(--warm)}
+/* parcours RDV : présent ✓ / no-show ✗ / à débriefer / en cours */
+.chip-rdv.ok{background:color-mix(in srgb, var(--ok) 13%, transparent); color:var(--ok)}
+.chip-rdv.bad{background:color-mix(in srgb, var(--danger) 13%, transparent); color:var(--danger)}
+.chip-rdv.deb{background:color-mix(in srgb, var(--warm) 15%, transparent); color:var(--warm)}
+.chip-rdv.liv{background:color-mix(in srgb, var(--accent) 18%, transparent); color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset}
 .cl-amt{font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; color:var(--t1); flex:none}
 .cl-concl{font-size:12px; color:var(--t3); flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-style:italic}
-.cl-arrow{color:var(--t4); flex:none} .cl-arrow svg{width:15px; height:15px}
+.cl-concl.gen{font-style:normal; color:var(--t4)}
+/* feed manager « À traiter aujourd'hui » */
+.feed-row{display:flex; gap:8px; flex-wrap:wrap; margin:0 0 12px}
+.feed-chip{display:inline-flex; align-items:center; gap:7px; font-size:12.5px; font-weight:700; padding:7px 13px; border-radius:99px; cursor:pointer; background:var(--surface-2); color:var(--t3); border:1px solid var(--b1); transition:all var(--speed) var(--ease)}
+.feed-chip b{font-family:'Gabarito',sans-serif; font-size:14px; font-weight:800}
+.feed-chip svg{width:13px; height:13px; stroke-width:2}
+.feed-chip.has{color:var(--t1)}
+.feed-chip.has.warn{color:var(--warm); border-color:color-mix(in srgb, var(--warm) 35%, transparent)}
+.feed-chip.has.bad{color:var(--danger); border-color:color-mix(in srgb, var(--danger) 35%, transparent)}
+.feed-chip.has.acc{color:var(--accent); border-color:color-mix(in srgb, var(--accent) 35%, transparent)}
+.feed-chip.on{background:var(--surface-3); border-color:var(--b3)}
+.feed-list{background:var(--surface-2); border:1px solid var(--b1); border-radius:13px; padding:8px 10px; margin:0 0 14px}
+.feed-list .cl-owner{font-size:10.5px; color:var(--t4); font-weight:700; text-transform:uppercase; letter-spacing:.04em; flex:none; width:74px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.feed-empty{font-size:12.5px; color:var(--t3); padding:10px 4px 18px}
+.cl-arrow{color:var(--t4); flex:none; position:absolute; right:10px; top:50%; transform:translateY(-50%)} .cl-arrow svg{width:15px; height:15px}
 .cl-lead:hover .cl-arrow{color:var(--accent)}
 
 /* timeline */
@@ -1326,6 +1346,13 @@ function cqDayLabel(iso){
   return isNaN(d)?'Invalid Date':CQ_FMT_DAY.format(d); // parité : toLocaleDateString rendait "Invalid Date" (format() jetterait)
 }
 function cqTime(iso){ try{ const d=new Date(iso); return isNaN(d)?'Invalid Date':CQ_FMT_TIME.format(d); }catch(e){ return ''; } }
+// libellé COURT d'un RDV pour les pastilles du cockpit : « auj. 14:15 » / « demain 09:00 » / « 3 juin »
+const DAY_MS=86400000;
+const RDV_FMT_SHORT=new Intl.DateTimeFormat('fr-FR',{day:'numeric',month:'short'});
+function sameDayTs(a,b){ const x=new Date(a), y=new Date(b); return x.getFullYear()===y.getFullYear()&&x.getMonth()===y.getMonth()&&x.getDate()===y.getDate(); }
+function rdvShort(iso, withTime){ try{ const d=new Date(iso); if(isNaN(d)) return ''; const now=Date.now();
+  const lbl = sameDayTs(d,now)?'auj.':sameDayTs(d,now+DAY_MS)?'demain':RDV_FMT_SHORT.format(d);
+  return withTime ? lbl+' '+CQ_FMT_TIME.format(d) : lbl; }catch(e){ return ''; } }
 // téléphone -> 9 derniers chiffres (matche +33 6… et 06…)
 function cqPhoneKey(p){ const d=(p||'').replace(/\D/g,''); return d.length>=9?d.slice(-9):''; }
 // égalité de CONTENU (ordre ignoré, tri par id avant comparaison) — évite de pousser un tableau neuf
@@ -1599,6 +1626,23 @@ function pickRecapTargetRdv(rdvs, callKind){
   const typed=callKind?past.filter(r=>r.type===callKind):[];
   const cand=typed.length?typed:past;
   return cand.slice().sort((a,b)=>new Date(b.start_at)-new Date(a.start_at))[0]||null;
+}
+
+/* ===== SOURCE DE VÉRITÉ UNIQUE des RDV d'un lead — partagée fiche / cockpit / feed =====
+   Fusionne : RDV CalendIQ (lead.rdvs, posés par leadsCq) + RDV manuel legacy (rdv_at) + RDV manuels
+   multiples (rdvMeta['m:*']). Anti-doublon ±90 s : un meeting CalendIQ et un créneau manuel au même
+   horaire = le MÊME RDV (seule la version CalendIQ est gardée). Tri chrono stable (start_at puis id). */
+function leadAllRdvs(lead){
+  const list=(lead.rdvs||[]).slice();
+  const cqTimes=list.map(r=>new Date(r.start_at).getTime());
+  const dupOfCq=(iso)=>{ const t=new Date(iso).getTime(); return cqTimes.some(ct=>Math.abs(ct-t)<90000); };
+  const meta=lead.rdvMeta||{};
+  if(lead.rdv_at && !dupOfCq(lead.rdv_at)){ const mk='manual:'+lead.id; const mm=meta[mk]||{};
+    list.push({ id:mk, source:'manual', type:lead.rdvType||'r1', start_at:lead.rdv_at, duration_minutes:RDV_DUR[lead.rdvType||'r1']||45, meet_link:lead.rdvMeetLink||null, outcome:(mm.outcome==='present'||mm.outcome==='no_show')?mm.outcome:null }); }
+  for(const k in meta){ if(k.indexOf('m:')===0){ const e=meta[k]||{};
+    if(e.start_at && !dupOfCq(e.start_at)) list.push({ id:k, source:'manual', type:e.type||'r1', start_at:e.start_at, duration_minutes:RDV_DUR[e.type||'r1']||45, meet_link:e.meet_link||null, outcome:(e.outcome==='present'||e.outcome==='no_show')?e.outcome:null }); } }
+  list.sort((a,b)=> (new Date(a.start_at)-new Date(b.start_at)) || (a.id<b.id?-1:a.id>b.id?1:0));
+  return list;
 }
 
 const OFFERS = [
@@ -1944,16 +1988,8 @@ function ManualRdvField({ lead, calendiqRdvs, onCalModify, onCalCancel, onSave, 
   const [type,setType]=useState('r1');
   const [dt,setDt]=useState('');
   const [meet,setMeet]=useState('');
-  // liste combinée : RDV CalendIQ (cq=true) + RDV manuels (legacy rdv_at + clés 'm:*')
-  const list=[];
-  (calendiqRdvs||[]).forEach(r=> list.push({ cq:true, rdv:r }));
-  // ANTI-DOUBLON : un RDV CalendIQ matché et un créneau legacy/manuel au MÊME horaire (±90 s) = le MÊME RDV.
-  // On n'affiche alors que la version CalendIQ (corrige les leads où rdv_at a été écrit en plus du meeting).
-  const cqTimes=(calendiqRdvs||[]).map(r=>new Date(r.start_at).getTime());
-  const dupOfCq=(iso)=>{ const t=new Date(iso).getTime(); return cqTimes.some(ct=>Math.abs(ct-t)<90000); };
-  if(lead.rdv_at && !dupOfCq(lead.rdv_at)){ const mk='manual:'+lead.id; const meta=(lead.rdvMeta&&lead.rdvMeta[mk])||{}; list.push({ cq:false, rdv:{ id:mk, source:'manual', type:lead.rdvType||'r1', start_at:lead.rdv_at, duration_minutes:RDV_DUR[lead.rdvType||'r1']||45, meet_link:lead.rdvMeetLink||null, outcome:meta.outcome||null } }); }
-  for(const k in (lead.rdvMeta||{})){ if(k.indexOf('m:')===0){ const e=lead.rdvMeta[k]||{}; if(e.start_at && !dupOfCq(e.start_at)) list.push({ cq:false, rdv:{ id:k, source:'manual', type:e.type||'r1', start_at:e.start_at, duration_minutes:RDV_DUR[e.type||'r1']||45, meet_link:e.meet_link||null, outcome:e.outcome||null } }); } }
-  list.sort((a,b)=>new Date(a.rdv.start_at)-new Date(b.rdv.start_at));
+  // liste combinée — déléguée au cerveau partagé leadAllRdvs (MÊME fusion que le cockpit), rendu {cq, rdv} conservé
+  const list = leadAllRdvs({ ...lead, rdvs:(calendiqRdvs||[]) }).map(r=>({ cq:r.source==='calendiq', rdv:r }));
   const openNew=()=>{ setType('r1'); setDt(''); setMeet(''); setEditing('new'); };
   const openEdit=(r)=>{ setType(r.type||'r1'); setDt(toLocalInput(r.start_at)); setMeet(r.meet_link||''); setEditing({key:r.id}); };
   const save=()=>{ if(!dt) return; onSave(type, new Date(dt).toISOString(), meet.trim()||null, editing==='new'?null:editing.key); setEditing(null); };
@@ -3879,7 +3915,7 @@ function App({session, onLogout}){
             isAdmin={isAdmin} profile={profile} onConnect={connectCalendiq} onDisconnect={disconnectCalendiq}
             onRefresh={loadCalendiq} onOpenLead={openLead} meetingLeadId={meetingLeadId}/>}
         {screen==='todo' && isAdmin && <AFaire leads={leadsCq} onOpenLead={openLead} onToggleAction={toggleActionFor} onToggleExtra={toggleExtraFor} onReassign={reassignOwner}/>}
-        {screen==='team' && isAdmin && <TeamScreen userId={userId} toast={toast} leads={leadsCq} onOpenLead={openLead}/>}
+        {screen==='team' && isAdmin && <TeamScreen userId={userId} toast={toast} leads={leadsCq} onOpenLead={openLead} cqPending={cqLoading && !cqMeetings.length}/>}
         {screen==='console' && isAdmin && <Console toast={toast} onOpenLead={openLead} setSyncBusy={setSyncBusy} reloadLeads={reload}/>}
       </main>
 
@@ -3897,58 +3933,138 @@ function App({session, onLogout}){
 /* ====================== ÉCRAN MANAGER : COCKPIT CLOSERS ====================== */
 // statut dérivé d'un lead (aucune donnée inventée — vide reste vide)
 const LB_LOST=['lost','perdu','desabonne','desabo'], LB_WON=['won','paye'], LB_CLOSING=['closing','encaisser','apayer','cpf'];
-function leadStatus(l){
-  const col=l.column;
-  const recap=(l.timeline||[]).find(t=>t.type==='recap');
-  const result = (recap && RESULT_META[recap.result]) ? recap.result : null;
-  const isWon = l.paid===true || LB_WON.includes(col) || result==='close';
-  const isLost = !isWon && (LB_LOST.includes(col) || result==='pas_interesse');
-  const isClosing = !isWon && !isLost && (LB_CLOSING.includes(col) || result==='a_closer');
-  const rdvUpcoming = !!l.rdv_at && new Date(l.rdv_at).getTime()>Date.now();
-  return { col, label:COL_LABEL[col]||col, color:COL_COLOR[col]||'var(--t3)',
-    isWon, isLost, isClosing, rdvUpcoming, rdvType:l.rdvType||null, rdv_at:l.rdv_at||null,
-    montant:l.offer||0,
-    result, callKind: recap?(recap.callKind||null):null,
-    conclusion: recap?(recap.conclusion||recap.text||''):'' };
-}
 // faut-il caler un RDV ? (étape amont, aucun RDV à venir)
 const RDV_TODO_COLS=['contacter','perso','atc','contacte'];
-function leadAttn(s){ if(s.isClosing) return 0; if(s.rdvUpcoming) return 1; if(!s.isWon&&!s.isLost) return 2; if(s.isWon) return 3; return 4; }
+/* CERVEAU UNIFIÉ du cockpit : tout l'état d'un lead dérivé des FAITS (RDV fusionnés leadAllRdvs = même
+   source que la fiche, verdicts rdv_meta, recap d'appel). Aucune donnée inventée — vide reste vide. */
+function leadStatus(l, now){
+  now = now||Date.now();
+  const col=l.column;
+  // recap : timeline si la fiche a été ouverte (plus frais), sinon _recap chargé en masse par TeamScreen
+  const recap=(l.timeline||[]).find(t=>t.type==='recap') || l._recap || null;
+  const result = (recap && RESULT_META[recap.result]) ? recap.result : null;
+  // la colonne TERMINALE prime sur un vieux verdict de call : un lead déplacé en Perdu avec un ancien
+  // recap « close » est PERDU (sinon il gonflerait le CA à vie).
+  const colWon=LB_WON.includes(col), colLost=LB_LOST.includes(col);
+  const isWon = l.paid===true || colWon || (!colLost && result==='close');
+  const isLost = !isWon && (colLost || result==='pas_interesse');
+  const isClosing = !isWon && !isLost && (LB_CLOSING.includes(col) || result==='a_closer');
+  // CA RÉEL : seuls comptent payé / colonne Closed Won. Un close VERBAL (result='close') marque le lead
+  // « Closé » mais ne met JAMAIS un euro dans « encaissé » tant que rien n'est passé en banque.
+  const caWon = (l.paid===true || colWon) ? (l.offer||0) : 0;
+  // ----- RDV : liste fusionnée CalendIQ + manuels (la MÊME que la fiche) -----
+  const rdvs=leadAllRdvs(l);
+  const future=[], past=[]; let live=null;
+  for(const r of rdvs){ const st=rdvState(r, now);
+    if(st==='upcoming') future.push(r);
+    else if(st==='live') live=r;
+    else past.push(r); /* present / no_show / todo */ }
+  const rdvNext=future[0]||null;
+  const rdvLast=past.length?past[past.length-1]:null;
+  const active=!isWon&&!isLost;
+  // débrief manquant : RDV passé SANS verdict — leads ACTIFS seulement (un closé/perdu ne réclame rien),
+  // et jamais les RDV CPF/admission (c'est le RDV de NM, pas du closer).
+  const toDebrief = active ? past.filter(r=>!r.outcome && r.type!=='cpf') : [];
+  // présents / no-shows : comptés sur la LISTE AFFICHÉE (cohérent pastilles ↔ KPI ; évite les doublons
+  // manual:/meeting-id et les verdicts orphelins de meetings annulés restés dans rdv_meta). CPF exclu.
+  let presents=0, noShows=0;
+  for(const r of rdvs){ if(r.type==='cpf') continue;
+    if(r.outcome==='present') presents++; else if(r.outcome==='no_show') noShows++; }
+  const noShowToFix = active && !rdvNext && !live && !!rdvLast && rdvLast.outcome==='no_show'; // no-show SANS RDV recalé
+  const rdvToday = active && !!(live || (rdvNext && sameDayTs(rdvNext.start_at, now)));
+  // « sans suivi » : lead actif, aucun RDV à venir, dernier signal (création / RDV / recap / verdict /
+  // dernière activité loggée — appel, note, mail… chargée en masse par TeamScreen dans _lastAct) trop vieux
+  let lastTouch=l.date_creation?new Date(l.date_creation).getTime():0;
+  if(rdvLast) lastTouch=Math.max(lastTouch,new Date(rdvLast.start_at).getTime());
+  if(recap&&recap.at) lastTouch=Math.max(lastTouch,new Date(recap.at).getTime());
+  if(l._lastAct) lastTouch=Math.max(lastTouch,new Date(l._lastAct).getTime());
+  { const t0=(l.timeline||[])[0]; if(t0&&t0.at) lastTouch=Math.max(lastTouch,new Date(t0.at).getTime()); }
+  { const meta=l.rdvMeta||{}; for(const k in meta){ const v=meta[k]; if(v&&v.outcome_at){ const t=new Date(v.outcome_at).getTime(); if(t&&t<=now) lastTouch=Math.max(lastTouch,t); } } }
+  const staleDays = (active && !rdvNext && !live && lastTouch>0) ? Math.max(0,Math.floor((now-lastTouch)/DAY_MS)) : 0;
+  // ----- phrase d'état TOUJOURS présente : le recap (réel) prime, sinon générée depuis les faits -----
+  let conclusion = recap ? (recap.conclusion||recap.text||'') : '';
+  let generated=false;
+  if(!conclusion){ generated=true;
+    const T=r=>(r.type||'r1').toUpperCase();
+    if(isWon) conclusion = 'Closé'+(l.paid?(l.offer?' — '+eur(l.offer)+' encaissé':''):(l.offer?' — '+eur(l.offer)+' à encaisser':''));
+    else if(isLost) conclusion = 'Perdu';
+    else if(live) conclusion = T(live)+' en cours';
+    else if(noShowToFix) conclusion = 'No-show '+T(rdvLast)+' le '+rdvShort(rdvLast.start_at)+' — à recaler';
+    else if(toDebrief.length){ const d=toDebrief[toDebrief.length-1]; conclusion = T(d)+' passé '+rdvShort(d.start_at)+' — débrief à faire'; }
+    else if(rdvNext) conclusion = T(rdvNext)+' '+rdvShort(rdvNext.start_at,true)+(presents?' · '+presents+' RDV fait'+(presents>1?'s':''):'');
+    else if(col==='encaisser') conclusion = (l.offer?eur(l.offer)+' ':'')+ (l.statut_paiement==='lien_envoye'?'— lien envoyé, en attente':'à encaisser');
+    else if(rdvLast&&rdvLast.outcome==='present') conclusion = T(rdvLast)+' fait '+rdvShort(rdvLast.start_at)+' — suite à caler';
+    else if(RDV_TODO_COLS.includes(col)) conclusion = 'Aucun RDV calé';
+    else conclusion = '';
+  }
+  return { col, label:COL_LABEL[col]||col, color:COL_COLOR[col]||'var(--t3)',
+    isWon, isLost, isClosing, rdvUpcoming:!!rdvNext, rdvType:(rdvNext?rdvNext.type:null)||l.rdvType||null, rdv_at:(rdvNext?rdvNext.start_at:null)||l.rdv_at||null,
+    montant:l.offer||0, caWon,
+    result, callKind: recap?(recap.callKind||null):null,
+    conclusion, generated,
+    rdvs, rdvNext, rdvLast, live, toDebrief, presents, noShows, noShowToFix, rdvToday, staleDays, now };
+}
+// tri par URGENCE manager (leads ACTIFS d'abord) : RDV du jour > no-show à recaler > débrief manquant > RDV à venir > closing > actifs > gagnés > perdus
+function leadAttn(s){
+  if(!s.isWon&&!s.isLost){
+    if(s.live||s.rdvToday) return 0;
+    if(s.noShowToFix) return 1;
+    if(s.toDebrief.length) return 2;
+    if(s.rdvNext) return 3;
+    if(s.isClosing) return 4;
+    return 5;
+  }
+  return s.isWon?6:7;
+}
 
-function ManagerLeadRow({ lead, onOpenLead }){
+/* pastille d'un RDV du parcours : passé ✓/✗, à débriefer, en cours, à venir (jour + heure) */
+function RdvChip({ rdv, now }){
+  const st=rdvState(rdv, now);
+  const T=(rdv.type||'r1').toUpperCase();
+  if(st==='present')  return <span className="chip-rdv ok" title={'Présent · '+cqDayLabel(rdv.start_at)+' '+cqTime(rdv.start_at)}>{I.check({})}{T} · {rdvShort(rdv.start_at)}</span>;
+  if(st==='no_show')  return <span className="chip-rdv bad" title={'No-show · '+cqDayLabel(rdv.start_at)+' '+cqTime(rdv.start_at)}>{I.noshow({})}{T} · {rdvShort(rdv.start_at)}</span>;
+  if(st==='live')     return <span className="chip-rdv liv">{I.agenda({})}{T} · en cours</span>;
+  if(st==='todo')     return <span className="chip-rdv deb" title={'RDV passé sans verdict · '+cqDayLabel(rdv.start_at)+' '+cqTime(rdv.start_at)}>{I.clock({})}{T} · {rdvShort(rdv.start_at)} · à débriefer</span>;
+  return <span className="chip-rdv" title={cqDayLabel(rdv.start_at)+' '+cqTime(rdv.start_at)}>{I.agenda({})}{T} · {rdvShort(rdv.start_at,true)}</span>;
+}
+
+function ManagerLeadRow({ lead, onOpenLead, owner }){
   const s=leadStatus(lead);
-  const rdvLabel = s.rdvUpcoming ? ((s.rdvType||'r1').toUpperCase()+' · '+cqDayLabel(s.rdv_at)+' '+cqTime(s.rdv_at)) : null;
-  const todo = !s.rdvUpcoming && !s.isWon && !s.isLost && RDV_TODO_COLS.includes(s.col);
+  const todo = !s.rdvUpcoming && !s.live && !s.toDebrief.length && !s.noShowToFix && !s.isWon && !s.isLost && RDV_TODO_COLS.includes(s.col);
   return (
     <button className="cl-lead" onClick={()=>onOpenLead(lead.id)}>
+      {owner!=null && <span className="cl-owner">{owner}</span>}
       <span className="cl-lead-name">{lead.prenom} {lead.nom}</span>
       <span className="chip" style={{color:s.color, background:'color-mix(in srgb, currentColor 12%, transparent)'}}><span className="cdot"></span>{s.label}</span>
+      {s.rdvs.map(r=><RdvChip key={r.id} rdv={r} now={s.now}/>)}
       {s.result && (()=>{ const rk=RESULT_META[s.result]; return <span className="chip" style={{color:rk.color, background:'color-mix(in srgb, currentColor 14%, transparent)'}}><span className="cdot"></span>{s.callKind?(callKindLabel(s.callKind)+' · '):''}{rk.label}</span>; })()}
-      {rdvLabel && <span className="chip-rdv">{I.agenda({})}{rdvLabel}</span>}
       {todo && <span className="chip-rdv todo">{I.clock({})}RDV à caler</span>}
+      {s.staleDays>=7 && <span className={'chip-rdv '+(s.staleDays>=14?'bad':'deb')} title="Aucun signal (RDV, débrief, verdict) depuis ce nombre de jours">{I.clock({})}{s.staleDays} j sans suivi</span>}
       {s.montant>0 && <span className="cl-amt">{eur(s.montant)}</span>}
-      {s.conclusion && <span className="cl-concl">« {s.conclusion} »</span>}
+      {s.conclusion && <span className={'cl-concl'+(s.generated?' gen':'')}>{s.generated?s.conclusion:('« '+s.conclusion+' »')}</span>}
       <span className="cl-arrow">{I.chev({})}</span>
     </button>
   );
 }
 
-function CloserCard({ rank, name, leads, maxCa, onOpenLead, defaultOpen, closerId, onDelete }){
+function CloserCard({ rank, name, leads, maxCa, onOpenLead, defaultOpen, closerId, onDelete, clock }){
   const [open,setOpen]=useState(!!defaultOpen);
   const [confirm,setConfirm]=useState(false);
   const [del,setDel]=useState(false);
   const doDelete=async()=>{ setDel(true); try{ await onDelete(closerId,name); }catch(e){ setDel(false); setConfirm(false); } };
   const m=useMemo(()=>{
-    let rdv=0,closing=0,won=0,ca=0,lost=0;
-    leads.forEach(l=>{ const s=leadStatus(l);
-      if(s.isWon){ won++; ca+=s.montant; }
+    const now=clock||Date.now();
+    let rdv=0,closing=0,won=0,ca=0,lost=0,faits=0,noShows=0,debrief=0;
+    leads.forEach(l=>{ const s=leadStatus(l,now);
+      if(s.isWon){ won++; ca+=s.caWon; }
       else if(s.isLost) lost++;
       else if(s.isClosing) closing++;
-      if(s.rdvUpcoming) rdv++;
+      if(s.rdvUpcoming||s.live) rdv++;
+      faits+=s.presents; noShows+=s.noShows; debrief+=s.toDebrief.length;
     });
-    return { n:leads.length, rdv, closing, won, ca, lost, taux: leads.length?Math.round(won/leads.length*100):0 };
-  },[leads]);
-  const sorted=useMemo(()=>leads.slice().sort((a,b)=>leadAttn(leadStatus(a))-leadAttn(leadStatus(b))),[leads]);
+    return { n:leads.length, rdv, closing, won, ca, lost, faits, noShows, debrief, taux: leads.length?Math.round(won/leads.length*100):0 };
+  },[leads,clock]);
+  const sorted=useMemo(()=>{ const now=clock||Date.now(); return leads.slice().sort((a,b)=>leadAttn(leadStatus(a,now))-leadAttn(leadStatus(b,now))); },[leads,clock]);
   const caPct = maxCa>0 ? Math.max(4, Math.round(m.ca/maxCa*100)) : 0;
   return (
     <div className={'lb-card'+(open?' open':'')}>
@@ -3958,8 +4074,10 @@ function CloserCard({ rank, name, leads, maxCa, onOpenLead, defaultOpen, closerI
         <div className="lb-metrics">
           <div className="lb-m"><b>{m.n}</b><span>Leads</span></div>
           <div className={'lb-m'+(m.rdv?' warn':'')}><b>{m.rdv}</b><span>RDV à venir</span></div>
+          <div className="lb-m"><b>{m.faits}</b><span>RDV faits</span></div>
+          <div className={'lb-m'+(m.noShows?' bad':'')}><b>{m.noShows}</b><span>No-show</span></div>
           <div className="lb-m"><b>{m.closing}</b><span>En closing</span></div>
-          <div className={'lb-m'+(m.won?' won':'')}><b>{m.won}</b><span>Gagnés</span></div>
+          <div className={'lb-m'+(m.won?' won':'')}><b>{m.won}</b><span>Closés</span></div>
           <div className="lb-m"><b>{m.taux}%</b><span>Taux close</span></div>
         </div>
         <div className="lb-ca">
@@ -3991,7 +4109,7 @@ function CloserCard({ rank, name, leads, maxCa, onOpenLead, defaultOpen, closerI
   );
 }
 
-function TeamScreen({ userId, toast, leads, onOpenLead }){
+function TeamScreen({ userId, toast, leads, onOpenLead, cqPending }){
   const [profiles,setProfiles]=useState([]);
   const [invites,setInvites]=useState([]);
   const [busy,setBusy]=useState(false);
@@ -4019,7 +4137,46 @@ function TeamScreen({ userId, toast, leads, onOpenLead }){
   };
   const pending = invites.filter(i=>!i.used_at);
 
-  const all = leads||[];
+  // horloge minute : sans elle, les useMemo (feed/KPIs) figeraient « aujourd'hui »/live/à débriefer
+  // au dernier changement de données — un RDV qui se termine doit basculer tout seul.
+  const [clock,setClock]=useState(()=>Date.now());
+  useEffect(()=>{ const id=setInterval(()=>setClock(Date.now()),60000); return ()=>clearInterval(id); },[]);
+
+  // ----- recaps + dernière activité en masse (la timeline n'est chargée qu'à l'ouverture d'une fiche,
+  // sans ça le cockpit n'aurait NI verdict NI phrase NI vrai « sans suivi » pour les fiches jamais ouvertes) -----
+  const [recaps,setRecaps]=useState(null);
+  const [lastActs,setLastActs]=useState(null);
+  useEffect(()=>{ let on=true;
+    (async()=>{ try{
+      const map={};
+      for(let from=0;;from+=1000){
+        const { data, error } = await SB.from('activites').select('lead_id,created_at,result,conclusion,contenu,call_kind')
+          .eq('type','recap').order('created_at',{ascending:false}).order('id',{ascending:false}).range(from,from+999);
+        if(error||!data||!data.length) break;
+        for(const a of data){ if(a.lead_id && !map[a.lead_id]) map[a.lead_id]={type:'recap', result:a.result||null, conclusion:a.conclusion||null, text:a.contenu||'', callKind:a.call_kind||null, at:a.created_at||null}; }
+        if(data.length<1000) break;
+      }
+      if(on) setRecaps(map);
+    }catch(e){ if(on) setRecaps({}); } })();
+    // dernière activité par lead (appel, note, mail… TOUS types) → vrai signal « sans suivi » :
+    // un closer qui logge un NRP quotidien n'est pas « sans suivi », même sans RDV.
+    (async()=>{ try{
+      const map={};
+      for(let from=0;;from+=1000){
+        const { data, error } = await SB.from('activites').select('lead_id,created_at')
+          .order('created_at',{ascending:false}).order('id',{ascending:false}).range(from,from+999);
+        if(error||!data||!data.length) break;
+        for(const a of data){ if(a.lead_id && !map[a.lead_id]) map[a.lead_id]=a.created_at; }
+        if(data.length<1000) break;
+      }
+      if(on) setLastActs(map);
+    }catch(e){ if(on) setLastActs({}); } })();
+    return ()=>{ on=false; }; },[]);
+
+  const all = useMemo(()=>(leads||[]).map(l=>{
+    const r=recaps&&recaps[l.id], a=lastActs&&lastActs[l.id];
+    return (r||a)?{...l, ...(r?{_recap:r}:null), ...(a?{_lastAct:a}:null)}:l;
+  }),[leads,recaps,lastActs]);
   // roster : profils closer (même à 0 lead) ∪ propriétaires réels présents dans les leads ; le manager (userId) exclu
   const { rosterClosers, unassigned } = useMemo(()=>{
     const nameById={}; profiles.forEach(p=>{ nameById[p.id]=p.name; });
@@ -4038,19 +4195,42 @@ function TeamScreen({ userId, toast, leads, onOpenLead }){
   },[all,profiles,userId]);
 
   const ranked = useMemo(()=>rosterClosers.slice().sort((a,b)=>{
-    const ca=x=>x.leads.reduce((t,l)=>{const s=leadStatus(l); return t+(s.isWon?s.montant:0);},0);
-    const wn=x=>x.leads.filter(l=>leadStatus(l).isWon).length;
+    const ca=x=>x.leads.reduce((t,l)=>t+leadStatus(l,clock).caWon,0);
+    const wn=x=>x.leads.filter(l=>leadStatus(l,clock).isWon).length;
     return (ca(b)-ca(a)) || (wn(b)-wn(a)) || (b.leads.length-a.leads.length);
-  }),[rosterClosers]);
-  const maxCa = useMemo(()=>Math.max(0,...ranked.map(c=>c.leads.reduce((t,l)=>{const s=leadStatus(l); return t+(s.isWon?s.montant:0);},0))),[ranked]);
+  }),[rosterClosers,clock]);
+  const maxCa = useMemo(()=>Math.max(0,...ranked.map(c=>c.leads.reduce((t,l)=>t+leadStatus(l,clock).caWon,0))),[ranked,clock]);
 
   // KPIs équipe (tous les closers, hors leads du manager)
   const team = useMemo(()=>{
     const ls=ranked.flatMap(c=>c.leads);
-    let rdv=0,closing=0,won=0,ca=0;
-    ls.forEach(l=>{ const s=leadStatus(l); if(s.isWon){won++;ca+=s.montant;} else if(s.isClosing) closing++; if(s.rdvUpcoming) rdv++; });
-    return { n:ls.length, rdv, closing, won, ca };
-  },[ranked]);
+    let rdv=0,closing=0,won=0,ca=0,noShows=0;
+    ls.forEach(l=>{ const s=leadStatus(l,clock); if(s.isWon){won++;ca+=s.caWon;} else if(s.isClosing) closing++; if(s.rdvUpcoming||s.live) rdv++; noShows+=s.noShows; });
+    return { n:ls.length, rdv, closing, won, ca, noShows };
+  },[ranked,clock]);
+
+  // ----- feed « À traiter aujourd'hui » : ce qui exige une action MAINTENANT, tous closers confondus -----
+  const [feedSel,setFeedSel]=useState(null); // null = auto (1re catégorie non vide) · 'none' = replié · sinon clé
+  const feed = useMemo(()=>{
+    const rows=ranked.flatMap(c=>c.leads.map(l=>({ l, closer:c.name, s:leadStatus(l,clock) })));
+    const byAttn=(a,b)=>leadAttn(a.s)-leadAttn(b.s);
+    return {
+      today:   rows.filter(r=>r.s.live||r.s.rdvToday).sort((a,b)=>new Date((a.s.live||a.s.rdvNext).start_at)-new Date((b.s.live||b.s.rdvNext).start_at)),
+      toFix:   rows.filter(r=>r.s.noShowToFix).sort(byAttn),
+      debrief: rows.filter(r=>r.s.toDebrief.length>0).sort(byAttn),
+      // « sans suivi » suspendu tant que le miroir CalendIQ n'a pas répondu (sinon on accuserait à tort
+      // un lead dont le RDV n'est simplement pas encore chargé)
+      stale:   cqPending?[]:rows.filter(r=>r.s.staleDays>=7).sort((a,b)=>b.s.staleDays-a.s.staleDays),
+    };
+  },[ranked,clock,cqPending]);
+  const FEED_CATS=[
+    {key:'today',   label:'RDV aujourd’hui',    cls:'acc',  icon:I.agenda},
+    {key:'toFix',   label:'No-show à recaler',  cls:'bad',  icon:I.noshow},
+    {key:'debrief', label:'RDV à débriefer',    cls:'warn', icon:I.clock},
+    {key:'stale',   label:'Sans suivi 7 j+',    cls:'warn', icon:I.clock},
+  ];
+  const feedActive = feedSel==='none' ? null : (feedSel || (FEED_CATS.find(c=>feed[c.key].length)||{}).key || null);
+  const feedTotal = FEED_CATS.reduce((t,c)=>t+feed[c.key].length,0);
 
   return (
     <div className="mgr-pad">
@@ -4062,16 +4242,35 @@ function TeamScreen({ userId, toast, leads, onOpenLead }){
       <div className="mgr-kpis">
         <div className="kpi"><span className="kpi-ic">{I.leads({})}</span><div className="kpi-n">{team.n}</div><div className="kpi-l">Leads suivis</div></div>
         <div className="kpi accent"><span className="kpi-ic">{I.agenda({})}</span><div className="kpi-n">{team.rdv}</div><div className="kpi-l">RDV à venir</div></div>
+        <div className={'kpi'+(team.noShows?' danger':'')}><span className="kpi-ic">{I.noshow({})}</span><div className="kpi-n">{team.noShows}</div><div className="kpi-l">No-show</div></div>
         <div className="kpi"><span className="kpi-ic">{I.euro({})}</span><div className="kpi-n">{team.closing}</div><div className="kpi-l">En closing</div></div>
-        <div className="kpi ok"><span className="kpi-ic">{I.check({})}</span><div className="kpi-n">{team.won}</div><div className="kpi-l">Gagnés</div></div>
+        <div className="kpi ok"><span className="kpi-ic">{I.check({})}</span><div className="kpi-n">{team.won}</div><div className="kpi-l">Closés</div></div>
         <div className="kpi accent"><span className="kpi-ic">{I.euro({})}</span><div className="kpi-n">{eur(team.ca)}</div><div className="kpi-l">CA encaissé</div></div>
       </div>
+
+      <div className="mgr-sec"><span className="eyebrow">À traiter aujourd’hui</span>{feedTotal>0 && <span className="mgr-count">{feedTotal}</span>}</div>
+      <div className="feed-row">
+        {FEED_CATS.map(c=>{ const n=feed[c.key].length; return (
+          <button key={c.key} className={'feed-chip'+(n?' has '+c.cls:'')+(feedActive===c.key?' on':'')}
+            onClick={()=>setFeedSel(feedActive===c.key?'none':c.key)}>
+            {c.icon({})}{c.label}<b>{n}</b>
+          </button>
+        ); })}
+      </div>
+      {cqPending && <div className="feed-empty">Chargement des RDV CalendIQ…</div>}
+      {feedTotal===0 && !cqPending
+        ? <div className="feed-empty">Rien à traiter — tous les RDV sont suivis.</div>
+        : (feedActive && feed[feedActive].length>0 && (
+          <div className="feed-list">
+            {feed[feedActive].map(r=><ManagerLeadRow key={r.l.id} lead={r.l} owner={r.closer} onOpenLead={onOpenLead}/>)}
+          </div>
+        ))}
 
       <div className="mgr-sec"><span className="eyebrow">Performance · classement</span><span className="mgr-count">{ranked.length}</span></div>
       <div className="lb-list">
         {ranked.length===0
           ? <div className="lb-card"><div className="lb-empty" style={{padding:'18px 16px'}}>Aucun closer pour l’instant. Clique « Inviter un closer » pour démarrer.</div></div>
-          : ranked.map((c,i)=><CloserCard key={c.key} closerId={c.key} rank={i+1} name={c.name} leads={c.leads} maxCa={maxCa} onOpenLead={onOpenLead} onDelete={delCloser} defaultOpen={i===0&&ranked.length<=2}/>)}
+          : ranked.map((c,i)=><CloserCard key={c.key} closerId={c.key} rank={i+1} name={c.name} leads={c.leads} maxCa={maxCa} clock={clock} onOpenLead={onOpenLead} onDelete={delCloser} defaultOpen={i===0&&ranked.length<=2}/>)}
       </div>
 
       <div className="mgr-sec"><span className="eyebrow">Invitations en attente</span><span className="mgr-count">{pending.length}</span></div>
