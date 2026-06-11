@@ -111,6 +111,13 @@ input,textarea{font-family:inherit; color:inherit}
 .nav-soon{margin-left:auto; font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--t3); background:var(--surface-3); border-radius:6px; padding:2px 7px; opacity:0; transition:opacity var(--speed)}
 .nav-item.soon:hover .nav-soon{opacity:1}
 .rail-spacer{flex:1}
+.rail-season{padding:10px 8px 4px; margin:6px 4px 0; border-top:1px solid var(--b1)}
+.rail-season-lbl{display:flex; align-items:center; gap:6px; font-size:10.5px; font-weight:700; color:var(--t3); text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px}
+.rail-season-lbl svg{width:13px; height:13px}
+.rail-season-dot{width:6px; height:6px; border-radius:99px; background:var(--accent); margin-left:auto}
+.rail-season-sel{width:100%; padding:8px 9px; border-radius:9px; border:1.5px solid var(--b1); background:var(--surface-2); color:var(--t2); font-size:12.5px; font-weight:600; font-family:inherit; cursor:pointer; transition:all var(--speed) var(--ease)}
+.rail-season-sel:hover{border-color:var(--b3)}
+.rail-season.on .rail-season-sel{border-color:var(--accent); color:var(--accent); background:var(--accent-tint); font-weight:700}
 .rail-tools{display:flex; gap:6px; padding:0 4px 8px}
 .icon-btn{
   width:34px; height:34px; border-radius:9px; display:grid; place-items:center; color:var(--t2);
@@ -187,6 +194,7 @@ input,textarea{font-family:inherit; color:inherit}
 /* ----- badges ----- */
 .tag{font-family:'JetBrains Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; padding:3px 7px; border-radius:6px; display:inline-flex; align-items:center; gap:4px}
 .tag-noshow{background:var(--danger-tint); color:var(--danger)}
+.tag-saison{background:color-mix(in srgb, var(--accent) 14%, transparent); color:var(--accent); font-weight:800}
 .tag-ok{background:var(--ok-tint); color:var(--ok)}
 .tag-prefilled{background:var(--surface-3); color:var(--t2); border:1px solid var(--b1)}
 .tag-wait{background:var(--accent-tint); color:var(--accent)}
@@ -1005,6 +1013,11 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .cc-actions .btn{flex:1; justify-content:center; padding:12px}
 
 /* ---- sélecteur d'étape dans la fiche (déplacer le lead sans sortir) ---- */
+.movesel-row{display:flex; gap:10px; align-items:flex-start; margin-bottom:14px}
+.seasonsel{flex:none; width:128px; display:flex; flex-direction:column}
+.season-select{width:100%; padding:11px 9px; border-radius:11px; border:1.5px solid var(--b1); background:var(--surface-2); color:var(--t1); font-size:13px; font-weight:700; font-family:inherit; cursor:pointer; height:42px; transition:all var(--speed) var(--ease)}
+.season-select:hover{border-color:var(--b3)}
+.season-select.set{border-color:var(--accent); color:var(--accent); background:var(--accent-tint)}
 .movesel{position:relative; margin-bottom:14px}
 .movesel-lbl{display:block; font-size:11px; font-weight:700; color:var(--t3); text-transform:uppercase; letter-spacing:.04em; margin-bottom:7px}
 .movesel-btn{display:flex; align-items:center; gap:9px; width:100%; padding:11px 13px; border-radius:11px; border:1.5px solid var(--b1); background:var(--surface-2); color:var(--t1); font-size:14px; font-weight:700; cursor:pointer; transition:all var(--speed) var(--ease)}
@@ -1395,7 +1408,7 @@ function dbToLead(r, acts){
     source:r.source, heat:r.heat||null, column:COL_DB2UI(r.colonne), owner:r.owner_closer_id||null,
     nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, nextActionDue:r.next_action_due||null, extraActions:Array.isArray(r.extra_actions)?r.extra_actions:[], live:false, noShow,
     offer:(r.montant==null||r.montant==='')?0:(Number(r.montant)||0), aPayer:(r.montant_a_payer==null?'':r.montant_a_payer), quiPaie:r.qui_paie||'', paid:r.statut_paiement==='paye', statut_paiement:r.statut_paiement||'aucun',
-    cpf:(Number(r.cpf_dispo)||0), metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'',
+    cpf:(Number(r.cpf_dispo)||0), metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'', saison:r.saison||null,
     rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, rdvMeetLink:r.rdv_meet_link||null, rdvMeta, hubspot_deal_id:r.hubspot_deal_id||null, date_creation:r.date_creation||null, hsImport:r.hs_import||null,
     timeline:actsToTimeline(acts2)
   };
@@ -1441,6 +1454,7 @@ async function saveLead(id, uiPatch){
   if('objectif' in uiPatch) m.objectif=uiPatch.objectif;
   if('budget' in uiPatch) m.budget=uiPatch.budget;
   if('cpf' in uiPatch) m.cpf_dispo=uiPatch.cpf;
+  if('saison' in uiPatch) m.saison=uiPatch.saison;
   if('rdv_at' in uiPatch) m.rdv_at=uiPatch.rdv_at;
   if('rdvType' in uiPatch) m.rdv_type=uiPatch.rdvType;
   if('rdvMeetLink' in uiPatch) m.rdv_meet_link=uiPatch.rdvMeetLink;
@@ -1565,6 +1579,21 @@ const COLUMNS = [
 ];
 const COL_LABEL = Object.fromEntries(COLUMNS.map(c=>[c.id,c.label]));
 const COL_COLOR = {contacter:'var(--accent)', perso:'var(--cold)', atc:'var(--cold)', rdv1:'var(--warm)', contacte:'var(--warm)', qualifie:'var(--warm)', closing:'var(--accent)', encaisser:'var(--accent)', won:'var(--ok)', lost:'var(--t4)', desabonne:'var(--t4)'};
+// SAISONS / cohortes bootcamp (1 cohorte = 1 mois). Code = vérité métier (S16 = Juin 2026). Label court pour les sélecteurs/chips.
+const SEASONS = [
+  {code:'S18', label:'S18 — Août 26'},
+  {code:'S17', label:'S17 — Juil 26'},
+  {code:'S16', label:'S16 — Juin 26'},
+  {code:'S15', label:'S15 — Mai 26'},
+  {code:'S14', label:'S14 — Avr 26'},
+  {code:'S13', label:'S13 — Mars 26'},
+  {code:'S12', label:'S12 — Janv 26'},
+  {code:'S11', label:'S11 — Déc 25'},
+  {code:'S10', label:'S10 — Nov 25'},
+  {code:'S9',  label:'S9 — Oct 25'},
+  {code:'BF',  label:'Builders Factory'},
+];
+const SEASON_LABEL = Object.fromEntries(SEASONS.map(s=>[s.code,s.label]));
 // libellé d'action par défaut quand un lead change de colonne
 const NEXT_BY_COL = {contacter:'À contacter', perso:'Contact perso à traiter', atc:'Sans réponse — à relancer', rdv1:'R1 à faire', contacte:'À qualifier', qualifie:'À closer', closing:'Closing en cours', encaisser:'Paiement à encaisser', won:'Gagné', lost:'Perdu', desabonne:'Désabonné'};
 // une action « réelle » = décidée (manuelle ou recap), PAS le libellé d'étape par défaut. Sert à exclure le bruit de la page « À faire » et de la fiche.
@@ -2087,6 +2116,7 @@ const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDrag
         <div className="card-id">
           <div className="card-name">{lead.prenom} {lead.nom}
             {lead.noShow && <span className="tag tag-noshow">No-show</span>}
+            {lead.saison && <span className="tag tag-saison" title={SEASON_LABEL[lead.saison]||lead.saison}>{lead.saison}</span>}
           </div>
           <div className="card-sub"><Src source={lead.source}/></div>
         </div>
@@ -2453,23 +2483,32 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
         <div className="panel">
           <div className="panel-head"><span className="eyebrow">Actions</span></div>
           <div className="panel-body">
-            <div className="movesel">
-              <span className="movesel-lbl">Étape du lead</span>
-              <button ref={moveBtnRef} className={`movesel-btn ${moveOpen?'open':''}`} onClick={toggleMove}>
-                <span className="sdot" style={{background:COL_COLOR[lead.column]}}></span>
-                <span>{COL_LABEL[lead.column]}</span>
-                <svg className="movesel-chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="m6 9 6 6 6-6"/></svg>
-              </button>
-              {moveOpen && (<>
-                <div className="movesel-ov" onClick={()=>setMoveOpen(false)}></div>
-                <div className="movesel-menu" style={movePos?{position:'fixed', top:movePos.top, left:movePos.left, width:movePos.width, right:'auto', maxHeight:movePos.maxH}:undefined}>
-                  {COLUMNS.map(col=>(
-                    <button key={col.id} className={`movesel-item ${col.id===lead.column?'active':''}`} onClick={()=>{ if(col.id!==lead.column) onMove(col.id); setMoveOpen(false); }}>
-                      <span className="sdot" style={{background:COL_COLOR[col.id]}}></span><span>{col.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </>)}
+            <div className="movesel-row">
+              <div className="movesel" style={{flex:'1 1 0',marginBottom:0,minWidth:0}}>
+                <span className="movesel-lbl">Étape du lead</span>
+                <button ref={moveBtnRef} className={`movesel-btn ${moveOpen?'open':''}`} onClick={toggleMove}>
+                  <span className="sdot" style={{background:COL_COLOR[lead.column]}}></span>
+                  <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{COL_LABEL[lead.column]}</span>
+                  <svg className="movesel-chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                {moveOpen && (<>
+                  <div className="movesel-ov" onClick={()=>setMoveOpen(false)}></div>
+                  <div className="movesel-menu" style={movePos?{position:'fixed', top:movePos.top, left:movePos.left, width:movePos.width, right:'auto', maxHeight:movePos.maxH}:undefined}>
+                    {COLUMNS.map(col=>(
+                      <button key={col.id} className={`movesel-item ${col.id===lead.column?'active':''}`} onClick={()=>{ if(col.id!==lead.column) onMove(col.id); setMoveOpen(false); }}>
+                        <span className="sdot" style={{background:COL_COLOR[col.id]}}></span><span>{col.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>)}
+              </div>
+              <div className="seasonsel">
+                <span className="movesel-lbl">Saison</span>
+                <select className={'season-select'+(lead.saison?' set':'')} value={lead.saison||''} onChange={e=>onEditField('saison','saison', e.target.value||null)} title="Cohorte bootcamp du lead">
+                  <option value="">Aucune</option>
+                  {SEASONS.map(s=><option key={s.code} value={s.code}>{s.label}</option>)}
+                </select>
+              </div>
             </div>
             <div className="actions">
               <button className="act" onClick={openNewRdv} disabled={!calendiqReady} title={calendiqReady?'Créer un RDV dans CalendIQ':'Connecte ton CalendIQ (onglet Agenda)'}>
@@ -3555,6 +3594,12 @@ function App({session, onLogout}){
     });
   },[leads,cqMeetings]);
   const sel = leadsCq.find(l=>l.id===selId);
+  // FILTRE SAISON GLOBAL : un seul réglage qui filtre TOUTES les vues liste (kanban, à faire, closers).
+  // null = toutes · '__none' = sans saison · sinon code de saison. La fiche (sel) reste TOUJOURS sur leadsCq complet.
+  const [seasonFilter,setSeasonFilter]=useState(()=>persistedState('iqcrm_season',null));
+  useEffect(()=>{ localStorage.setItem('iqcrm_season',JSON.stringify(seasonFilter)); },[seasonFilter]);
+  const leadsView = useMemo(()=> !seasonFilter ? leadsCq : leadsCq.filter(l=> seasonFilter==='__none' ? !l.saison : l.saison===seasonFilter), [leadsCq,seasonFilter]);
+  const seasonCounts = useMemo(()=>{ const m={}; let none=0; for(const l of leadsCq){ if(l.saison) m[l.saison]=(m[l.saison]||0)+1; else none++; } m.__none=none; return m; },[leadsCq]);
   const myLeadsCount = useMemo(()=>leadsCq.filter(l=>l.owner===userId||l._cqCloserId===userId).length,[leadsCq,userId]);
   // défaut de la vue selon le rôle (une fois le profil chargé) : closer = Mes leads, admin = Global
   useEffect(()=>{ if(view==null && profile) setView(isAdmin?'global':'mine'); },[profile,isAdmin,view]);
@@ -3902,6 +3947,14 @@ function App({session, onLogout}){
             {n.icon({})}<span>{n.label}</span>{n.soon?<span className="nav-soon">Bientôt</span>:(n.badge?<span className={`nav-badge ${n.badgeWarn?'warn':''}`}>{n.badge}</span>:null)}
           </button>
         ))}
+        <div className={'rail-season'+(seasonFilter?' on':'')}>
+          <span className="rail-season-lbl">{I.leads({})}Saison{seasonFilter?<span className="rail-season-dot"></span>:null}</span>
+          <select className="rail-season-sel" value={seasonFilter||''} onChange={e=>setSeasonFilter(e.target.value||null)} title="Filtrer toutes les vues par saison">
+            <option value="">Toutes les saisons</option>
+            {SEASONS.filter(s=>seasonCounts[s.code]).map(s=><option key={s.code} value={s.code}>{s.label} ({seasonCounts[s.code]})</option>)}
+            {seasonCounts.__none?<option value="__none">Sans saison ({seasonCounts.__none})</option>:null}
+          </select>
+        </div>
         <div className="rail-spacer"></div>
         <div className="rail-tools">
           <button className="icon-btn" title="Thème" onClick={()=>setTheme(t=>t==='light'?'dark':'light')}>{theme==='light'?I.moon({}):I.sun({})}</button>
@@ -3916,7 +3969,7 @@ function App({session, onLogout}){
 
       {/* WORK */}
       <main className="work">
-        {screen==='leads' && <Board leads={leadsCq} search={search} setSearch={setSearch} view={view||'mine'} setView={setView} userId={userId}
+        {screen==='leads' && <Board leads={leadsView} search={search} setSearch={setSearch} view={view||'mine'} setView={setView} userId={userId}
             onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col)=>setAddTarget(col)} onDelete={deleteLead}/>}
         {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen('leads')} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
             onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} onManualRdv={setManualRdv} onManualRemoveRdv={removeManualRdv} onRdvOutcome={setRdvOutcome} onClearRdvOutcome={clearRdvOutcome} onCpfRdv={bookCpfRdv} isAdminView={isAdmin} closers={closers} onAssign={reassignOwner} calendiqReady={!!(profile&&profile.calendiq_organizer_id)} calendiqOrganizer={profile&&profile.calendiq_organizer_id}/>}
@@ -3924,8 +3977,8 @@ function App({session, onLogout}){
         {screen==='agenda' && <Agenda meetings={cqMeetings} sources={cqSources} loading={cqLoading} error={cqError}
             isAdmin={isAdmin} profile={profile} onConnect={connectCalendiq} onDisconnect={disconnectCalendiq}
             onRefresh={loadCalendiq} onOpenLead={openLead} meetingLeadId={meetingLeadId}/>}
-        {screen==='todo' && isAdmin && <AFaire leads={leadsCq} onOpenLead={openLead} onToggleAction={toggleActionFor} onToggleExtra={toggleExtraFor} onReassign={reassignOwner}/>}
-        {screen==='team' && isAdmin && <TeamScreen userId={userId} toast={toast} leads={leadsCq} onOpenLead={openLead} cqPending={cqLoading && !cqMeetings.length}/>}
+        {screen==='todo' && isAdmin && <AFaire leads={leadsView} onOpenLead={openLead} onToggleAction={toggleActionFor} onToggleExtra={toggleExtraFor} onReassign={reassignOwner}/>}
+        {screen==='team' && isAdmin && <TeamScreen userId={userId} toast={toast} leads={leadsView} onOpenLead={openLead} cqPending={cqLoading && !cqMeetings.length}/>}
         {screen==='console' && isAdmin && <Console toast={toast} onOpenLead={openLead} setSyncBusy={setSyncBusy} reloadLeads={reload}/>}
       </main>
 
