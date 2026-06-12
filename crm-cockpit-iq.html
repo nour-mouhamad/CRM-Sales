@@ -332,6 +332,137 @@ input,textarea{font-family:inherit; color:inherit}
 .actcard-date input{background:transparent; border:none; color:inherit; font-size:11.5px; font-family:inherit; cursor:pointer; outline:none; color-scheme:dark; width:108px}
 .actcard-date input::-webkit-calendar-picker-indicator{filter:invert(.6); cursor:pointer}
 /* ===== PAGE À FAIRE ===== */
+/* ===== PAGE À FAIRE — Triage Stack (1 carte = 1 lead ; canaux séparés : urgence=couleur, priorité=forme, domaine=pastille) ===== */
+
+/* barre d'outils : stats chiffrées + tri */
+.af-bar{display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin:6px 0 16px}
+.af-stats{display:flex; align-items:center; gap:16px; flex-wrap:wrap}
+.af-stat{display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:700; color:var(--t2)}
+.af-stat i{width:9px; height:9px; border-radius:50%; flex:none}
+.af-stat.late{color:var(--danger)} .af-stat.late i{background:var(--danger)}
+.af-stat.today{color:var(--accent)} .af-stat.today i{background:var(--accent)}
+.af-stat.rdv{color:var(--t2)} .af-stat.rdv svg{width:15px; height:15px; color:var(--accent)}
+.af-stat.sub{color:var(--t3); font-weight:600}
+.af-seg{display:inline-flex; align-items:center; gap:2px; background:var(--surface-2); border:1px solid var(--b1); border-radius:10px; padding:3px}
+.af-seg-lbl{font-size:10.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--t3); padding:0 6px 0 7px}
+.af-seg-b{padding:6px 13px; border-radius:8px; border:none; background:none; color:var(--t2); font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; transition:all var(--speed) var(--ease)}
+.af-seg-b:hover{color:var(--t1)}
+.af-seg-b.on{background:var(--surface); color:var(--accent); box-shadow:var(--sh-card)}
+
+/* en-tête de section agrégée (tri urgence) : pastille + compteur + ligne */
+.af-sec{display:flex; align-items:center; gap:9px; margin:22px 0 10px}
+.af-sec:first-of-type{margin-top:6px}
+.af-sec-dot{width:8px; height:8px; border-radius:50%; background:var(--sc); flex:none; box-shadow:0 0 0 3px color-mix(in srgb, var(--sc) 18%, transparent)}
+.af-sec-t{font-size:11.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--sc)}
+.af-sec-n{background:var(--surface-3); color:var(--t2); border-radius:20px; padding:1px 9px; font-size:11px; font-weight:700}
+.af-sec-ln{flex:1; height:1px; background:var(--b1)}
+
+/* pile de cartes (tri priorité/domaine, sans sections) */
+.af-stack{display:flex; flex-direction:column; gap:11px; margin-top:6px}
+
+/* ---- CARTE = 1 LEAD ; border-left = urgence MAX ; halo 'rotting' si une action est en retard ---- */
+.af-card{background:var(--surface); border:1px solid var(--b1); border-left:3px solid var(--uc); border-radius:var(--r-card); margin-bottom:11px; overflow:hidden; transition:border-color var(--speed) var(--ease), box-shadow var(--speed) var(--ease)}
+.af-card:hover{border-color:var(--b3); box-shadow:var(--sh-card)}
+.af-card[data-urg="late"]{box-shadow:0 0 0 1px color-mix(in srgb, var(--danger) 22%, transparent), 0 1px 3px color-mix(in srgb, var(--danger) 12%, transparent)}
+.af-card[data-urg="late"]:hover{box-shadow:0 0 0 1px color-mix(in srgb, var(--danger) 34%, transparent), var(--sh-lift)}
+
+/* en-tête de carte : identité lead affichée UNE seule fois */
+.af-head{display:flex; align-items:center; gap:11px; padding:calc(var(--pad) - 1px) 14px; cursor:pointer; border-bottom:1px solid var(--b1); transition:background var(--speed) var(--ease)}
+.af-head:hover{background:var(--surface-2)}
+.af-head:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+.af-id{flex:1; min-width:0}
+.af-id b{display:block; font-family:'Gabarito',sans-serif; font-size:15px; font-weight:800; letter-spacing:-.01em; color:var(--t1); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.af-sub{display:flex; align-items:center; gap:7px; margin-top:2px; min-width:0}
+.af-cdot{width:7px; height:7px; border-radius:50%; flex:none}
+.af-col{font-size:11.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0}
+.af-amt{font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums; font-size:11.5px; font-weight:600; font-style:normal; color:var(--t3); flex:none; margin-left:1px}
+.af-badge{font-size:10px; font-weight:800; letter-spacing:.03em; text-transform:uppercase; padding:3px 9px; border-radius:var(--r-pill); flex:none; color:var(--t2); background:var(--surface-3)}
+.af-badge.late{color:var(--danger); background:var(--danger-tint)}
+.af-badge.today{color:var(--accent); background:var(--accent-tint)}
+.af-badge.week{color:var(--warm); background:color-mix(in srgb, var(--warm) 14%, transparent)}
+.af-badge.later,.af-badge.none{color:var(--t3); background:var(--surface-3)}
+.af-count{font-size:11.5px; font-weight:800; color:var(--t2); background:var(--surface-2); border:1px solid var(--b1); border-radius:var(--r-pill); min-width:22px; text-align:center; padding:2px 8px; flex:none; font-variant-numeric:tabular-nums}
+.af-closer{flex:none; background:var(--surface-2); border:1px solid var(--b1); color:var(--t2); border-radius:8px; padding:5px 8px; font-size:12px; max-width:128px; font-family:inherit; cursor:pointer; transition:border-color var(--speed) var(--ease)}
+.af-closer:hover{border-color:var(--b3)}
+.af-go{flex:none; color:var(--t4); display:grid; place-items:center; width:16px; transition:color var(--speed) var(--ease), transform var(--speed) var(--ease)}
+.af-go svg{width:15px; height:15px}
+.af-head:hover .af-go{color:var(--accent); transform:translateX(2px)}
+
+/* ---- LIGNE = 1 action/RDV ; colonnes à position FIXE pour scan vertical ; border-left = urgence de la ligne ---- */
+.af-rows{display:flex; flex-direction:column}
+.af-row{display:flex; align-items:center; gap:11px; padding:9px 14px 9px 11px; cursor:pointer; border-left:3px solid var(--uc); border-top:1px solid color-mix(in srgb, var(--b1) 60%, transparent); transition:background var(--speed) var(--ease)}
+.af-row:first-child{border-top:none}
+.af-row:hover{background:var(--surface-2)}
+.af-row:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+.af-row[data-urg="later"],.af-row[data-urg="none"]{border-left-color:transparent}
+
+/* CANAL 1 — URGENCE = couleur : pastille ; PLEINE (late/today/week) vs CREUSE (later/none) pour doubler couleur+forme */
+.af-udot{width:10px; height:10px; border-radius:50%; flex:none; background:var(--uc); box-shadow:0 0 0 3px color-mix(in srgb, var(--uc) 20%, transparent)}
+.af-row[data-urg="later"] .af-udot,.af-row[data-urg="none"] .af-udot{background:transparent; box-shadow:inset 0 0 0 2px var(--uc)}
+.af-row[data-urg="late"] .af-udot{box-shadow:0 0 0 4px color-mix(in srgb, var(--danger) 16%, transparent)}
+
+/* checkbox bidirectionnelle (mute le même état que la fiche) / marqueur RDV */
+.af-chk{width:20px; height:20px; border-radius:6px; border:2px solid var(--b2); display:grid; place-items:center; flex:none; color:transparent; cursor:pointer; transition:all var(--speed) var(--ease)}
+.af-chk:hover{border-color:var(--accent); color:var(--accent); background:var(--accent-tint)}
+.af-chk:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.af-chk svg{width:13px; height:13px; stroke-width:2.8}
+.af-rdvic{width:20px; height:20px; border-radius:6px; display:grid; place-items:center; flex:none; color:var(--accent); background:var(--accent-tint)}
+.af-rdvic svg{width:13px; height:13px}
+
+/* CANAL 2 — PRIORITÉ = forme monochrome (barres Linear, JAMAIS de couleur saturée) */
+.af-prio{display:inline-flex; align-items:flex-end; gap:2px; height:13px; flex:none}
+.af-prio i{width:3px; border-radius:1px; background:var(--b2); transition:background var(--speed) var(--ease)}
+.af-prio i:nth-child(1){height:5px}
+.af-prio i:nth-child(2){height:9px}
+.af-prio i:nth-child(3){height:13px}
+.af-prio[data-n="1"] i:nth-child(1){background:var(--t3)}
+.af-prio[data-n="2"] i:nth-child(1),.af-prio[data-n="2"] i:nth-child(2){background:var(--t2)}
+.af-prio[data-n="3"] i{background:var(--t1)}
+
+.af-label{flex:1; min-width:0; font-size:13.5px; font-weight:600; color:var(--t1); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.35}
+
+/* CANAL 3 — DOMAINE = pastille catégorielle (tint désaturé + icône), 1 max/ligne, position fixe à droite */
+.af-dom{display:inline-flex; align-items:center; gap:5px; flex:none; font-size:11px; font-weight:700; padding:3px 9px; border-radius:var(--r-pill); color:var(--t2); background:var(--surface-3)}
+.af-dom svg{width:13px; height:13px}
+.af-dom em{font-style:normal; letter-spacing:-.01em}
+.af-dom.rdv{color:var(--accent); background:var(--accent-tint)}
+.af-dom.argent{color:var(--ok); background:var(--ok-tint)}
+.af-dom.appel{color:var(--warm); background:color-mix(in srgb, var(--warm) 14%, transparent)}
+.af-dom.admin{color:var(--t2); background:var(--surface-3)}
+.af-dom.suivi{color:var(--t2); background:color-mix(in srgb, var(--t3) 12%, transparent)}
+
+/* bouton Rejoindre (RDV) */
+.af-meet{display:inline-flex; align-items:center; gap:5px; flex:none; font-size:11.5px; font-weight:700; color:var(--accent); background:var(--accent-tint); padding:5px 9px; border-radius:8px; text-decoration:none; transition:background var(--speed) var(--ease)}
+.af-meet:hover{background:var(--accent-tint-2)}
+.af-meet svg{width:13px; height:13px}
+
+/* date : label court teinté par l'urgence, aligné flush-right en colonne scannable */
+.af-due{font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums; font-size:11.5px; font-weight:600; color:var(--t3); width:96px; text-align:right; flex:none; white-space:nowrap}
+.af-due.late{color:var(--danger); font-weight:800}
+.af-due.today{color:var(--accent); font-weight:700}
+.af-due.week{color:var(--warm); font-weight:700}
+
+/* repli « +N autres » par carte (cap la hauteur des leads chargés) */
+.af-more{display:block; width:100%; text-align:left; padding:8px 14px; border:none; border-top:1px solid var(--b1); background:var(--surface-2); color:var(--t2); font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:color var(--speed) var(--ease)}
+.af-more:hover{color:var(--accent)}
+
+/* densité compacte : icône seule pour domaine + badge urgence masqué + resserrement */
+[data-density="compact"] .af-dom em{display:none}
+[data-density="compact"] .af-dom{padding:3px 7px}
+[data-density="compact"] .af-badge{display:none}
+[data-density="compact"] .af-row{padding-top:7px; padding-bottom:7px}
+[data-density="compact"] .af-due{width:80px}
+[data-density="compact"] .af-stack{gap:8px}
+
+/* responsive étroit : domaine en icône seule, meet en icône, owner court */
+@media(max-width:760px){
+  .af-dom em{display:none}
+  .af-meet span{display:none}
+  .af-badge{display:none}
+  .af-due{width:70px}
+  .af-closer{max-width:104px}
+}
+
 .todo-filters{display:flex; gap:7px; flex-wrap:wrap}
 .todo-chip{padding:7px 14px; border-radius:9px; border:1px solid var(--b1); background:var(--surface); color:var(--t2); font-size:13px; font-weight:600; cursor:pointer; transition:all var(--speed)}
 .todo-chip:hover{border-color:var(--b3)}
@@ -3288,20 +3419,51 @@ function Onboarding({ profile, onConnect, loadCalendiq, myLeadsCount, onFinish, 
    case à cocher bidirectionnelle avec la fiche. Lecture des leads existants : ne modifie aucune autre structure. */
 function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onReassign }){
   const [closers,setClosers]=React.useState([]);
-  const [filter,setFilter]=React.useState('all'); // 'all' | closerId
+  const [filter,setFilter]=React.useState('all');         // 'all' | closerId
+  const [sortBy,setSortBy]=React.useState('urgence');     // 'urgence' | 'priorite' | 'domaine'
+  const [expanded,setExpanded]=React.useState({});        // leadId -> bool (déplier « +N autres »)
   React.useEffect(()=>{ let on=true; SB.from('profiles').select('id,name,role').then(({data})=>{ if(on) setClosers((data||[]).filter(p=>p.role==='closer')); }); return ()=>{on=false;}; },[]);
 
+  // ===== Repères temps (calculés une fois) =====
+  const T=React.useMemo(()=>{ const d=new Date(); const s=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime(); return {start:s, endToday:s+86400000, endWeek:s+7*86400000}; },[]);
+
+  // ===== CANAL 1 — URGENCE TEMPORELLE = COULEUR (dérivée de it.due réel) =====
+  const URG=['late','today','week','later','none'];        // index = rang (0 = plus urgent)
+  const urgRank=(due)=>{ if(!due) return 4; const t=new Date(due).getTime(); if(t<T.start) return 0; if(t<T.endToday) return 1; if(t<T.endWeek) return 2; return 3; };
+  const urgVar={late:'--danger',today:'--accent',week:'--warm',later:'--b3',none:'--b2'};
+  const overdueDays=(due)=>{ if(!due) return 0; const t=new Date(due).getTime(); return t<T.start? Math.floor((T.start-t)/86400000) : 0; };
+  const dueLabel=(due)=>{ if(!due) return 'Sans date'; const t=new Date(due).getTime(); return (t>=T.start && t<T.endToday) ? cqTime(due) : cqDayLabel(due); };
+
+  // ===== CANAL 3 — DOMAINE (catégorie dérivée du kind + column + mots-clés FR du libellé, ZÉRO champ inventé) =====
+  const DOM={
+    rdv:    {label:'RDV',       ic:I.agenda, tone:'rdv'},
+    argent: {label:'Financier', ic:I.euro,   tone:'argent'},
+    appel:  {label:'Appel',     ic:I.phone,  tone:'appel'},
+    admin:  {label:'Admin',     ic:I.doc,    tone:'admin'},
+    suivi:  {label:'Suivi',     ic:I.send,   tone:'suivi'},
+  };
+  const domainOf=(it)=>{
+    if(it.kind==='rdv') return 'rdv';
+    const l=it.lead, lab=(it.label||'').toLowerCase();
+    if(l.column==='encaisser'||l.column==='won'||l.paid || /pai|encaiss|virement|acompte|facture|règl|regl|solde|cpf|€|euro|montant/.test(lab)) return 'argent';
+    if(l.column==='atc' || /appel|appeler|rappel|rappeler|call|tél|tel|téléph|telephon|joindre|sonner|relance tel/.test(lab)) return 'appel';
+    if(/contrat|cpf|doc|dossier|admin|inscription|inscri|admission|justif|devis|pièce|piece|formulaire|papier|brochure/.test(lab)) return 'admin';
+    return 'suivi';
+  };
+
+  // ===== CANAL 2 — PRIORITÉ = FORME MONOCHROME (projection urgence + étape pipeline à enjeu, PAS un champ lead) =====
+  // 3 = haute, 2 = moyenne, 1 = basse
+  const prioOf=(it)=>{ const u=urgRank(it.due); const hot=(it.lead.column==='closing'||it.lead.column==='encaisser'||it.lead.column==='qualifie'); if(it.kind==='rdv' && u<=1) return 3; if(u===0) return hot?3:3; if(u===1) return hot?3:2; return hot?2:1; };
+
+  // ===== ITEMS : MIROIR EXACT DE LA FICHE (inchangé : action principale réelle + extras non done + 1er RDV à venir) =====
   const items=React.useMemo(()=>{
     const now=Date.now(); const out=[];
     for(const l of (leads||[])){
-      if(l.column==='lost' || l.column==='desabonne') continue; // lead abandonné -> AUCUNE action à faire (pas de relance auto)
-      // 1) action principale RÉELLE (manuelle/recap), non cochée — jamais le défaut d'étape
+      if(l.column==='lost' || l.column==='desabonne') continue; // lead abandonné -> aucune action
       if(isRealAction(l.nextAction, l.column) && l.actionDoneFor!==l.nextAction)
         out.push({ key:l.id+':main', kind:'action', lead:l, label:l.nextAction, due:l.nextActionDue||null, onCheck:()=>onToggleAction(l,true) });
-      // 2) actions ajoutées non cochées
       (l.extraActions||[]).forEach((a,i)=>{ if(a&&a.label&&a.label.trim()&&!a.done)
         out.push({ key:l.id+':x'+i, kind:'action', lead:l, label:a.label, due:a.due_at||null, onCheck:()=>onToggleExtra(l,i) }); });
-      // 3) RDV à venir (CalendIQ matché OU manuel/CPF stocké sur le lead) — miroir de la section RENDEZ-VOUS
       const allRdv=[];
       if(l.calendiqRdv && l.calendiqRdv.start_at) allRdv.push({ start_at:l.calendiqRdv.start_at, meet:l.calendiqRdv.meet_link||null, type:l.calendiqRdv.type });
       const rmeta=l.rdvMeta||{};
@@ -3310,70 +3472,162 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onReassign }
       const up=allRdv.filter(r=>new Date(r.start_at).getTime()>=now-3600000).sort((a,b)=>new Date(a.start_at)-new Date(b.start_at));
       const rdv=up[0]||null;
       if(rdv) out.push({ key:l.id+':rdv', kind:'rdv', lead:l, label:(rdv.type==='cpf'?'RDV CPF':'RDV')+' · '+cqTime(rdv.start_at), due:rdv.start_at, meet:rdv.meet||null });
-      // PAS de relance auto (no-show / lead chaud) : la page reflète UNIQUEMENT les actions+RDV de la fiche -> zéro doublon, zéro ligne inventée.
+      // ZÉRO relance auto, ZÉRO ligne inventée.
     }
-    return (filter==='all') ? out : out.filter(it=>it.lead.owner===filter);
-  },[leads,filter,onToggleAction,onToggleExtra]);
+    const f=(filter==='all') ? out : out.filter(it=>it.lead.owner===filter);
+    f.forEach(it=>{ it._u=urgRank(it.due); it._p=prioOf(it); it._d=domainOf(it); });
+    return f;
+  },[leads,filter,onToggleAction,onToggleExtra,T]);
 
-  const buckets=React.useMemo(()=>{
-    const d=new Date(); const startToday=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();
-    const endToday=startToday+86400000, endWeek=startToday+7*86400000;
-    const g={late:[],today:[],week:[],later:[],none:[]};
-    for(const it of items){
-      if(!it.due){ g.none.push(it); continue; }
-      const t=new Date(it.due).getTime();
-      if(t<startToday) g.late.push(it); else if(t<endToday) g.today.push(it); else if(t<endWeek) g.week.push(it); else g.later.push(it);
-    }
-    const bySoon=(a,b)=>new Date(a.due||0)-new Date(b.due||0);
-    g.late.sort(bySoon); g.today.sort(bySoon); g.week.sort(bySoon); g.later.sort(bySoon);
-    return g;
-  },[items]);
+  // ===== REGROUPEMENT PAR LEAD : 1 carte = 1 lead, N lignes dedans =====
+  const cards=React.useMemo(()=>{
+    const map=new Map();
+    for(const it of items){ const id=it.lead.id; if(!map.has(id)) map.set(id,{lead:it.lead, rows:[]}); map.get(id).rows.push(it); }
+    const rowCmp={
+      urgence:(a,b)=> (a._u-b._u) || (b._p-a._p) || (new Date(a.due||8.64e15)-new Date(b.due||8.64e15)),
+      priorite:(a,b)=> (b._p-a._p) || (a._u-b._u) || (new Date(a.due||8.64e15)-new Date(b.due||8.64e15)),
+      domaine:(a,b)=> a._d.localeCompare(b._d) || (a._u-b._u) || (b._p-a._p),
+    }[sortBy];
+    const arr=[...map.values()];
+    arr.forEach(c=>{
+      c.rows.sort(rowCmp);
+      c.minU=c.rows.reduce((w,r)=>Math.min(w,r._u),4);   // urgence max (rang min) -> santé carte
+      c.maxP=c.rows.reduce((p,r)=>Math.max(p,r._p),1);
+      c.minDue=c.rows.reduce((m,r)=>Math.min(m, r.due?new Date(r.due).getTime():Infinity), Infinity);
+      c.domTop=c.rows[0]?c.rows[0]._d:'suivi';
+    });
+    const cardCmp={
+      urgence:(a,b)=> (a.minU-b.minU) || (b.maxP-a.maxP) || (a.minDue-b.minDue),
+      priorite:(a,b)=> (b.maxP-a.maxP) || (a.minU-b.minU) || (a.minDue-b.minDue),
+      domaine:(a,b)=> a.domTop.localeCompare(b.domTop) || (a.minU-b.minU) || (b.maxP-a.maxP),
+    }[sortBy];
+    arr.sort(cardCmp);
+    return arr;
+  },[items,sortBy]);
 
-  const ICON={rdv:'🗓',relance:'🔁'};
-  const startToday=(()=>{ const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime(); })();
-  const dueCls=(due)=>{ if(!due) return ''; const t=new Date(due).getTime(); return t<startToday?'late':(t<startToday+86400000?'today':''); };
-  const dueLabel=(due)=>{ if(!due) return '—'; const t=new Date(due); return (t.getTime()>=startToday && t.getTime()<startToday+86400000) ? cqTime(due) : cqDayLabel(due); };
+  // ===== BARRE DE STATS (résumé chiffré instantané) =====
+  const stats=React.useMemo(()=>({
+    late:  items.filter(i=>i._u===0).length,
+    today: items.filter(i=>i._u===1).length,
+    rdv:   items.filter(i=>i.kind==='rdv').length,
+    leads: cards.length,
+  }),[items,cards]);
 
-  const Row=(it)=>(
-    <div key={it.key} className={'todo-row'+(it.kind==='relance'?' rel':'')} onClick={()=>onOpenLead(it.lead.id)} role="button" tabIndex={0}
-      onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); onOpenLead(it.lead.id); } }}>
-      {it.kind==='action'
-        ? <span className="todo-chk" onClick={e=>{ e.stopPropagation(); it.onCheck(); }} title="Marquer comme fait">{I.check({})}</span>
-        : <span className={'todo-ic '+it.kind}>{ICON[it.kind]}</span>}
-      <div className="todo-main"><b>{((it.lead.prenom||'')+' '+(it.lead.nom||'')).trim()||'Lead'}</b><span>{it.label}</span></div>
-      {it.kind==='rdv' && it.meet && <a className="todo-meet" href={it.meet} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}>{I.video({})}Rejoindre</a>}
-      <select className="todo-closer" value={it.lead.owner||''} onClick={e=>e.stopPropagation()} onChange={e=>onReassign(it.lead.id, e.target.value||null)} title="Attribuer à un closer">
-        <option value="">— non attribué —</option>
-        {closers.map(c=><option key={c.id} value={c.id}>{c.name||'Closer'}</option>)}
-      </select>
-      <span className={'todo-due '+dueCls(it.due)}>{dueLabel(it.due)}</span>
-      <span className="todo-go">↗</span>
-    </div>
-  );
-  const Section=(title,arr,cls)=> arr.length ? (
-    <React.Fragment key={title}>
-      <div className={'todo-sec'+(cls?' '+cls:'')}>{title}<span className="n">{arr.length}</span><span className="ln"></span></div>
-      {arr.map(Row)}
-    </React.Fragment>
-  ) : null;
+  // ===== RENDU — glyphe priorité (forme mono, jamais colorée) =====
+  const Prio=({n})=>(<span className="af-prio" data-n={n} title={n===3?'Priorité haute':n===2?'Priorité moyenne':'Priorité basse'} aria-label={'priorité '+n}><i></i><i></i><i></i></span>);
+
+  // ===== RENDU — une ligne d'action / RDV =====
+  const Row=(it)=>{ const dom=DOM[it._d]; const od=overdueDays(it.due); const u=URG[it._u];
+    return (
+      <div key={it.key} className="af-row" data-urg={u} style={{'--uc':'var('+urgVar[u]+')'}}
+        onClick={()=>onOpenLead(it.lead.id)} role="button" tabIndex={0}
+        onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); onOpenLead(it.lead.id); } }}>
+        <span className="af-udot" title={dueLabel(it.due)} aria-hidden="true"></span>
+        {it.kind==='action'
+          ? <span className="af-chk" role="checkbox" aria-checked="false" tabIndex={0}
+              onClick={e=>{ e.stopPropagation(); it.onCheck(); }}
+              onKeyDown={e=>{ if(e.key===' '||e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); it.onCheck(); } }}
+              title="Marquer comme fait">{I.check({})}</span>
+          : <span className="af-rdvic" aria-hidden="true">{I.agenda({})}</span>}
+        <Prio n={it._p}/>
+        <span className="af-label">{it.label}</span>
+        {it.kind==='rdv' && it.meet && <a className="af-meet" href={it.meet} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}>{I.video({})}<span>Rejoindre</span></a>}
+        <span className={'af-dom '+dom.tone} title={dom.label}>{dom.ic({})}<em>{dom.label}</em></span>
+        <span className={'af-due'+(it._u===0?' late':it._u===1?' today':it._u===2?' week':'')}>{od>0 ? od+'j de retard' : dueLabel(it.due)}</span>
+      </div>
+    );
+  };
+
+  // ===== RENDU — une carte LEAD =====
+  const Card=(c)=>{
+    const l=c.lead; const open=!!expanded[l.id];
+    const rows=open ? c.rows : c.rows.slice(0,3); const hidden=c.rows.length-3;
+    const name=((l.prenom||'')+' '+(l.nom||'')).trim()||'Lead';
+    const u=URG[c.minU]; const urgWord=['En retard',"Aujourd'hui",'Cette sem.','Plus tard','Sans date'][c.minU];
+    return (
+      <div key={l.id} className="af-card" data-urg={u} style={{'--uc':'var('+urgVar[u]+')'}}>
+        <div className="af-head" role="button" tabIndex={0} onClick={()=>onOpenLead(l.id)}
+          onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); onOpenLead(l.id); } }}>
+          <span className="avatar sz-sm">{initials(l)}</span>
+          <div className="af-id">
+            <b>{name}</b>
+            <span className="af-sub">
+              <i className="af-cdot" style={{background:COL_COLOR[l.column]||'var(--t3)'}}></i>
+              <span className="af-col" style={{color:COL_COLOR[l.column]||'var(--t3)'}}>{COL_LABEL[l.column]||'—'}</span>
+              {l.offer>0 && <em className="af-amt mono">{eur(l.offer)}</em>}
+            </span>
+          </div>
+          <span className={'af-badge '+u}>{urgWord}</span>
+          <span className="af-count">{c.rows.length}</span>
+          <select className="af-closer" value={l.owner||''} onClick={e=>e.stopPropagation()} onChange={e=>onReassign(l.id, e.target.value||null)} title="Attribuer à un closer">
+            <option value="">— non attribué —</option>
+            {closers.map(x=><option key={x.id} value={x.id}>{x.name||'Closer'}</option>)}
+          </select>
+          <span className="af-go" aria-hidden="true">{I.arrowR({})}</span>
+        </div>
+        <div className="af-rows">{rows.map(Row)}</div>
+        {hidden>0 && <button className="af-more" onClick={()=>setExpanded(s=>({...s,[l.id]:!open}))}>{open?'Réduire':'+ '+hidden+' autre'+(hidden>1?'s':'')}</button>}
+      </div>
+    );
+  };
+
+  // ===== EN-TÊTES DE SECTION agrégées (uniquement en tri 'urgence', repères de scan) =====
+  const SEC_META={
+    late:{t:'En retard',v:'--danger'}, today:{t:"Aujourd'hui",v:'--accent'},
+    week:{t:'Cette semaine',v:'--warm'}, later:{t:'Plus tard',v:'--t3'}, none:{t:'Sans date',v:'--t4'},
+  };
+  const sections=React.useMemo(()=>{
+    if(sortBy!=='urgence') return null;
+    const order=['late','today','week','later','none'];
+    const by={late:[],today:[],week:[],later:[],none:[]};
+    cards.forEach(c=>{ by[order[c.minU]].push(c); });
+    return order.filter(k=>by[k].length).map(k=>({key:k, ...SEC_META[k], cards:by[k]}));
+  },[cards,sortBy]);
+
+  const SORTS=[['urgence','Urgence'],['priorite','Priorité'],['domaine','Domaine']];
 
   return (
     <div className="mgr-pad">
       <div className="screen-head">
-        <div className="screen-title"><h1>À faire</h1><p>Toutes les actions de tous les leads — pour piloter et ne rien oublier</p></div>
+        <div className="screen-title">
+          <h1>À faire</h1>
+          <p>Une carte par lead — toutes ses actions regroupées, triées par {sortBy==='priorite'?'priorité':sortBy==='domaine'?'domaine':'urgence'}</p>
+        </div>
         <div className="todo-filters">
           <button className={'todo-chip'+(filter==='all'?' on':'')} onClick={()=>setFilter('all')}>Tous</button>
           {closers.map(c=><button key={c.id} className={'todo-chip'+(filter===c.id?' on':'')} onClick={()=>setFilter(c.id)}>{c.name||'Closer'}</button>)}
         </div>
       </div>
+
       {items.length===0
         ? <div className="sync-ok">{I.check({})}<div><b style={{fontSize:16,color:'var(--t1)'}}>Rien à faire</b><div style={{fontSize:13,marginTop:4}}>Aucune action en attente. Ajoute une action sur une fiche, ou un RDV apparaîtra ici.</div></div></div>
         : <>
-            {Section('⚠ En retard', buckets.late, 'late')}
-            {Section("Aujourd'hui", buckets.today)}
-            {Section('Cette semaine', buckets.week)}
-            {Section('Plus tard', buckets.later)}
-            {Section('Sans date', buckets.none)}
+            <div className="af-bar">
+              <div className="af-stats">
+                <span className="af-stat late" title="Actions en retard"><i></i>{stats.late} en retard</span>
+                <span className="af-stat today" title="Actions aujourd'hui"><i></i>{stats.today} aujourd'hui</span>
+                <span className="af-stat rdv" title="RDV à venir">{I.agenda({})}{stats.rdv} RDV</span>
+                <span className="af-stat sub">{stats.leads} lead{stats.leads>1?'s':''}</span>
+              </div>
+              <div className="af-seg" role="tablist" aria-label="Trier par">
+                <span className="af-seg-lbl">Trier</span>
+                {SORTS.map(([k,lab])=><button key={k} role="tab" aria-selected={sortBy===k} className={'af-seg-b'+(sortBy===k?' on':'')} onClick={()=>setSortBy(k)}>{lab}</button>)}
+              </div>
+            </div>
+
+            {sections
+              ? sections.map(s=>(
+                  <React.Fragment key={s.key}>
+                    <div className="af-sec" style={{'--sc':'var('+s.v+')'}}>
+                      <span className="af-sec-dot"></span>
+                      <span className="af-sec-t">{s.t}</span>
+                      <span className="af-sec-n">{s.cards.length}</span>
+                      <span className="af-sec-ln"></span>
+                    </div>
+                    {s.cards.map(Card)}
+                  </React.Fragment>
+                ))
+              : <div className="af-stack">{cards.map(Card)}</div>}
           </>}
     </div>
   );
