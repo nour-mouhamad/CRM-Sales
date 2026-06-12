@@ -1524,7 +1524,7 @@ function fmtWhen(ts){
 // ligne Supabase -> objet lead attendu par l'UI (aucun champ inventé : vide reste vide)
 // activités DB -> entrées de timeline UI (CRM + HubSpot via a.source)
 function actsToTimeline(acts){
-  return (acts||[]).map(a=>({id:a.id, type:a.type, when:fmtWhen(a.created_at), at:a.created_at||null, title:a.titre||'', text:a.contenu||'', paid:a.type==='paiement', result:a.result||null, conclusion:a.conclusion||null, callKind:a.call_kind||null, rdvOutcome:a.rdv_outcome||null, _src:(a.source==='hubspot'?'hs':'crm'), readOnly:(a.source==='hubspot'), html:(a.source==='hubspot')}));
+  return (acts||[]).map(a=>({id:a.id, type:a.type, when:fmtWhen(a.created_at), at:a.created_at||null, title:a.titre||'', text:a.contenu||'', paid:a.type==='paiement', result:a.result||null, conclusion:a.conclusion||null, callKind:a.call_kind||null, rdvOutcome:a.rdv_outcome||null, author:((a.author_p&&a.author_p.name)?((a.author_p.name).trim().split(' ')[0]||null):null), _src:(a.source==='hubspot'?'hs':'crm'), readOnly:(a.source==='hubspot'), html:(a.source==='hubspot')}));
 }
 function dbToLead(r, acts){
   const acts2 = acts||[]; // triés created_at desc (cf loadLeads)
@@ -1562,7 +1562,7 @@ async function loadLeads(){
 }
 // historique d'UN lead (à l'ouverture de la fiche)
 async function loadLeadTimeline(id){
-  const { data:acts } = await SB.from('activites').select('*').eq('lead_id', id).order('created_at',{ascending:false});
+  const { data:acts } = await SB.from('activites').select('*, author_p:profiles!activites_closer_id_fkey(name)').eq('lead_id', id).order('created_at',{ascending:false});
   return actsToTimeline(acts);
 }
 
@@ -1741,7 +1741,7 @@ const RESULT_META = {
   no_show:       {label:'No-show',       color:'var(--danger)'},
 };
 const RESULT_KEYS = Object.keys(RESULT_META);
-const callKindLabel = k => k==='r1'?'R1':k==='r2'?'R2':k==='r3'?'R3':'';
+const callKindLabel = k => k==='setting'?'Setting':k==='r1'?'R1':k==='r2'?'R2':k==='r3'?'R3':'';
 // quel call ce débrief concerne : la lecture de l'IA (call_type) D'ABORD — fiable en multi-RDV —,
 // le scalaire lead.rdvType (= dernier RDV booké) seulement en secours. Borné à l'enum DB {r1,r2,r3}.
 const inferCallKind = (lead, callType) => {
@@ -2848,6 +2848,7 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage, onSetR
       <div style={{display:'flex',alignItems:'center',gap:10,margin:'2px 0 14px'}}>
         <span className="eyebrow">Type de call</span>
         <div className="seg">
+          <button className={callKind==='setting'?'on':''} onClick={()=>setCallKind('setting')}>Setting</button>
           <button className={callKind==='r1'?'on':''} onClick={()=>setCallKind('r1')}>R1</button>
           <button className={callKind==='r2'?'on':''} onClick={()=>setCallKind('r2')}>R2</button>
         </div>
