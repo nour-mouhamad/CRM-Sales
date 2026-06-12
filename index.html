@@ -1484,6 +1484,8 @@ function rdvShort(iso, withTime){ try{ const d=new Date(iso); if(isNaN(d)) retur
   return withTime ? lbl+' '+CQ_FMT_TIME.format(d) : lbl; }catch(e){ return ''; } }
 // téléphone -> 9 derniers chiffres (matche +33 6… et 06…)
 function cqPhoneKey(p){ const d=(p||'').replace(/\D/g,''); return d.length>=9?d.slice(-9):''; }
+// Normalise un lien visio saisi à la main : ajoute https:// si le protocole manque (sinon le navigateur le résout en chemin RELATIF -> 404).
+function normMeet(u){ if(!u) return u; const s=String(u).trim(); if(!s) return null; return /^https?:\/\//i.test(s) ? s : 'https://'+s.replace(/^\/+/,''); }
 // égalité de CONTENU (ordre ignoré, tri par id avant comparaison) — évite de pousser un tableau neuf
 // identique à chaque poll 20 s (sinon : cascade leadsCq -> objets lead neufs -> re-render des ~950 cartes)
 function cqSameData(a,b){ if(a===b) return true; if(!Array.isArray(a)||!Array.isArray(b)||a.length!==b.length) return false;
@@ -2087,7 +2089,7 @@ function RdvCard({ rdv, onModify, onCancel, onOutcome, onClearOutcome }){
       </div>
       {st==='todo' && <div className="rdv-ask">Ce RDV est passé — que s’est-il passé ?</div>}
       <div className="rdvcard-actions">
-        {canJoin && <a className="rdvcard-join" href={rdv.meet_link} target="_blank" rel="noreferrer" title="Rejoindre le Google Meet">{I.video({})}Rejoindre</a>}
+        {canJoin && <a className="rdvcard-join" href={normMeet(rdv.meet_link)} target="_blank" rel="noreferrer" title="Rejoindre le Google Meet">{I.video({})}Rejoindre</a>}
         {!settled && (
           <div className={'rdv-oc'+(st==='todo'?' prom':'')}>
             <button className="rdv-oc-btn present" onClick={()=>onOutcome('present')} title="Le prospect était présent (RDV terminé)">{I.check({})}Présent</button>
@@ -2137,7 +2139,7 @@ function ManualRdvField({ lead, calendiqRdvs, onCalModify, onCalCancel, onSave, 
   const list = leadAllRdvs({ ...lead, rdvs:(calendiqRdvs||[]) }).map(r=>({ cq:r.source==='calendiq', rdv:r }));
   const openNew=()=>{ setType('r1'); setDt(''); setMeet(''); setEditing('new'); };
   const openEdit=(r)=>{ setType(r.type||'r1'); setDt(toLocalInput(r.start_at)); setMeet(r.meet_link||''); setEditing({key:r.id}); };
-  const save=()=>{ if(!dt) return; onSave(type, new Date(dt).toISOString(), meet.trim()||null, editing==='new'?null:editing.key); setEditing(null); };
+  const save=()=>{ if(!dt) return; onSave(type, new Date(dt).toISOString(), normMeet(meet)||null, editing==='new'?null:editing.key); setEditing(null); };
   return (
     <div className="field">
       <span className="eyebrow">Rendez-vous</span>
@@ -3139,7 +3141,7 @@ function CqMeetingRow({ m, isAdmin, onOpenLead, meetingLeadId }){
         <span>{m.title||'Rendez-vous'}{isAdmin&&m._closerName?(' · '+m._closerName):''}</span>
       </div>
       <div className="cq-ev-act" onClick={e=>e.stopPropagation()}>
-        {m.meet_link && <a className="cq-pill" href={m.meet_link} target="_blank" rel="noreferrer" title="Ouvrir le lien visio">{I.video({})}Meet</a>}
+        {m.meet_link && <a className="cq-pill" href={normMeet(m.meet_link)} target="_blank" rel="noreferrer" title="Ouvrir le lien visio">{I.video({})}Meet</a>}
         {leadId ? <span className="cq-pill lead">Fiche{I.arrowR({})}</span> : <span className="cq-pill ghost" title="Aucun lead CRM correspondant">Hors CRM</span>}
       </div>
     </div>
@@ -3497,7 +3499,7 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onReassign, 
               title="Marquer comme fait">{I.check({})}</span>
           : <span className="af-rdvic" aria-hidden="true">{I.agenda({})}</span>}
         <span className="af-label">{it.label}</span>
-        {it.kind==='rdv' && it.meet && <a className="af-meet" href={it.meet} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}>{I.video({})}<span>Rejoindre</span></a>}
+        {it.kind==='rdv' && it.meet && <a className="af-meet" href={normMeet(it.meet)} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}>{I.video({})}<span>Rejoindre</span></a>}
         <span className={'af-dom '+dom.tone} title={dom.label}>{dom.ic({})}<em>{dom.label}</em></span>
         <span className={'af-due'+(it._u===0?' late':it._u===1?' today':it._u===2?' week':'')}>{od>0 ? od+'j de retard' : dueLabel(it.due)}</span>
       </div>
