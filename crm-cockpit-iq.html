@@ -413,7 +413,7 @@ input,textarea{font-family:inherit; color:inherit}
 .mgr-head{display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:18px}
 .mgr-head h1{font-size:25px; font-weight:800; letter-spacing:-.02em}
 .mgr-head p{color:var(--t3); font-size:13px; margin-top:3px; font-weight:500}
-.mgr-kpis{display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:20px}
+.mgr-kpis{display:grid; grid-template-columns:repeat(7,1fr); gap:12px; margin-bottom:20px}
 @media(max-width:1000px){.mgr-kpis{grid-template-columns:repeat(2,1fr)}}
 .kpi{background:var(--surface); border:1px solid var(--b1); border-radius:14px; padding:14px 15px; position:relative; overflow:hidden}
 .kpi .kpi-ic{position:absolute; top:12px; right:12px; width:16px; height:16px; color:var(--t4); stroke-width:1.9}
@@ -495,6 +495,7 @@ input,textarea{font-family:inherit; color:inherit}
 .tl{display:flex; flex-direction:column; gap:10px}
 .tl-empty{font-size:12.5px; color:var(--t3); padding:4px 2px}
 .tl-when{font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--t3); flex:none}
+.tl-author{font-size:10.5px; color:var(--t2); font-weight:700; flex:none; padding:1px 7px; border-radius:99px; background:var(--surface-2); border:1px solid var(--b1)}
 .tl-card-text{font-size:13px; color:var(--t2); line-height:1.5; white-space:pre-wrap; word-break:break-word}
 .tl-granola{margin-top:8px; background:var(--surface-2); border:1px solid var(--b1); border-radius:9px; padding:10px 11px}
 .tl-granola .g-head{display:flex; align-items:center; gap:7px; margin-bottom:6px}
@@ -2639,6 +2640,7 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage, onSetR
   const [recapText,setRecapText]=useState('');
   const [editActions,setEditActions]=useState([]);
   const [err,setErr]=useState('');
+  const [callKind,setCallKind]=useState(()=>inferCallKind(lead,null)||'r1'); // type de call choisi MANUELLEMENT (prime sur la détection IA)
   const alive=useRef(true);
   useEffect(()=>()=>{ alive.current=false; },[]);
   const norm=s=>(s==null?'':String(s)).trim().toLowerCase();
@@ -2691,7 +2693,7 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage, onSetR
     const body=(recapText.trim()+actTxt).trim();
     const res = (result && RESULT_META[result.result]) ? result.result : null;
     const concl = (result && result.conclusion) || (res ? RESULT_META[res].label : null);
-    const call_kind = inferCallKind(lead, result && result.call_type);
+    const call_kind = callKind; // sélection manuelle (R1/R2) — prime sur la détection IA
     if(body || res) onNote('recap', 'Récap · '+((result&&result.call_type_label)||'Call'), body, {result:res, conclusion:concl, call_kind});
     // AUTO-TAG présence : un verdict (sauf no_show) ⇒ le prospect était présent. On pose le statut sur le BON RDV.
     // Le manuel prime (le handler ignore l'IA si un statut a déjà été posé à la main). Rien si verdict absent / aucune cible.
@@ -2712,6 +2714,13 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage, onSetR
     <div className="modal recap-modal" onClick={e=>e.stopPropagation()}>
       <button className="x-btn" onClick={onClose}><I.x/></button>
       <div className="m-fixhead"><div style={{fontSize:20,fontWeight:800,letterSpacing:'-.02em'}}>Récap IQ</div></div>
+      <div style={{display:'flex',alignItems:'center',gap:10,margin:'2px 0 14px'}}>
+        <span className="eyebrow">Type de call</span>
+        <div className="seg">
+          <button className={callKind==='r1'?'on':''} onClick={()=>setCallKind('r1')}>R1</button>
+          <button className={callKind==='r2'?'on':''} onClick={()=>setCallKind('r2')}>R2</button>
+        </div>
+      </div>
       {phase==='input' && (<>
         <textarea className="note-ta recap-ta" autoFocus placeholder="Colle ici le transcript du call (Granola, Zoom, notes…)" value={text} onChange={e=>setText(e.target.value)}/>
         <div className="modal-note">L'IA détecte le type de call, remplit les champs vides et propose les actions.</div>
@@ -2723,7 +2732,7 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage, onSetR
         <div className="modal-foot"><button className="btn btn-ghost" onClick={()=>setPhase('input')}>Réessayer</button><button className="btn btn-accent" onClick={onClose}>Fermer</button></div>
       </>)}
       {phase==='result' && result && (<>
-        {(()=>{ const rk=RESULT_META[result.result]; const ck=inferCallKind(lead, result.call_type); return (
+        {(()=>{ const rk=RESULT_META[result.result]; const ck=callKind; return (
           <div className="recap-concl">
             <span className="eyebrow">Conclusion</span>
             <div className="recap-concl-row">
@@ -2764,7 +2773,7 @@ function TlCard({ ev, onEditNote, onDeleteNote }){
   const [draft,setDraft]=useState('');
   const tone = isRecap ? 'accent' : (tlTone[ev.type] || (ev.paid?'ok':''));
   const Icon = isRecap ? I.spark : (tlIcon[ev.type] || I.note);
-  const canEdit = !!ev.id && !isRecap && !ev.readOnly;
+  const canEdit = !!ev.id && !ev.readOnly; // récap éditable aussi (éditeur riche), pas seulement les notes
   const startEdit=(e)=>{ e.stopPropagation(); setDraft(ev.text||''); setEditing(true); setOpen(true); };
   const save=()=>{ onEditNote(ev.id, draft.trim()); setEditing(false); };
   const toggle=()=>{ if(editing) return; if(hasBody) setOpen(o=>!o); };
@@ -2778,6 +2787,7 @@ function TlCard({ ev, onEditNote, onDeleteNote }){
         <span className="tl-recap-right">
           {isRecap && ev.result && RESULT_META[ev.result] && (()=>{ const rk=RESULT_META[ev.result]; return <span className="chip sm" style={{color:rk.color, background:'color-mix(in srgb, currentColor 14%, transparent)'}}><span className="cdot"></span>{rk.label}</span>; })()}
           <span className="tl-when">{ev.when}</span>
+          {ev.author && <span className="tl-author" title={'Par '+ev.author}>{ev.author}</span>}
           {ev.id && !ev.readOnly && <span className="tl-recap-actions">
             {canEdit && <button title="Modifier" onClick={startEdit}>{I.pencil({})}</button>}
             <button className="del" title="Supprimer" onClick={e=>{ e.stopPropagation(); onDeleteNote(ev.id); }}>{I.trash({})}</button>
@@ -2788,7 +2798,9 @@ function TlCard({ ev, onEditNote, onDeleteNote }){
         <div className="tl-recap-body">
           {editing ? (
             <div className="tl-edit">
-              <textarea value={draft} onChange={e=>setDraft(e.target.value)} autoFocus placeholder="Ta note…"/>
+              {isRecap
+                ? <RichText html={draft} onChange={setDraft} placeholder="Résumé du call (modifiable)…"/>
+                : <textarea value={draft} onChange={e=>setDraft(e.target.value)} autoFocus placeholder="Ta note…"/>}
               <div className="tl-edit-actions">
                 <button className="btn btn-accent" onClick={save}>Enregistrer</button>
                 <button className="btn btn-ghost" onClick={()=>setEditing(false)}>Annuler</button>
@@ -4030,9 +4042,10 @@ function leadStatus(l, now){
   const toDebrief = active ? past.filter(r=>!r.outcome && r.type!=='cpf') : [];
   // présents / no-shows : comptés sur la LISTE AFFICHÉE (cohérent pastilles ↔ KPI ; évite les doublons
   // manual:/meeting-id et les verdicts orphelins de meetings annulés restés dans rdv_meta). CPF exclu.
-  let presents=0, noShows=0;
+  let presents=0, noShows=0, presentsR1=0, presentsR2=0;
   for(const r of rdvs){ if(r.type==='cpf') continue;
-    if(r.outcome==='present') presents++; else if(r.outcome==='no_show') noShows++; }
+    if(r.outcome==='present'){ presents++; if(r.type==='r1') presentsR1++; else presentsR2++; }
+    else if(r.outcome==='no_show') noShows++; }
   const noShowToFix = active && !rdvNext && !live && !!rdvLast && rdvLast.outcome==='no_show'; // no-show SANS RDV recalé
   const rdvToday = active && !!(live || (rdvNext && sameDayTs(rdvNext.start_at, now)));
   // « sans suivi » : lead actif, aucun RDV à venir, dernier signal (création / RDV / recap / verdict /
@@ -4060,12 +4073,15 @@ function leadStatus(l, now){
     else if(RDV_TODO_COLS.includes(col)) conclusion = 'Aucun RDV calé';
     else conclusion = '';
   }
+  // RDV à venir / faits ventilés R1 vs R2 (R3+ comptés avec R2 ; CPF exclu = RDV de NM) — pour le cockpit closers.
+  const upRdv = live || rdvNext; const upKind = (upRdv && upRdv.type!=='cpf') ? (upRdv.type||'r1') : null;
   return { col, label:COL_LABEL[col]||col, color:COL_COLOR[col]||'var(--t3)',
     isWon, isLost, isClosing, rdvUpcoming:!!rdvNext, rdvType:(rdvNext?rdvNext.type:null)||l.rdvType||null, rdv_at:(rdvNext?rdvNext.start_at:null)||l.rdv_at||null,
     montant:l.offer||0, caWon,
     result, callKind: recap?(recap.callKind||null):null,
     conclusion, generated,
-    rdvs, rdvNext, rdvLast, live, toDebrief, presents, noShows, noShowToFix, rdvToday, staleDays, now };
+    rdvs, rdvNext, rdvLast, live, toDebrief, presents, noShows, presentsR1, presentsR2,
+    upR1:(upKind==='r1'?1:0), upR2:((upKind&&upKind!=='r1')?1:0), noShowToFix, rdvToday, staleDays, now };
 }
 // tri par URGENCE manager (leads ACTIFS d'abord) : RDV du jour > no-show à recaler > débrief manquant > RDV à venir > closing > actifs > gagnés > perdus
 function leadAttn(s){
@@ -4117,15 +4133,16 @@ function CloserCard({ rank, name, leads, maxCa, onOpenLead, defaultOpen, closerI
   const doDelete=async()=>{ setDel(true); try{ await onDelete(closerId,name); }catch(e){ setDel(false); setConfirm(false); } };
   const m=useMemo(()=>{
     const now=clock||Date.now();
-    let rdv=0,closing=0,won=0,ca=0,lost=0,faits=0,noShows=0,debrief=0;
+    let rdv=0,closing=0,won=0,ca=0,lost=0,faits=0,noShows=0,debrief=0,upR1=0,upR2=0,faitsR1=0,faitsR2=0;
     leads.forEach(l=>{ const s=leadStatus(l,now);
       if(s.isWon){ won++; ca+=s.caWon; }
       else if(s.isLost) lost++;
       else if(s.isClosing) closing++;
       if(s.rdvUpcoming||s.live) rdv++;
-      faits+=s.presents; noShows+=s.noShows; debrief+=s.toDebrief.length;
+      upR1+=s.upR1; upR2+=s.upR2;
+      faits+=s.presents; faitsR1+=s.presentsR1; faitsR2+=s.presentsR2; noShows+=s.noShows; debrief+=s.toDebrief.length;
     });
-    return { n:leads.length, rdv, closing, won, ca, lost, faits, noShows, debrief, taux: leads.length?Math.round(won/leads.length*100):0 };
+    return { n:leads.length, rdv, closing, won, ca, lost, faits, noShows, debrief, upR1, upR2, faitsR1, faitsR2, taux: leads.length?Math.round(won/leads.length*100):0 };
   },[leads,clock]);
   const sorted=useMemo(()=>{ const now=clock||Date.now(); return leads.slice().sort((a,b)=>leadAttn(leadStatus(a,now))-leadAttn(leadStatus(b,now))); },[leads,clock]);
   const caPct = maxCa>0 ? Math.max(4, Math.round(m.ca/maxCa*100)) : 0;
@@ -4136,8 +4153,10 @@ function CloserCard({ rank, name, leads, maxCa, onOpenLead, defaultOpen, closerI
         <div className="lb-id"><span className="avatar sz-sm">{((name||'?')[0]||'?').toUpperCase()}</span><b>{name}</b></div>
         <div className="lb-metrics">
           <div className="lb-m"><b>{m.n}</b><span>Leads</span></div>
-          <div className={'lb-m'+(m.rdv?' warn':'')}><b>{m.rdv}</b><span>RDV à venir</span></div>
-          <div className="lb-m"><b>{m.faits}</b><span>RDV faits</span></div>
+          <div className={'lb-m'+(m.upR1?' warn':'')}><b>{m.upR1}</b><span>R1 à venir</span></div>
+          <div className={'lb-m'+(m.upR2?' warn':'')}><b>{m.upR2}</b><span>R2 à venir</span></div>
+          <div className="lb-m"><b>{m.faitsR1}</b><span>R1 faits</span></div>
+          <div className="lb-m"><b>{m.faitsR2}</b><span>R2 faits</span></div>
           <div className={'lb-m'+(m.noShows?' bad':'')}><b>{m.noShows}</b><span>No-show</span></div>
           <div className="lb-m"><b>{m.closing}</b><span>En closing</span></div>
           <div className={'lb-m'+(m.won?' won':'')}><b>{m.won}</b><span>Closés</span></div>
@@ -4267,9 +4286,9 @@ function TeamScreen({ userId, toast, leads, onOpenLead, cqPending }){
   // KPIs équipe (tous les closers, hors leads du manager)
   const team = useMemo(()=>{
     const ls=ranked.flatMap(c=>c.leads);
-    let rdv=0,closing=0,won=0,ca=0,noShows=0;
-    ls.forEach(l=>{ const s=leadStatus(l,clock); if(s.isWon){won++;ca+=s.caWon;} else if(s.isClosing) closing++; if(s.rdvUpcoming||s.live) rdv++; noShows+=s.noShows; });
-    return { n:ls.length, rdv, closing, won, ca, noShows };
+    let rdv=0,closing=0,won=0,ca=0,noShows=0,upR1=0,upR2=0;
+    ls.forEach(l=>{ const s=leadStatus(l,clock); if(s.isWon){won++;ca+=s.caWon;} else if(s.isClosing) closing++; if(s.rdvUpcoming||s.live) rdv++; upR1+=s.upR1; upR2+=s.upR2; noShows+=s.noShows; });
+    return { n:ls.length, rdv, closing, won, ca, noShows, upR1, upR2 };
   },[ranked,clock]);
 
   // ----- feed « À traiter aujourd'hui » : ce qui exige une action MAINTENANT, tous closers confondus -----
@@ -4304,7 +4323,8 @@ function TeamScreen({ userId, toast, leads, onOpenLead, cqPending }){
 
       <div className="mgr-kpis">
         <div className="kpi"><span className="kpi-ic">{I.leads({})}</span><div className="kpi-n">{team.n}</div><div className="kpi-l">Leads suivis</div></div>
-        <div className="kpi accent"><span className="kpi-ic">{I.agenda({})}</span><div className="kpi-n">{team.rdv}</div><div className="kpi-l">RDV à venir</div></div>
+        <div className="kpi accent"><span className="kpi-ic">{I.agenda({})}</span><div className="kpi-n">{team.upR1}</div><div className="kpi-l">R1 à venir</div></div>
+        <div className="kpi accent"><span className="kpi-ic">{I.agenda({})}</span><div className="kpi-n">{team.upR2}</div><div className="kpi-l">R2 à venir</div></div>
         <div className={'kpi'+(team.noShows?' danger':'')}><span className="kpi-ic">{I.noshow({})}</span><div className="kpi-n">{team.noShows}</div><div className="kpi-l">No-show</div></div>
         <div className="kpi"><span className="kpi-ic">{I.euro({})}</span><div className="kpi-n">{team.closing}</div><div className="kpi-l">En closing</div></div>
         <div className="kpi ok"><span className="kpi-ic">{I.check({})}</span><div className="kpi-n">{team.won}</div><div className="kpi-l">Closés</div></div>
