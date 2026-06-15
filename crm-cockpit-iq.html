@@ -384,11 +384,10 @@ input,textarea{font-family:inherit; color:inherit}
 /* en-tête de section agrégée (urgence OU domaine) : pastille + compteur + ligne. Cliquable = repli/dépli (menu déroulant). */
 .af-sec{display:flex; align-items:center; gap:9px; margin:22px 0 10px}
 .af-sec:first-of-type{margin-top:6px}
-.af-sec-btn{cursor:pointer; user-select:none; border-radius:8px; transition:background var(--speed) var(--ease)}
-.af-sec-btn:hover{background:var(--surface-2)}
-.af-sec-btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
-.af-sec-chev{display:grid; place-items:center; color:var(--sc); transform:rotate(90deg); transition:transform var(--speed) var(--ease)}
-.af-sec-chev svg{width:14px; height:14px; stroke-width:2.6}
+.af-sec-btn{cursor:pointer; user-select:none; outline:none}
+.af-sec-chev{display:inline-flex; align-items:center; color:var(--sc); opacity:.65; transform:rotate(90deg); transition:transform var(--speed) var(--ease), opacity var(--speed) var(--ease)}
+.af-sec-chev svg{width:13px; height:13px; stroke-width:2.6}
+.af-sec-btn:hover .af-sec-chev{opacity:1}
 .af-sec.col .af-sec-chev{transform:rotate(0deg)}
 .af-sec-dot{width:8px; height:8px; border-radius:50%; background:var(--sc); flex:none; box-shadow:0 0 0 3px color-mix(in srgb, var(--sc) 18%, transparent)}
 .af-sec-t{font-size:11.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--sc)}
