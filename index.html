@@ -4167,8 +4167,8 @@ function App({session, onLogout}){
   useEffect(()=>{
     if(!isAdmin) return;
     const recompute=()=>{ const d=CONSOLE_CACHE.data; if(!d){ setSyncPending(0); setSyncWarn(false); return; }
-      const c=(d.conflits||[]).length+(d.disparus||[]).length;
-      setSyncPending((d.sortants||[]).length+(d.acreer||[]).length+(d.taches||[]).length+(d.entrants||[]).length+c); setSyncWarn(c>0); };
+      const c=consoleCat(d,'conflits').length+consoleCat(d,'disparus').length;
+      setSyncPending(consoleCat(d,'sortants').length+consoleCat(d,'acreer').length+consoleCat(d,'taches').length+consoleCat(d,'entrants').length+c); setSyncWarn(c>0); };
     CONSOLE_CACHE.subs.add(recompute); recompute();
     const tick=()=>{ if(document.visibilityState!=='visible') return; const now=Date.now(); if(now-(CONSOLE_CACHE.lastBg||0)<60000) return; CONSOLE_CACHE.lastBg=now; consoleLoad(true); };
     tick();
@@ -4638,15 +4638,31 @@ const failMsg = (res)=>{
 // Le diff ne tourne qu'au 1er chargement ou via « Rafraîchir » (jamais automatiquement en changeant d'onglet).
 // État partagé HORS React : data + abonnés. Le diff (lent) ne tourne qu'UNE fois ; le résultat est diffusé
 // à toute instance montée via les abonnés. Naviguer pendant un chargement ne relance donc RIEN (et n'orpheline pas le résultat).
-const CONSOLE_CACHE = { data:null, loaded:false, inflight:false, error:null, subs:new Set() };
+// KEYF : clé stable par item et par catégorie — MÊME schéma que push(okKeys) et le retrait optimiste. Source unique de vérité.
+const CONSOLE_KEYF = {
+  sortants: r=> r.mode==='lost'?'l:'+r.leadId:'s:'+r.leadId,
+  acreer:   r=> 'cr:'+r.leadId,
+  taches:   r=> 't:'+r.leadId+':'+r.actionId,
+  entrants: r=> r.kind==='new'?'en:'+r.dealId:'eu:'+r.leadId,
+  conflits: r=> 'c:'+r.leadId,
+  disparus: r=> 'd:'+r.leadId,
+};
+const CONSOLE_CACHE = { data:null, loaded:false, inflight:false, error:null, subs:new Set(), suppressed:new Set(), rerun:false };
 const consoleNotify = ()=>{ CONSOLE_CACHE.subs.forEach(fn=>{ try{ fn(); }catch(e){} }); };
+// Catégorie visible = diff brut MOINS les clés en suppression (items déjà traités avec succès, en attente de confirmation par un diff frais).
+const consoleCat = (d, cat)=>{ const arr=(d&&d[cat])||[]; const sup=CONSOLE_CACHE.suppressed; return sup.size ? arr.filter(r=>!sup.has(CONSOLE_KEYF[cat](r))) : arr; };
+// Toutes les clés présentes dans un résultat de diff (sert à purger la liste de suppression).
+const consoleKeysOf = (d)=>{ const s=new Set(); if(!d) return s; for(const cat in CONSOLE_KEYF){ for(const r of (d[cat]||[])){ try{ s.add(CONSOLE_KEYF[cat](r)); }catch(e){} } } return s; };
 async function consoleLoad(force){
-  if(CONSOLE_CACHE.inflight) return;            // déjà en cours -> on ne relance pas (on attend le même fetch)
+  if(CONSOLE_CACHE.inflight){ if(force) CONSOLE_CACHE.rerun=true; return; } // un diff tourne déjà : si force -> on REJOUE après (sinon un diff stale, lancé avant l'écriture, écraserait le retrait optimiste)
   if(CONSOLE_CACHE.loaded && !force) return;     // déjà chargé -> ne relance QUE via Rafraîchir / reconciliation (force)
   CONSOLE_CACHE.inflight=true; CONSOLE_CACHE.error=null; consoleNotify();
-  try{ const d=await callFn('hubspot-sync',{action:'diff'}); CONSOLE_CACHE.data=d; CONSOLE_CACHE.loaded=true; }
+  try{ const d=await callFn('hubspot-sync',{action:'diff'}); CONSOLE_CACHE.data=d; CONSOLE_CACHE.loaded=true;
+    // PURGE : une clé supprimée ABSENTE du diff frais est confirmée partie -> on la sort de la suppression. Celle encore présente (diff stale) reste masquée.
+    if(CONSOLE_CACHE.suppressed.size){ const present=consoleKeysOf(d); CONSOLE_CACHE.suppressed.forEach(k=>{ if(!present.has(k)) CONSOLE_CACHE.suppressed.delete(k); }); }
+  }
   catch(e){ CONSOLE_CACHE.error=e.message||'Lecture impossible'; }
-  finally{ CONSOLE_CACHE.inflight=false; consoleNotify(); }
+  finally{ CONSOLE_CACHE.inflight=false; const again=CONSOLE_CACHE.rerun; CONSOLE_CACHE.rerun=false; consoleNotify(); if(again) consoleLoad(true); }
 }
 
 function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
@@ -4708,17 +4724,9 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     setBusy(b=>{ const n={...b}; keys.forEach(k=>delete n[k]); return n; });
     if(ok) oneCommit.current=true;
     if(Object.keys(failInfo).length) setFails(f=>({...f,...failInfo})); // mémorise les échecs pour les afficher sur la ligne
-    // RETRAIT OPTIMISTE : les lignes réussies disparaissent IMMÉDIATEMENT (sans attendre le re-diff complet ~3 s)
-    if(okKeys.size) setData(d=>{ if(!d) return d; const keep=(arr,kf)=>(arr||[]).filter(r=>!okKeys.has(kf(r)));
-      return { ...d,
-        sortants: keep(d.sortants, r=> r.mode==='lost'?'l:'+r.leadId:'s:'+r.leadId),
-        acreer: keep(d.acreer, r=> 'cr:'+r.leadId),
-        taches: keep(d.taches, r=> 't:'+r.leadId+':'+r.actionId),
-        entrants: keep(d.entrants, r=> r.kind==='new'?'en:'+r.dealId:'eu:'+r.leadId),
-        conflits: keep(d.conflits, r=> 'c:'+r.leadId),
-        disparus: keep(d.disparus, r=> 'd:'+r.leadId),
-      };
-    });
+    // RETRAIT OPTIMISTE ROBUSTE : les clés réussies entrent en liste de SUPPRESSION -> masquées partout IMMÉDIATEMENT et
+    // un diff stale (lancé avant l'écriture) ne peut PLUS les faire réapparaître (fini le clignotement). Purge auto au diff frais.
+    if(okKeys.size){ okKeys.forEach(k=>CONSOLE_CACHE.suppressed.add(k)); consoleNotify(); }
     setSyncBusy(false);
     toast(ok+' envoyé'+(ok>1?'s':'')+(fail?(' · '+fail+' échec'+(fail>1?'s':'')):''), label||null, fail?'info':'ok');
     // reconciliation en fond (ne bloque pas l'UI : les lignes sont déjà retirées)
@@ -4818,7 +4826,7 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     </div>
   );
 
-  const sortants=(data&&data.sortants)||[], entrants=(data&&data.entrants)||[], conflits=(data&&data.conflits)||[], disparus=(data&&data.disparus)||[], taches=(data&&data.taches)||[], acreer=(data&&data.acreer)||[];
+  const sortants=consoleCat(data,'sortants'), entrants=consoleCat(data,'entrants'), conflits=consoleCat(data,'conflits'), disparus=consoleCat(data,'disparus'), taches=consoleCat(data,'taches'), acreer=consoleCat(data,'acreer');
   const sortNormal=sortants.filter(r=>r.mode!=='lost'), sortLost=sortants.filter(r=>r.mode==='lost');
   const total=sortants.length+acreer.length+taches.length+entrants.length+conflits.length+disparus.length;
 
