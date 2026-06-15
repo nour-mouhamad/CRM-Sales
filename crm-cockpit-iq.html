@@ -375,10 +375,21 @@ input,textarea{font-family:inherit; color:inherit}
 .af-fchip:hover{opacity:1; border-color:var(--b3)}
 .af-fchip.on{opacity:1; border-color:color-mix(in srgb, var(--fc) 55%, transparent); background:color-mix(in srgb, var(--fc) 13%, var(--surface-2))}
 .af-fchip.on b{color:var(--fc)}
+/* "Tout" : chip neutre sans point, sélectionne toute la dimension */
+.af-fchip-all{opacity:1}
+.af-fchip-all b{color:var(--t2)}
+.af-fchip-all.on{border-color:var(--accent); background:var(--accent-tint)}
+.af-fchip-all.on b{color:var(--accent)}
 
-/* en-tête de section agrégée (urgence OU domaine) : pastille + compteur + ligne */
+/* en-tête de section agrégée (urgence OU domaine) : pastille + compteur + ligne. Cliquable = repli/dépli (menu déroulant). */
 .af-sec{display:flex; align-items:center; gap:9px; margin:22px 0 10px}
 .af-sec:first-of-type{margin-top:6px}
+.af-sec-btn{cursor:pointer; user-select:none; border-radius:8px; transition:background var(--speed) var(--ease)}
+.af-sec-btn:hover{background:var(--surface-2)}
+.af-sec-btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.af-sec-chev{display:grid; place-items:center; color:var(--sc); transform:rotate(90deg); transition:transform var(--speed) var(--ease)}
+.af-sec-chev svg{width:14px; height:14px; stroke-width:2.6}
+.af-sec.col .af-sec-chev{transform:rotate(0deg)}
 .af-sec-dot{width:8px; height:8px; border-radius:50%; background:var(--sc); flex:none; box-shadow:0 0 0 3px color-mix(in srgb, var(--sc) 18%, transparent)}
 .af-sec-t{font-size:11.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--sc)}
 .af-sec-n{background:var(--surface-3); color:var(--t2); border-radius:20px; padding:1px 9px; font-size:11px; font-weight:700}
@@ -3425,6 +3436,7 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
   const [groupBy,setGroupBy]=React.useState('urgence');   // 'urgence' | 'domaine'
   const [panelOpen,setPanelOpen]=React.useState(false);   // panneau Filtres (saison + groupement + échéance)
   const [expanded,setExpanded]=React.useState({});        // leadId -> bool (déplier « +N autres »)
+  const [collapsed,setCollapsed]=React.useState(()=>new Set()); // clés de section repliées (titre = menu déroulant)
   const ALL_DUE=['late','today','week','later','none'];
   const ALL_DOM=['rdv','appel','argent','suivi','admin'];
   const [dueFilter,setDueFilter]=React.useState(()=>new Set(ALL_DUE)); // échéances visibles (défaut : toutes)
@@ -3653,6 +3665,11 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
                     </div>
                     <div className="af-panel-row">
                       <div className="af-fchips">
+                        {(()=>{ const dom=groupBy==='domaine'; const sel=dom?domFilter:dueFilter; const all=dom?ALL_DOM:ALL_DUE; const setF=dom?setDomFilter:setDueFilter; const allOn=sel.size===all.length; return (
+                          <button className={'af-fchip af-fchip-all'+(allOn?' on':'')} onClick={()=>setF(new Set(all))} aria-pressed={allOn} title="Tout afficher">
+                            <b>{total}</b><span>Tout</span>
+                          </button>
+                        ); })()}
                         {(groupBy==='domaine'?DOM_OPTS:DUE_OPTS).map(([k,lbl,col])=>{ const sel=groupBy==='domaine'?domFilter:dueFilter; const cnt=groupBy==='domaine'?dcount:bcount; const toggle=groupBy==='domaine'?toggleDom:toggleDue; return (
                           <button key={k} className={'af-fchip'+(sel.has(k)?' on':'')} style={{'--fc':'var('+col+')'}} onClick={()=>toggle(k)} aria-pressed={sel.has(k)} title={(sel.has(k)?'Masquer ':'Afficher ')+lbl}>
                             <i className="af-fchip-dot"></i><b>{cnt[k]||0}</b><span>{lbl}</span>
@@ -3665,17 +3682,21 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
               </div>
             </div>
 
-            {sections.map(s=>(
+            {sections.map(s=>{ const col=collapsed.has(s.key); return (
               <React.Fragment key={s.key}>
-                <div className="af-sec" style={{'--sc':'var('+s.v+')'}}>
+                <div className={'af-sec af-sec-btn'+(col?' col':'')} style={{'--sc':'var('+s.v+')'}} role="button" tabIndex={0}
+                  onClick={()=>setCollapsed(p=>{ const n=new Set(p); n.has(s.key)?n.delete(s.key):n.add(s.key); return n; })}
+                  onKeyDown={e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); setCollapsed(p=>{ const n=new Set(p); n.has(s.key)?n.delete(s.key):n.add(s.key); return n; }); } }}
+                  title={col?'Déplier':'Replier'}>
+                  <span className="af-sec-chev" aria-hidden="true">{I.chev({})}</span>
                   <span className="af-sec-dot"></span>
                   <span className="af-sec-t">{s.t}</span>
                   <span className="af-sec-n">{s.cards.length}</span>
                   <span className="af-sec-ln"></span>
                 </div>
-                {s.cards.map(Card)}
+                {!col && s.cards.map(Card)}
               </React.Fragment>
-            ))}
+            );})}
           </>}
     </div>
   );
