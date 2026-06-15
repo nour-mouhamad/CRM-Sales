@@ -4833,8 +4833,8 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
   const ignoreConflit = r => { CONSOLE_CACHE.suppressed.add(CONSOLE_KEYF.conflits(r)); consoleNotify(); };
   // Refuser un sortant : annule la modif côté CRM (ré-aligne le lead sur HubSpot). AUCUNE écriture HubSpot.
   const refuseSortant = r => {
-    if(!window.confirm('Refuser ce changement ?\n\nLe lead « '+r.name+' » sera ré-aligné sur HubSpot : la modification faite côté CRM est annulée. AUCUNE écriture dans HubSpot.')) return;
-    push([{ key:'s:'+r.leadId, mode:'refuse', leadId:r.leadId, token:r.lastModified }],'Changement refusé — CRM ré-aligné sur HubSpot');
+    if(!window.confirm('Refuser ce changement ?\n\nTa version reste dans le CRM, celle de HubSpot reste dans HubSpot, et on ne te le repropose plus. Lead « '+r.name+' ». AUCUNE écriture HubSpot, aucun écrasement.')) return;
+    push([{ key:'s:'+r.leadId, mode:'refuse', leadId:r.leadId, token:r.lastModified }],'Écart refusé — CRM et HubSpot gardés tels quels');
   };
 
   const commitAllSortants=()=>{
@@ -4850,11 +4850,11 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     if(!rows.length) return;
     push(rows.map(entrItem),'Tout accepté');
   };
-  // Refuser une modif reçue de HubSpot : on garde la version CRM et on la RENVOIE vers HubSpot (annule la modif HubSpot).
+  // Refuser une modif reçue de HubSpot : on GARDE la version CRM dans le CRM et celle de HubSpot dans HubSpot, et on ne la repropose plus.
   // token = lastModified courant de l'entrant -> passe le contrôle de concurrence.
   const refuseEntrant = r => {
-    if(!window.confirm('Refuser cette modif HubSpot ?\n\nTa version du CRM sera renvoyée vers HubSpot (la modification faite dans HubSpot est annulée). Lead « '+r.name+' ».')) return;
-    push([{ key:'eu:'+r.leadId, mode:'commit', leadId:r.leadId, token:r.lastModified }],'Modif HubSpot refusée — CRM renvoyé');
+    if(!window.confirm('Refuser cette modif HubSpot ?\n\nTa version reste dans le CRM, celle de HubSpot reste dans HubSpot, et on ne te la repropose plus. Lead « '+r.name+' ». AUCUNE écriture HubSpot, aucun écrasement.')) return;
+    push([{ key:'eu:'+r.leadId, mode:'refuse', leadId:r.leadId, token:r.lastModified }],'Écart refusé — CRM et HubSpot gardés tels quels');
   };
   // DISPARUS : le deal a été supprimé (ou sorti du pipe) dans HubSpot -> supprimer le lead du CRM (soft-delete, réversible, 0 écriture HubSpot)
   const delItem = r => ({ key:'d:'+r.leadId, mode:'accept_deleted', leadId:r.leadId, dealId:r.dealId });
@@ -4953,7 +4953,7 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
                     </div>
                     <div className="sync-act" style={{flexShrink:0}}>
                       <button className="btn btn-ghost" disabled={!!busy[k]} onClick={()=>onOpenLead(r.leadId)} title="Ouvrir la fiche pour corriger avant d’envoyer">Éditer</button>
-                      <button className="btn btn-soft" disabled={!!busy[k]} onClick={()=>refuseSortant(r)} title="Annuler ce changement et ré-aligner le CRM sur HubSpot (0 écriture)">{busy[k]?'…':'Refuser'}</button>
+                      <button className="btn btn-soft" disabled={!!busy[k]} onClick={()=>refuseSortant(r)} title="Garder ta version dans le CRM + celle de HubSpot dans HubSpot, ne plus reproposer (0 écriture)">{busy[k]?'…':'Refuser'}</button>
                       <button className="btn btn-accent" disabled={!!busy[k]} onClick={()=>push([sortItem(r)],'Envoyé vers HubSpot')}>{busy[k]?'…':'Envoyer'}</button>
                     </div>
                   </div>
@@ -5024,7 +5024,7 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
                         </select>
                       )}
                       {(r.kind==='link'||r.kind==='update') && <button className="btn btn-ghost" disabled={!!busy[k]} onClick={()=>onOpenLead(r.leadId)} title="Ouvrir la fiche">Éditer</button>}
-                      {r.kind!=='new' && r.kind!=='link' && <button className="btn btn-soft" disabled={!!busy[k]} onClick={()=>refuseEntrant(r)} title="Refuser : renvoyer ta version CRM vers HubSpot">{busy[k]?'…':'Refuser'}</button>}
+                      {r.kind!=='new' && r.kind!=='link' && <button className="btn btn-soft" disabled={!!busy[k]} onClick={()=>refuseEntrant(r)} title="Garder ta version dans le CRM + celle de HubSpot dans HubSpot, ne plus reproposer (0 écriture)">{busy[k]?'…':'Refuser'}</button>}
                       <button className="btn btn-accent" disabled={!!busy[k]} onClick={()=>push([entrItem(r)], r.kind==='new'?'Lead ajouté au CRM':r.kind==='link'?'Lead lié + synchronisé':'Modif acceptée')}>{busy[k]?'…':(r.kind==='link'?'Lier au lead existant':'Accepter')}</button>
                     </div>
                   </div>
