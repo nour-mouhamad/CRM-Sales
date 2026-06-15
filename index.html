@@ -2420,7 +2420,7 @@ function MoneyField({label, value, onSave, accent}){
   );
 }
 
-function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onToggleAction, onActions, onClaim, meId, onAddRdv, onCancelRdv, onManualRdv, onManualRemoveRdv, onRdvOutcome, onClearRdvOutcome, onCpfRdv, isAdminView, closers, onAssign, calendiqReady, calendiqOrganizer}){
+function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onToggleAction, onActions, onClaim, meId, onAddRdv, onCancelRdv, onManualRdv, onManualRemoveRdv, onRdvOutcome, onClearRdvOutcome, onCpfRdv, isAdminView, closers, onAssign, calendiqReady, calendiqOrganizer}){
   const [moveOpen,setMoveOpen]=useState(false);
   const [noteOpen,setNoteOpen]=useState(false);
   const [noteMode,setNoteMode]=useState('note'); // 'note' = note écrite | 'nrp' = appel sans réponse
@@ -2446,7 +2446,7 @@ function Fiche({lead, onBack, onCall, onPay, onMove, onEditNote, onDeleteNote, o
       {rdvOpen && <AddRdvModal lead={lead} initial={rdvEdit} organizerId={calendiqOrganizer} onClose={closeRdv} onAdd={(t,d,iso)=>onAddRdv(t,d,iso, rdvEdit?rdvEdit.id:null)}/>}
       {cpfOpen && <AddRdvModal lead={lead} cpf organizerId={CPF_OWNER.organizer} onClose={()=>setCpfOpen(false)} onAdd={(t,d,iso)=>onCpfRdv(iso,d)}/>}
       <div className="fiche-head">
-        <button className="back" onClick={onBack}><I.back/>Mes leads</button>
+        <button className="back" onClick={onBack}><I.back/>{backLabel||'Mes leads'}</button>
         <div className="fiche-id">
           <h1>{lead.prenom} {lead.nom}</h1>
           <div className="fiche-meta">
@@ -3629,6 +3629,7 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onReassign, 
   );
 }
 
+const SCREEN_LABEL = { leads:'Mes leads', agenda:'Agenda', todo:'À faire', team:'Closers', console:'Synchro HubSpot' };
 function App({session, onLogout}){
   const userEmail = session.user.email;
   const userId = session.user.id;
@@ -3651,6 +3652,8 @@ function App({session, onLogout}){
   const [leads,setLeads]=useState([]);
   const [loaded,setLoaded]=useState(false);
   const [screen,setScreen]=useState(()=>{ const s=persistedState('iqcrm_screen','leads'); return ['leads','fiche','agenda','team','console','todo'].includes(s)?s:'leads'; });
+  // page d'où le lead a été ouvert -> le bouton retour de la fiche y revient (au lieu de « Mes leads » en dur)
+  const [origin,setOrigin]=useState(()=>{ const s=persistedState('iqcrm_origin','leads'); return ['leads','agenda','team','console','todo'].includes(s)?s:'leads'; });
   const [selId,setSelId]=useState(()=>persistedState('iqcrm_sel',null));
   const [theme,setTheme]=useState(()=>persistedState('iqcrm_theme_v2','dark'));
   const [density,setDensity]=useState(()=>persistedState('iqcrm_density','standard'));
@@ -3688,6 +3691,7 @@ function App({session, onLogout}){
   },[reloadDebounced,loadTimelineFor]);
   useEffect(()=>localStorage.setItem('iqcrm_screen',JSON.stringify(screen)),[screen]);
   useEffect(()=>{ selIdRef.current=selId; localStorage.setItem('iqcrm_sel',JSON.stringify(selId)); },[selId]);
+  useEffect(()=>{ localStorage.setItem('iqcrm_origin',JSON.stringify(origin)); },[origin]);
   useEffect(()=>{ localStorage.setItem('iqcrm_theme_v2',JSON.stringify(theme)); document.documentElement.setAttribute('data-theme',theme); },[theme]);
   useEffect(()=>{ localStorage.setItem('iqcrm_density',JSON.stringify(density)); document.documentElement.setAttribute('data-density',density); },[density]);
 
@@ -3891,7 +3895,7 @@ function App({session, onLogout}){
   },[]);
 
   /* ---------- actions ---------- */
-  const openLead=(id)=>{ setSelId(id); setScreen('fiche'); setSearch(''); loadTimelineFor(id); }; // charge l'historique du lead à l'ouverture (lazy)
+  const openLead=(id)=>{ if(screen!=='fiche') setOrigin(screen); setSelId(id); setScreen('fiche'); setSearch(''); loadTimelineFor(id); }; // mémorise la page d'origine + charge l'historique du lead (lazy)
 
   const reorderLead=(id,col,beforeId,opts)=>{
     const l=leads.find(x=>x.id===id); if(!l) return;
@@ -3959,7 +3963,7 @@ function App({session, onLogout}){
   const deleteLead=async(id)=>{
     const l=leads.find(x=>x.id===id);
     setLeads(ls=>ls.filter(x=>x.id!==id));
-    if(selId===id){ setSelId(null); setScreen('leads'); }
+    if(selId===id){ setSelId(null); setScreen(origin); }
     try{ const { error }=await SB.from('leads').update({deleted_at:new Date().toISOString()}).eq('id',id); if(error) throw error; }
     catch(e){ toast('Échec suppression', e.message, 'info'); reload(); return; }
     const name = l?(`${l.prenom||''} ${l.nom||''}`.trim()||l.email||''):'';
@@ -4183,7 +4187,7 @@ function App({session, onLogout}){
     ...(isAdmin?[{id:'todo', label:'À faire', icon:I.check},{id:'team', label:'Closers', icon:I.users},{id:'console', label:'Synchro HubSpot', icon:I.sync, badge:syncPending||null, badgeWarn:syncWarn}]:[]),
   ];
   useEffect(()=>{ if(!isAdmin && (screen==='team'||screen==='console'||screen==='todo')) setScreen('leads'); },[isAdmin,screen]);
-  const navActive = screen==='fiche'?'leads':screen;
+  const navActive = screen==='fiche'?origin:screen;
 
   // splash bref UNIQUEMENT pendant la requête profil (évite un flash board/nav) ; ne bloque jamais après réponse
   if(!isDev && !profileLoaded) return <div className="onb-wrap"><div className="onb-spin"></div></div>;
@@ -4228,9 +4232,9 @@ function App({session, onLogout}){
       <main className="work">
         {screen==='leads' && <Board leads={leadsView} search={search} setSearch={setSearch} view={view||'mine'} setView={setView} userId={userId}
             onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col)=>setAddTarget(col)} onDelete={deleteLead}/>}
-        {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen('leads')} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
+        {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen(origin)} backLabel={SCREEN_LABEL[origin]||'Retour'} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
             onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} onManualRdv={setManualRdv} onManualRemoveRdv={removeManualRdv} onRdvOutcome={setRdvOutcome} onClearRdvOutcome={clearRdvOutcome} onCpfRdv={bookCpfRdv} isAdminView={isAdmin} closers={closers} onAssign={reassignOwner} calendiqReady={!!(profile&&profile.calendiq_organizer_id)} calendiqOrganizer={profile&&profile.calendiq_organizer_id}/>}
-        {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen('leads')}>Retour au board</button></div>}
+        {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen(origin)}>Retour ({SCREEN_LABEL[origin]||'Mes leads'})</button></div>}
         {screen==='agenda' && <Agenda meetings={cqMeetings} sources={cqSources} loading={cqLoading} error={cqError}
             isAdmin={isAdmin} profile={profile} onConnect={connectCalendiq} onDisconnect={disconnectCalendiq}
             onRefresh={loadCalendiq} onOpenLead={openLead} meetingLeadId={meetingLeadId}/>}
