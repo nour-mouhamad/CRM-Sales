@@ -364,6 +364,10 @@ input,textarea{font-family:inherit; color:inherit}
 .af-panel-lbl{font-size:10.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--t3)}
 .af-panel-sel{width:100%; padding:8px 10px; border-radius:9px; border:1.5px solid var(--b1); background:var(--surface-2); color:var(--t1); font-size:12.5px; font-weight:600; font-family:inherit; cursor:pointer}
 .af-panel-sel:hover{border-color:var(--b3)}
+.af-due-chips{display:flex; flex-wrap:wrap; gap:6px}
+.af-due-chip{padding:5px 11px; border-radius:8px; border:1.5px solid var(--b1); background:var(--surface-2); color:var(--t2); font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:all var(--speed) var(--ease)}
+.af-due-chip:hover{border-color:var(--b3); color:var(--t1)}
+.af-due-chip.on{background:var(--accent-tint); border-color:var(--accent); color:var(--accent)}
 
 /* en-tête de section agrégée (urgence OU domaine) : pastille + compteur + ligne */
 .af-sec{display:flex; align-items:center; gap:9px; margin:22px 0 10px}
@@ -387,6 +391,9 @@ input,textarea{font-family:inherit; color:inherit}
 .af-cdot{width:7px; height:7px; border-radius:50%; flex:none}
 .af-col{font-size:11.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0}
 .af-amt{font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums; font-size:11.5px; font-weight:600; font-style:normal; color:var(--t3); flex:none; margin-left:1px}
+.af-star{flex:none; display:grid; place-items:center; width:30px; height:30px; border-radius:8px; border:none; background:none; color:var(--t3); cursor:pointer; transition:color var(--speed) var(--ease), background var(--speed) var(--ease)}
+.af-star:hover{color:var(--warm); background:var(--surface-2)}
+.af-star.on{color:#f5a623}
 .af-closer{flex:none; background:var(--surface-2); border:1px solid var(--b1); color:var(--t2); border-radius:8px; padding:5px 8px; font-size:12px; max-width:128px; font-family:inherit; cursor:pointer; transition:border-color var(--speed) var(--ease)}
 .af-closer:hover{border-color:var(--b3)}
 .af-go{flex:none; color:var(--t4); display:grid; place-items:center; width:16px; transition:color var(--speed) var(--ease), transform var(--speed) var(--ease)}
@@ -1531,7 +1538,7 @@ function dbToLead(r, acts){
     nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, nextActionDue:r.next_action_due||null, extraActions:Array.isArray(r.extra_actions)?r.extra_actions:[], live:false, noShow,
     offer:(r.montant==null||r.montant==='')?0:(Number(r.montant)||0), aPayer:(r.montant_a_payer==null?'':r.montant_a_payer), quiPaie:r.qui_paie||'', paid:r.statut_paiement==='paye', statut_paiement:r.statut_paiement||'aucun',
     cpf:(Number(r.cpf_dispo)||0), metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'', saison:r.saison||null,
-    rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, rdvMeetLink:r.rdv_meet_link||null, rdvMeta, hubspot_deal_id:r.hubspot_deal_id||null, date_creation:r.date_creation||null, hsImport:r.hs_import||null,
+    rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, rdvMeetLink:r.rdv_meet_link||null, rdvMeta, hubspot_deal_id:r.hubspot_deal_id||null, date_creation:r.date_creation||null, hsImport:r.hs_import||null, starred:!!r.starred,
     timeline:actsToTimeline(acts2)
   };
 }
@@ -1565,6 +1572,7 @@ async function saveLead(id, uiPatch){
   if('actionDoneFor' in uiPatch) m.action_done_for=uiPatch.actionDoneFor;
   if('nextActionDue' in uiPatch) m.next_action_due=uiPatch.nextActionDue;
   if('extraActions' in uiPatch) m.extra_actions=uiPatch.extraActions;
+  if('starred' in uiPatch) m.starred=uiPatch.starred;
   if('heat' in uiPatch) m.heat=uiPatch.heat;
   if('offer' in uiPatch) m.montant=uiPatch.offer;
   if('aPayer' in uiPatch) m.montant_a_payer=(uiPatch.aPayer===''||uiPatch.aPayer==null)?null:Number(uiPatch.aPayer);
@@ -3404,21 +3412,28 @@ function Onboarding({ profile, onConnect, loadCalendiq, myLeadsCount, onFinish, 
    Agrège, sur TOUS les leads : actions réelles (manuelles + recap, JAMAIS les défauts d'étape),
    RDV à venir, relances (no-show / lead chaud). Groupé par échéance, filtre + réassignation par closer,
    case à cocher bidirectionnelle avec la fiche. Lecture des leads existants : ne modifie aucune autre structure. */
-function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onReassign, seasonFilter, setSeasonFilter, seasonCounts }){
+function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar, onReassign, seasonFilter, setSeasonFilter, seasonCounts }){
   const [closers,setClosers]=React.useState([]);
   const [filter,setFilter]=React.useState('all');         // 'all' | closerId
   const [groupBy,setGroupBy]=React.useState('urgence');   // 'urgence' | 'domaine'
-  const [panelOpen,setPanelOpen]=React.useState(false);   // panneau Filtres (saison + groupement)
+  const [panelOpen,setPanelOpen]=React.useState(false);   // panneau Filtres (saison + groupement + échéance)
   const [expanded,setExpanded]=React.useState({});        // leadId -> bool (déplier « +N autres »)
+  const ALL_DUE=['late','today','week','month','later','none'];
+  const [dueFilter,setDueFilter]=React.useState(()=>new Set(ALL_DUE)); // échéances visibles (défaut : toutes)
+  // ANTI-FLICKER (même principe que Synchro HubSpot) : une action cochée entre en SUPPRESSION -> masquée tout de suite ;
+  // purge UNIQUEMENT quand l'écriture est committée ET que le lead frais ne régénère plus la ligne (un reload stale ne peut plus la faire rebondir).
+  const doneRef=React.useRef(new Set());        // clés d'items cochés (masqués)
+  const committedRef=React.useRef(new Set());   // clés dont le saveLead a résolu (write committé)
+  const [tick,bump]=React.useReducer(x=>x+1,0);
   React.useEffect(()=>{ let on=true; SB.from('profiles').select('id,name,role').then(({data})=>{ if(on) setClosers((data||[]).filter(p=>p.role==='closer')); }); return ()=>{on=false;}; },[]);
 
   // ===== Repères temps (calculés une fois) =====
-  const T=React.useMemo(()=>{ const d=new Date(); const s=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime(); return {start:s, endToday:s+86400000, endWeek:s+7*86400000}; },[]);
+  const T=React.useMemo(()=>{ const d=new Date(); const s=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime(); return {start:s, endToday:s+86400000, endWeek:s+7*86400000, end30:s+30*86400000}; },[]);
 
   // ===== URGENCE TEMPORELLE = COULEUR (barre gauche de ligne + échéance teintée), dérivée de it.due réel =====
-  const URG=['late','today','week','later','none'];        // index = rang (0 = plus urgent)
-  const urgRank=(due)=>{ if(!due) return 4; const t=new Date(due).getTime(); if(t<T.start) return 0; if(t<T.endToday) return 1; if(t<T.endWeek) return 2; return 3; };
-  const urgVar={late:'--danger',today:'--accent',week:'--warm',later:'--b3',none:'--b2'};
+  const URG=['late','today','week','month','later','none'];        // index = rang (0 = plus urgent) ; 'month' = sous 1 mois (8→30 j)
+  const urgRank=(due)=>{ if(!due) return 5; const t=new Date(due).getTime(); if(t<T.start) return 0; if(t<T.endToday) return 1; if(t<T.endWeek) return 2; if(t<T.end30) return 3; return 4; };
+  const urgVar={late:'--danger',today:'--accent',week:'--warm',month:'--t3',later:'--b3',none:'--b2'};
   const overdueDays=(due)=>{ if(!due) return 0; const t=new Date(due).getTime(); return t<T.start? Math.floor((T.start-t)/86400000) : 0; };
   const dueLabel=(due)=>{ if(!due) return 'Sans date'; const t=new Date(due).getTime(); return (t>=T.start && t<T.endToday) ? cqTime(due) : cqDayLabel(due); };
 
@@ -3463,28 +3478,38 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onReassign, 
     return f;
   },[leads,filter,onToggleAction,onToggleExtra,T]);
 
+  // PURGE anti-flicker : une clé cochée n'est retirée de la suppression QUE si son écriture est committée
+  // ET que l'item frais ne la régénère plus (absent de `items`). Un patch optimiste seul (non committé) ne purge pas -> pas de rebond.
+  React.useEffect(()=>{ if(!committedRef.current.size) return; const live=new Set(items.map(i=>i.key)); let ch=false;
+    committedRef.current.forEach(k=>{ if(!live.has(k)){ committedRef.current.delete(k); doneRef.current.delete(k); ch=true; } });
+    if(ch) bump();
+  },[items]);
+  // coche : masque tout de suite (suppression) + lance le toggle ; au commit du write -> marque committée (la purge fera le reste).
+  const check=(it)=>{ doneRef.current.add(it.key); bump(); Promise.resolve(it.onCheck()).then(()=>{ committedRef.current.add(it.key); bump(); }).catch(()=>{ doneRef.current.delete(it.key); committedRef.current.delete(it.key); bump(); }); };
+  const visItems=React.useMemo(()=>items.filter(it=>!doneRef.current.has(it.key)),[items,tick]);
+
   // ===== REGROUPEMENT PAR LEAD : 1 carte = 1 lead, N lignes dedans ; tout est ordonné par urgence puis échéance =====
   const cards=React.useMemo(()=>{
     const map=new Map();
-    for(const it of items){ const id=it.lead.id; if(!map.has(id)) map.set(id,{lead:it.lead, rows:[]}); map.get(id).rows.push(it); }
+    for(const it of visItems){ const id=it.lead.id; if(!map.has(id)) map.set(id,{lead:it.lead, rows:[]}); map.get(id).rows.push(it); }
     const arr=[...map.values()];
     arr.forEach(c=>{
       c.rows.sort((a,b)=> (a._u-b._u) || (new Date(a.due||8.64e15)-new Date(b.due||8.64e15)));
-      c.minU=c.rows.reduce((w,r)=>Math.min(w,r._u),4);   // urgence max (rang min) de la carte
+      c.minU=c.rows.reduce((w,r)=>Math.min(w,r._u),5);   // urgence max (rang min) de la carte
       c.minDue=c.rows.reduce((m,r)=>Math.min(m, r.due?new Date(r.due).getTime():Infinity), Infinity);
       c.domTop=c.rows[0]?c.rows[0]._d:'suivi';            // domaine de la ligne la plus urgente
     });
     arr.sort((a,b)=> (a.minU-b.minU) || (a.minDue-b.minDue));
     return arr;
-  },[items]);
+  },[visItems]);
 
   // ===== BARRE DE STATS (résumé chiffré instantané) =====
   const stats=React.useMemo(()=>({
-    late:  items.filter(i=>i._u===0).length,
-    today: items.filter(i=>i._u===1).length,
-    rdv:   items.filter(i=>i.kind==='rdv').length,
+    late:  visItems.filter(i=>i._u===0).length,
+    today: visItems.filter(i=>i._u===1).length,
+    rdv:   visItems.filter(i=>i.kind==='rdv').length,
     leads: cards.length,
-  }),[items,cards]);
+  }),[visItems,cards]);
 
   // ===== RENDU — une ligne d'action / RDV (barre gauche = urgence, pastille = domaine, échéance teintée) =====
   const Row=(it)=>{ const dom=DOM[it._d]; const od=overdueDays(it.due); const u=URG[it._u];
@@ -3494,8 +3519,8 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onReassign, 
         onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); onOpenLead(it.lead.id); } }}>
         {it.kind==='action'
           ? <span className="af-chk" role="checkbox" aria-checked="false" tabIndex={0}
-              onClick={e=>{ e.stopPropagation(); it.onCheck(); }}
-              onKeyDown={e=>{ if(e.key===' '||e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); it.onCheck(); } }}
+              onClick={e=>{ e.stopPropagation(); check(it); }}
+              onKeyDown={e=>{ if(e.key===' '||e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); check(it); } }}
               title="Marquer comme fait">{I.check({})}</span>
           : <span className="af-rdvic" aria-hidden="true">{I.agenda({})}</span>}
         <span className="af-label">{it.label}</span>
@@ -3524,6 +3549,9 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onReassign, 
               {l.offer>0 && <em className="af-amt mono">{eur(l.offer)}</em>}
             </span>
           </div>
+          <button className={'af-star'+(l.starred?' on':'')} onClick={e=>{ e.stopPropagation(); onToggleStar&&onToggleStar(l); }} title={l.starred?'Retirer du suivi':'Mettre en suivi'} aria-pressed={!!l.starred}>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill={l.starred?'currentColor':'none'} stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="M12 2.5l2.9 5.9 6.5.95-4.7 4.58 1.1 6.47L12 17.9l-5.8 3.05 1.1-6.47-4.7-4.58 6.5-.95z"/></svg>
+          </button>
           <select className="af-closer" value={l.owner||''} onClick={e=>e.stopPropagation()} onChange={e=>onReassign(l.id, e.target.value||null)} title="Attribuer à un closer">
             <option value="">— non attribué —</option>
             {closers.map(x=><option key={x.id} value={x.id}>{x.name||'Closer'}</option>)}
@@ -3539,26 +3567,31 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onReassign, 
   // ===== SECTIONS : les DEUX groupements produisent de vraies sections (pastille + compteur) =====
   const SEC_URG={
     late:{t:'En retard',v:'--danger'}, today:{t:"Aujourd'hui",v:'--accent'},
-    week:{t:'Cette semaine',v:'--warm'}, later:{t:'Plus tard',v:'--t3'}, none:{t:'Sans date',v:'--t4'},
+    week:{t:'Cette semaine',v:'--warm'}, month:{t:'1 mois',v:'--t3'}, later:{t:'Plus tard',v:'--b3'}, none:{t:'Sans date',v:'--t4'},
   };
   const SEC_DOM={
     rdv:{t:'RDV',v:'--accent'}, appel:{t:'Appel',v:'--warm'}, argent:{t:'Financier',v:'--ok'},
     suivi:{t:'Suivi',v:'--t3'}, admin:{t:'Admin',v:'--t4'},
   };
   const sections=React.useMemo(()=>{
+    const fcards=cards.filter(c=>dueFilter.has(URG[c.minU]));   // filtre par échéance (bucket d'urgence de la carte)
+    const head=[]; const starred=cards.filter(c=>c.lead.starred); // SUIVI = étoilés, en tête, indépendant du filtre échéance ; le lead reste AUSSI dans sa section normale
+    if(starred.length) head.push({key:'__suivi', t:'★ Suivi', v:'--accent', cards:starred});
     if(groupBy==='domaine'){
       const order=['rdv','appel','argent','suivi','admin'];
       const by={}; order.forEach(k=>{ by[k]=[]; });
-      cards.forEach(c=>{ (by[c.domTop]||by.suivi).push(c); });
-      return order.filter(k=>by[k].length).map(k=>({key:k, ...SEC_DOM[k], cards:by[k]}));
+      fcards.forEach(c=>{ (by[c.domTop]||by.suivi).push(c); });
+      return head.concat(order.filter(k=>by[k].length).map(k=>({key:k, ...SEC_DOM[k], cards:by[k]})));
     }
-    const order=['late','today','week','later','none'];
-    const by={late:[],today:[],week:[],later:[],none:[]};
-    cards.forEach(c=>{ by[order[c.minU]].push(c); });
-    return order.filter(k=>by[k].length).map(k=>({key:k, ...SEC_URG[k], cards:by[k]}));
-  },[cards,groupBy]);
+    const order=['late','today','week','month','later','none'];
+    const by={late:[],today:[],week:[],month:[],later:[],none:[]};
+    fcards.forEach(c=>{ by[order[c.minU]].push(c); });
+    return head.concat(order.filter(k=>by[k].length).map(k=>({key:k, ...SEC_URG[k], cards:by[k]})));
+  },[cards,groupBy,dueFilter]);
 
-  const filtersActive = !!seasonFilter || groupBy!=='urgence';
+  const DUE_OPTS=[['late','En retard'],['today',"Aujourd'hui"],['week','Cette semaine'],['month','1 mois'],['later','Plus tard'],['none','Sans date']];
+  const toggleDue=k=>setDueFilter(s=>{ const n=new Set(s); n.has(k)?n.delete(k):n.add(k); return n.size?n:new Set(ALL_DUE); }); // jamais vide -> revient à tout
+  const filtersActive = !!seasonFilter || groupBy!=='urgence' || dueFilter.size!==ALL_DUE.length;
   const SlidersIc=(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}><path d="M4 7h8M17.5 7H20M4 17h2.5M11 17h9"/><circle cx="14.5" cy="7" r="2.5"/><circle cx="8" cy="17" r="2.5"/></svg>;
 
   return (
@@ -3606,6 +3639,12 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onReassign, 
                       <div className="af-seg">
                         <button className={'af-seg-b'+(groupBy==='urgence'?' on':'')} onClick={()=>setGroupBy('urgence')}>Urgence</button>
                         <button className={'af-seg-b'+(groupBy==='domaine'?' on':'')} onClick={()=>setGroupBy('domaine')}>Domaine</button>
+                      </div>
+                    </div>
+                    <div className="af-panel-row">
+                      <span className="af-panel-lbl">Échéance</span>
+                      <div className="af-due-chips">
+                        {DUE_OPTS.map(([k,lbl])=><button key={k} className={'af-due-chip'+(dueFilter.has(k)?' on':'')} onClick={()=>toggleDue(k)} aria-pressed={dueFilter.has(k)}>{lbl}</button>)}
                       </div>
                     </div>
                   </div>
@@ -3978,9 +4017,10 @@ function App({session, onLogout}){
   const editField=(uiKey,saveKey,value)=>{ if(!sel) return; patch(sel.id,{[uiKey]:value}); saveLead(sel.id,{[saveKey]:value}); };
   const toggleAction=(checked)=>{ if(!sel) return; const v=checked?(sel.nextAction||null):null; patch(sel.id,{actionDoneFor:v}); saveLead(sel.id,{actionDoneFor:v}); };
   const setActions=(arr,persist)=>{ if(!sel) return; patch(sel.id,{extraActions:arr}); if(persist) saveLead(sel.id,{extraActions:arr}); };
-  // versions PAR-LEAD (page « À faire » : agit sur n'importe quel lead, pas seulement la fiche ouverte)
-  const toggleActionFor=(lead,checked)=>{ const v=checked?(lead.nextAction||null):null; patch(lead.id,{actionDoneFor:v}); saveLead(lead.id,{actionDoneFor:v}); };
-  const toggleExtraFor=(lead,idx)=>{ const arr=(lead.extraActions||[]).map((x,j)=>j===idx?{...x,done:!x.done}:x); patch(lead.id,{extraActions:arr}); saveLead(lead.id,{extraActions:arr}); };
+  // versions PAR-LEAD (page « À faire » : agit sur n'importe quel lead, pas seulement la fiche ouverte). Retournent la promesse d'écriture (l'anti-flicker s'en sert pour purger une fois le write committé).
+  const toggleActionFor=(lead,checked)=>{ const v=checked?(lead.nextAction||null):null; patch(lead.id,{actionDoneFor:v}); return saveLead(lead.id,{actionDoneFor:v}); };
+  const toggleExtraFor=(lead,idx)=>{ const arr=(lead.extraActions||[]).map((x,j)=>j===idx?{...x,done:!x.done}:x); patch(lead.id,{extraActions:arr}); return saveLead(lead.id,{extraActions:arr}); };
+  const toggleStar=(lead)=>{ const v=!lead.starred; patch(lead.id,{starred:v}); return saveLead(lead.id,{starred:v}); };
   const reassignOwner=(id,closerId)=>{ patch(id,{owner:closerId||null}); saveLead(id,{owner:closerId||null}); };
   // appropriation du lead par le closer connecté (toggle) — owner_closer_id = id de l'utilisateur auth
   // 3 états : libre -> je m'approprie ; à moi -> je libère ; à un autre closer -> bloqué (pas de vol)
@@ -4238,7 +4278,7 @@ function App({session, onLogout}){
         {screen==='agenda' && <Agenda meetings={cqMeetings} sources={cqSources} loading={cqLoading} error={cqError}
             isAdmin={isAdmin} profile={profile} onConnect={connectCalendiq} onDisconnect={disconnectCalendiq}
             onRefresh={loadCalendiq} onOpenLead={openLead} meetingLeadId={meetingLeadId}/>}
-        {screen==='todo' && isAdmin && <AFaire leads={leadsView} onOpenLead={openLead} onToggleAction={toggleActionFor} onToggleExtra={toggleExtraFor} onReassign={reassignOwner} seasonFilter={seasonFilter} setSeasonFilter={setSeasonFilter} seasonCounts={seasonCounts}/>}
+        {screen==='todo' && isAdmin && <AFaire leads={leadsView} onOpenLead={openLead} onToggleAction={toggleActionFor} onToggleExtra={toggleExtraFor} onToggleStar={toggleStar} onReassign={reassignOwner} seasonFilter={seasonFilter} setSeasonFilter={setSeasonFilter} seasonCounts={seasonCounts}/>}
         {screen==='team' && isAdmin && <TeamScreen userId={userId} toast={toast} leads={leadsView} onOpenLead={openLead} cqPending={cqLoading && !cqMeetings.length}/>}
         {screen==='console' && isAdmin && <Console toast={toast} onOpenLead={openLead} setSyncBusy={setSyncBusy} reloadLeads={reload}/>}
       </main>
