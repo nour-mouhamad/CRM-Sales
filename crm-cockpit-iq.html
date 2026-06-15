@@ -359,16 +359,22 @@ input,textarea{font-family:inherit; color:inherit}
 .af-filter-btn.on,.af-filter-btn.has{border-color:var(--accent); color:var(--accent)}
 .af-filter-dot{width:6px; height:6px; border-radius:99px; background:var(--accent)}
 .af-panel-bk{position:fixed; inset:0; z-index:40}
-.af-panel{position:absolute; top:calc(100% + 8px); right:0; z-index:41; min-width:280px; background:var(--surface); border:1px solid var(--b2); border-radius:13px; box-shadow:var(--sh-lift); padding:13px 14px; display:flex; flex-direction:column; gap:12px}
+.af-panel{position:absolute; top:calc(100% + 8px); left:0; z-index:41; min-width:300px; background:var(--surface); border:1px solid var(--b2); border-radius:13px; box-shadow:var(--sh-lift); padding:13px 14px; display:flex; flex-direction:column; gap:12px}
 .af-panel-row{display:flex; flex-direction:column; gap:6px}
 .af-panel-lbl{font-size:10.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--t3)}
 .af-panel-sel{width:100%; padding:8px 10px; border-radius:9px; border:1.5px solid var(--b1); background:var(--surface-2); color:var(--t1); font-size:12.5px; font-weight:600; font-family:inherit; cursor:pointer}
 .af-panel-sel:hover{border-color:var(--b3)}
-.af-panel-stats{gap:8px 16px}
-.af-due-chips{display:flex; flex-wrap:wrap; gap:6px}
-.af-due-chip{padding:5px 11px; border-radius:8px; border:1.5px solid var(--b1); background:var(--surface-2); color:var(--t2); font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:all var(--speed) var(--ease)}
-.af-due-chip:hover{border-color:var(--b3); color:var(--t1)}
-.af-due-chip.on{background:var(--accent-tint); border-color:var(--accent); color:var(--accent)}
+/* total leads (barre du haut, à gauche du bouton Filtres) */
+.af-total{font-size:13px; font-weight:700; color:var(--t3); font-variant-numeric:tabular-nums}
+/* chips d'échéance = filtres cliquables façon stats (point + nombre + label) ; éteint = grisé, allumé = teinté de sa couleur */
+.af-fchips{display:flex; flex-wrap:wrap; gap:7px}
+.af-fchip{display:inline-flex; align-items:center; gap:7px; padding:7px 11px; border-radius:10px; border:1.5px solid var(--b1); background:var(--surface-2); cursor:pointer; font-family:inherit; opacity:.5; transition:opacity var(--speed) var(--ease), border-color var(--speed) var(--ease), background var(--speed) var(--ease)}
+.af-fchip .af-fchip-dot{width:8px; height:8px; border-radius:50%; background:var(--fc); flex:none}
+.af-fchip b{font-size:13.5px; font-weight:800; color:var(--t1); font-variant-numeric:tabular-nums; line-height:1}
+.af-fchip span{font-size:12px; font-weight:700; color:var(--t2)}
+.af-fchip:hover{opacity:1; border-color:var(--b3)}
+.af-fchip.on{opacity:1; border-color:color-mix(in srgb, var(--fc) 55%, transparent); background:color-mix(in srgb, var(--fc) 13%, var(--surface-2))}
+.af-fchip.on b{color:var(--fc)}
 
 /* en-tête de section agrégée (urgence OU domaine) : pastille + compteur + ligne */
 .af-sec{display:flex; align-items:center; gap:9px; margin:22px 0 10px}
@@ -3419,7 +3425,7 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
   const [groupBy,setGroupBy]=React.useState('urgence');   // 'urgence' | 'domaine'
   const [panelOpen,setPanelOpen]=React.useState(false);   // panneau Filtres (saison + groupement + échéance)
   const [expanded,setExpanded]=React.useState({});        // leadId -> bool (déplier « +N autres »)
-  const ALL_DUE=['late','today','week','month','later','none'];
+  const ALL_DUE=['late','today','week','later','none'];
   const [dueFilter,setDueFilter]=React.useState(()=>new Set(ALL_DUE)); // échéances visibles (défaut : toutes)
   // ANTI-FLICKER (même principe que Synchro HubSpot) : une action cochée entre en SUPPRESSION -> masquée tout de suite ;
   // purge UNIQUEMENT quand l'écriture est committée ET que le lead frais ne régénère plus la ligne (un reload stale ne peut plus la faire rebondir).
@@ -3429,12 +3435,12 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
   React.useEffect(()=>{ let on=true; SB.from('profiles').select('id,name,role').then(({data})=>{ if(on) setClosers((data||[]).filter(p=>p.role==='closer')); }); return ()=>{on=false;}; },[]);
 
   // ===== Repères temps (calculés une fois) =====
-  const T=React.useMemo(()=>{ const d=new Date(); const s=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime(); return {start:s, endToday:s+86400000, endWeek:s+7*86400000, end30:s+30*86400000}; },[]);
+  const T=React.useMemo(()=>{ const d=new Date(); const s=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime(); return {start:s, endToday:s+86400000, endWeek:s+7*86400000}; },[]);
 
   // ===== URGENCE TEMPORELLE = COULEUR (barre gauche de ligne + échéance teintée), dérivée de it.due réel =====
-  const URG=['late','today','week','month','later','none'];        // index = rang (0 = plus urgent) ; 'month' = sous 1 mois (8→30 j)
-  const urgRank=(due)=>{ if(!due) return 5; const t=new Date(due).getTime(); if(t<T.start) return 0; if(t<T.endToday) return 1; if(t<T.endWeek) return 2; if(t<T.end30) return 3; return 4; };
-  const urgVar={late:'--danger',today:'--accent',week:'--warm',month:'--t3',later:'--b3',none:'--b2'};
+  const URG=['late','today','week','later','none'];        // index = rang (0 = plus urgent) ; au-delà d'une semaine -> 'later'
+  const urgRank=(due)=>{ if(!due) return 4; const t=new Date(due).getTime(); if(t<T.start) return 0; if(t<T.endToday) return 1; if(t<T.endWeek) return 2; return 3; };
+  const urgVar={late:'--danger',today:'--accent',week:'--warm',later:'--b3',none:'--b2'};
   const overdueDays=(due)=>{ if(!due) return 0; const t=new Date(due).getTime(); return t<T.start? Math.floor((T.start-t)/86400000) : 0; };
   const dueLabel=(due)=>{ if(!due) return 'Sans date'; const t=new Date(due).getTime(); return (t>=T.start && t<T.endToday) ? cqTime(due) : cqDayLabel(due); };
 
@@ -3496,7 +3502,7 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
     const arr=[...map.values()];
     arr.forEach(c=>{
       c.rows.sort((a,b)=> (a._u-b._u) || (new Date(a.due||8.64e15)-new Date(b.due||8.64e15)));
-      c.minU=c.rows.reduce((w,r)=>Math.min(w,r._u),5);   // urgence max (rang min) de la carte
+      c.minU=c.rows.reduce((w,r)=>Math.min(w,r._u),4);   // urgence max (rang min) de la carte
       c.minDue=c.rows.reduce((m,r)=>Math.min(m, r.due?new Date(r.due).getTime():Infinity), Infinity);
       c.domTop=c.rows[0]?c.rows[0]._d:'suivi';            // domaine de la ligne la plus urgente
     });
@@ -3568,7 +3574,7 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
   // ===== SECTIONS : les DEUX groupements produisent de vraies sections (pastille + compteur) =====
   const SEC_URG={
     late:{t:'En retard',v:'--danger'}, today:{t:"Aujourd'hui",v:'--accent'},
-    week:{t:'Cette semaine',v:'--warm'}, month:{t:'1 mois',v:'--t3'}, later:{t:'Plus tard',v:'--b3'}, none:{t:'Sans date',v:'--t4'},
+    week:{t:'Cette semaine',v:'--warm'}, later:{t:'Plus tard',v:'--b3'}, none:{t:'Sans date',v:'--t4'},
   };
   const SEC_DOM={
     rdv:{t:'RDV',v:'--accent'}, appel:{t:'Appel',v:'--warm'}, argent:{t:'Financier',v:'--ok'},
@@ -3584,13 +3590,16 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
       fcards.forEach(c=>{ (by[c.domTop]||by.suivi).push(c); });
       return head.concat(order.filter(k=>by[k].length).map(k=>({key:k, ...SEC_DOM[k], cards:by[k]})));
     }
-    const order=['late','today','week','month','later','none'];
-    const by={late:[],today:[],week:[],month:[],later:[],none:[]};
+    const order=['late','today','week','later','none'];
+    const by={late:[],today:[],week:[],later:[],none:[]};
     fcards.forEach(c=>{ by[order[c.minU]].push(c); });
     return head.concat(order.filter(k=>by[k].length).map(k=>({key:k, ...SEC_URG[k], cards:by[k]})));
   },[cards,groupBy,dueFilter]);
 
-  const DUE_OPTS=[['late','En retard'],['today',"Aujourd'hui"],['week','Cette semaine'],['month','1 mois'],['later','Plus tard'],['none','Sans date']];
+  // chips d'échéance = filtres cliquables façon stats (point coloré + nombre + label). Compte par bucket = nb de leads (cartes), stable (indépendant du filtre).
+  const bcount=React.useMemo(()=>{ const c={late:0,today:0,week:0,later:0,none:0}; cards.forEach(x=>{ c[URG[x.minU]]++; }); return c; },[cards]);
+  const total=cards.length;
+  const DUE_OPTS=[['late','En retard','--danger'],['today',"Aujourd'hui",'--accent'],['week','Cette semaine','--warm'],['later','Plus tard','--t3'],['none','Sans date','--t4']];
   const toggleDue=k=>setDueFilter(s=>{ const n=new Set(s); n.has(k)?n.delete(k):n.add(k); return n.size?n:new Set(ALL_DUE); }); // jamais vide -> revient à tout
   const filtersActive = !!seasonFilter || groupBy!=='urgence' || dueFilter.size!==ALL_DUE.length;
   const SlidersIc=(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}><path d="M4 7h8M17.5 7H20M4 17h2.5M11 17h9"/><circle cx="14.5" cy="7" r="2.5"/><circle cx="8" cy="17" r="2.5"/></svg>;
@@ -3611,7 +3620,8 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
       {items.length===0
         ? <div className="sync-ok">{I.check({})}<div><b style={{fontSize:16,color:'var(--t1)'}}>Rien à faire</b><div style={{fontSize:13,marginTop:4}}>Aucune action en attente. Ajoute une action sur une fiche, ou un RDV apparaîtra ici.</div></div></div>
         : <>
-            <div className="af-bar" style={{justifyContent:'flex-end'}}>
+            <div className="af-bar" style={{justifyContent:'flex-start'}}>
+              <span className="af-total">{total} lead{total>1?'s':''}</span>
               <div className="af-tools">
                 <button className={'af-filter-btn'+(panelOpen?' on':'')+(filtersActive?' has':'')} onClick={()=>setPanelOpen(o=>!o)} aria-expanded={panelOpen}>
                   {SlidersIc({})}Filtres{filtersActive && <i className="af-filter-dot"></i>}
@@ -3619,15 +3629,6 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
                 {panelOpen && <>
                   <div className="af-panel-bk" onClick={()=>setPanelOpen(false)}></div>
                   <div className="af-panel">
-                    <div className="af-panel-row">
-                      <span className="af-panel-lbl">Résumé</span>
-                      <div className="af-stats af-panel-stats">
-                        <span className="af-stat late" title="Actions en retard"><i></i>{stats.late} en retard</span>
-                        <span className="af-stat today" title="Actions aujourd'hui"><i></i>{stats.today} aujourd'hui</span>
-                        <span className="af-stat rdv" title="RDV à venir">{I.agenda({})}{stats.rdv} RDV</span>
-                        <span className="af-stat sub">{stats.leads} lead{stats.leads>1?'s':''}</span>
-                      </div>
-                    </div>
                     {setSeasonFilter && (
                       <div className="af-panel-row">
                         <span className="af-panel-lbl">Saison</span>
@@ -3647,8 +3648,12 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
                     </div>
                     <div className="af-panel-row">
                       <span className="af-panel-lbl">Échéance</span>
-                      <div className="af-due-chips">
-                        {DUE_OPTS.map(([k,lbl])=><button key={k} className={'af-due-chip'+(dueFilter.has(k)?' on':'')} onClick={()=>toggleDue(k)} aria-pressed={dueFilter.has(k)}>{lbl}</button>)}
+                      <div className="af-fchips">
+                        {DUE_OPTS.map(([k,lbl,col])=>(
+                          <button key={k} className={'af-fchip'+(dueFilter.has(k)?' on':'')} style={{'--fc':'var('+col+')'}} onClick={()=>toggleDue(k)} aria-pressed={dueFilter.has(k)} title={(dueFilter.has(k)?'Masquer ':'Afficher ')+lbl}>
+                            <i className="af-fchip-dot"></i><b>{bcount[k]||0}</b><span>{lbl}</span>
+                          </button>
+                        ))}
                       </div>
                     </div>
                   </div>
