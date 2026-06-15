@@ -4829,8 +4829,10 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     ? { key:'lk:'+r.dealId, mode:'link_deal', leadId:r.leadId, dealId:r.dealId }
     : { key:'eu:'+r.leadId, mode:'accept_entrant', leadId:r.leadId };
   const conflItem = r => ({ key:'c:'+r.leadId, mode:'conflict', leadId:r.leadId, conflict:(confl[r.leadId]||{}), token:r.lastModified });
-  // Ignorer un conflit doublon/partiel : masquage local (liste de suppression), purge auto au prochain diff. AUCUNE écriture.
-  const ignoreConflit = r => { CONSOLE_CACHE.suppressed.add(CONSOLE_KEYF.conflits(r)); consoleNotify(); };
+  // Ignorer un conflit doublon/partiel : PERSISTANT. Marque le deal HubSpot ignoré pour ce lead -> jamais re-proposé. Masquage immédiat + écriture CRM (0 HubSpot).
+  const ignoreConflit = r => { const k=CONSOLE_KEYF.conflits(r); CONSOLE_CACHE.suppressed.add(k); consoleNotify(); push([{ key:k, mode:'ignore_deal', leadId:r.leadId, dealId:r.dealId }],'Conflit ignoré — ne reviendra plus'); };
+  // masquage de session seulement (pour les actions qui se résolvent toutes seules au prochain diff, ex. « Créer quand même »)
+  const hideRow = r => { CONSOLE_CACHE.suppressed.add(CONSOLE_KEYF.conflits(r)); consoleNotify(); };
   // Refuser un sortant : annule la modif côté CRM (ré-aligne le lead sur HubSpot). AUCUNE écriture HubSpot.
   const refuseSortant = r => {
     if(!window.confirm('Refuser ce changement ?\n\nTa version reste dans le CRM, celle de HubSpot reste dans HubSpot, et on ne te le repropose plus. Lead « '+r.name+' ». AUCUNE écriture HubSpot, aucun écrasement.')) return;
@@ -5046,7 +5048,7 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
                     <div className="sync-chg"><span>Déjà dans ton CRM (colonne « {r.colonne} », deal {r.existingDealId}). Un 2ᵉ deal HubSpot ({r.dealId}) existe pour la même personne → fusionne les deux deals dans HubSpot. Le CRM ne crée ni ne modifie rien.</span></div>
                     <div className="sync-act" style={{marginTop:12,justifyContent:'flex-end'}}>
                       <button className="btn btn-ghost" onClick={()=>onOpenLead(r.leadId)}>Ouvrir le lead</button>
-                      <button className="btn btn-soft" onClick={()=>ignoreConflit(r)} title="Masquer jusqu’au prochain rafraîchissement">Ignorer</button>
+                      <button className="btn btn-soft" onClick={()=>ignoreConflit(r)} title="Ignorer définitivement — ne reviendra plus (0 écriture HubSpot)">Ignorer</button>
                     </div>
                   </div>
                 ); }
@@ -5057,8 +5059,8 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
                     <div className="sync-chg"><span><span className="k">Reçu de HubSpot :</span> {r.email||'—'}{r.phone?(' · '+r.phone):''}</span><span><span className="k">Lead proche dans le CRM :</span> {r.existingName} (colonne « {r.colonne} »)</span></div>
                     <div className="sync-act" style={{marginTop:12,justifyContent:'flex-end'}}>
                       <button className="btn btn-ghost" onClick={()=>onOpenLead(r.leadId)}>Ouvrir l’existant</button>
-                      <button className="btn btn-soft" disabled={!!busy['en:'+r.dealId]} onClick={()=>{ ignoreConflit(r); push([{key:'en:'+r.dealId,mode:'accept_new',dealId:r.dealId,column:(r.proposedColumn||'contacter')}],'Lead créé'); }} title="Ce n’est pas la même personne → créer un nouveau lead">Créer quand même</button>
-                      <button className="btn btn-soft" onClick={()=>ignoreConflit(r)} title="Masquer jusqu’au prochain rafraîchissement">Ignorer</button>
+                      <button className="btn btn-soft" disabled={!!busy['en:'+r.dealId]} onClick={()=>{ hideRow(r); push([{key:'en:'+r.dealId,mode:'accept_new',dealId:r.dealId,column:(r.proposedColumn||'contacter')}],'Lead créé'); }} title="Ce n’est pas la même personne → créer un nouveau lead">Créer quand même</button>
+                      <button className="btn btn-soft" onClick={()=>ignoreConflit(r)} title="Ignorer définitivement — ne reviendra plus (0 écriture HubSpot)">Ignorer</button>
                     </div>
                   </div>
                 ); }
