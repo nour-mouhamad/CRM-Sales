@@ -364,6 +364,7 @@ input,textarea{font-family:inherit; color:inherit}
 .af-panel-lbl{font-size:10.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--t3)}
 .af-panel-sel{width:100%; padding:8px 10px; border-radius:9px; border:1.5px solid var(--b1); background:var(--surface-2); color:var(--t1); font-size:12.5px; font-weight:600; font-family:inherit; cursor:pointer}
 .af-panel-sel:hover{border-color:var(--b3)}
+.af-panel-stats{gap:8px 16px}
 .af-due-chips{display:flex; flex-wrap:wrap; gap:6px}
 .af-due-chip{padding:5px 11px; border-radius:8px; border:1.5px solid var(--b1); background:var(--surface-2); color:var(--t2); font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:all var(--speed) var(--ease)}
 .af-due-chip:hover{border-color:var(--b3); color:var(--t1)}
@@ -3610,13 +3611,7 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
       {items.length===0
         ? <div className="sync-ok">{I.check({})}<div><b style={{fontSize:16,color:'var(--t1)'}}>Rien à faire</b><div style={{fontSize:13,marginTop:4}}>Aucune action en attente. Ajoute une action sur une fiche, ou un RDV apparaîtra ici.</div></div></div>
         : <>
-            <div className="af-bar">
-              <div className="af-stats">
-                <span className="af-stat late" title="Actions en retard"><i></i>{stats.late} en retard</span>
-                <span className="af-stat today" title="Actions aujourd'hui"><i></i>{stats.today} aujourd'hui</span>
-                <span className="af-stat rdv" title="RDV à venir">{I.agenda({})}{stats.rdv} RDV</span>
-                <span className="af-stat sub">{stats.leads} lead{stats.leads>1?'s':''}</span>
-              </div>
+            <div className="af-bar" style={{justifyContent:'flex-end'}}>
               <div className="af-tools">
                 <button className={'af-filter-btn'+(panelOpen?' on':'')+(filtersActive?' has':'')} onClick={()=>setPanelOpen(o=>!o)} aria-expanded={panelOpen}>
                   {SlidersIc({})}Filtres{filtersActive && <i className="af-filter-dot"></i>}
@@ -3624,6 +3619,15 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
                 {panelOpen && <>
                   <div className="af-panel-bk" onClick={()=>setPanelOpen(false)}></div>
                   <div className="af-panel">
+                    <div className="af-panel-row">
+                      <span className="af-panel-lbl">Résumé</span>
+                      <div className="af-stats af-panel-stats">
+                        <span className="af-stat late" title="Actions en retard"><i></i>{stats.late} en retard</span>
+                        <span className="af-stat today" title="Actions aujourd'hui"><i></i>{stats.today} aujourd'hui</span>
+                        <span className="af-stat rdv" title="RDV à venir">{I.agenda({})}{stats.rdv} RDV</span>
+                        <span className="af-stat sub">{stats.leads} lead{stats.leads>1?'s':''}</span>
+                      </div>
+                    </div>
                     {setSeasonFilter && (
                       <div className="af-panel-row">
                         <span className="af-panel-lbl">Saison</span>
