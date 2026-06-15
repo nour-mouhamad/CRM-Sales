@@ -177,6 +177,8 @@ input,textarea{font-family:inherit; color:inherit}
 .btn-accent:hover{background:var(--accent-h)}
 .btn-ghost{background:var(--surface); border-color:var(--b1); color:var(--t1)}
 .btn-ghost:hover{border-color:var(--b3); background:var(--surface-2)}
+.btn-ghost.btn-danger{color:var(--danger)}
+.btn-ghost.btn-danger:hover{border-color:var(--danger); background:var(--danger-tint)}
 .btn-soft{background:var(--surface-2); color:var(--t1); border-color:var(--b1)}
 .btn-soft:hover{background:var(--surface-3)}
 .btn .dot{width:7px; height:7px; border-radius:99px; background:currentColor}
@@ -4775,6 +4777,8 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
   };
   // À CRÉER (CRM -> HubSpot) : un lead CRM sans deal -> crée contact + transaction dans le pipe IQ. ÉCRITURE HubSpot.
   const createDealItem = r => ({ key:'cr:'+r.leadId, mode:'create_deal', leadId:r.leadId });
+  // REJETER : le lead RESTE dans le CRM mais sort définitivement de la file « À créer » — jamais poussé dans HubSpot. AUCUNE écriture HubSpot.
+  const rejectCreate = r => push([{ key:'cr:'+r.leadId, mode:'reject_create', leadId:r.leadId }],'Lead retiré de la file HubSpot');
   const createAllAcreer=()=>{
     const rows=(data.acreer||[]).filter(r=>!r.incomplete);
     if(!rows.length){ toast('Rien à créer','Les leads incomplets (sans email ni tél) sont à compléter d’abord','info'); return; }
@@ -4986,6 +4990,7 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
                     </div>
                     <div className="sync-act" style={{flexShrink:0}}>
                       <button className="btn btn-ghost" disabled={!!busy[k]} onClick={()=>onOpenLead(r.leadId)}>Éditer</button>
+                      <button className="btn btn-ghost btn-danger" disabled={!!busy[k]} title="Ne jamais créer ce lead dans HubSpot (il reste dans le CRM)" onClick={()=>rejectCreate(r)}>Rejeter</button>
                       <button className="btn btn-accent" disabled={!!busy[k]} title={r.incomplete?'Lead sans email ni téléphone — risque de doublon non dédupliquable':'Créer le contact + la transaction dans HubSpot'} onClick={()=>push([createDealItem(r)],'Créé dans HubSpot')}>{busy[k]?'…':'Créer dans HubSpot'}</button>
                     </div>
                   </div>
