@@ -4647,13 +4647,6 @@ function TeamScreen({ userId, toast, leads, onOpenLead, cqPending }){
     <div className="mgr-pad">
       <div className="mgr-head">
         <div><h1>Cockpit closers</h1><p>Vue manager — performance, pipeline et leads de chaque closer en un coup d’œil.</p></div>
-        <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
-          <div className="af-seg" title="Rôle de l’invitation">
-            <button className={'af-seg-b'+(inviteRole==='closer'?' on':'')} onClick={()=>setInviteRole('closer')}>Closer</button>
-            <button className={'af-seg-b'+(inviteRole==='admin'?' on':'')} onClick={()=>setInviteRole('admin')}>Admin</button>
-          </div>
-          <button className="btn btn-accent" disabled={busy} onClick={gen}><I.plus style={{width:15,height:15}}/>Inviter {inviteRole==='admin'?'un admin':'un closer'}</button>
-        </div>
       </div>
 
       <div className="mgr-kpis">
@@ -4717,6 +4710,15 @@ function TeamScreen({ userId, toast, leads, onOpenLead, cqPending }){
               </div>
             ))}
         </div></div>
+      </div>
+
+      <div className="mgr-sec"><span className="eyebrow">Inviter un membre</span></div>
+      <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+        <div className="af-seg" title="Rôle de l’invitation">
+          <button className={'af-seg-b'+(inviteRole==='closer'?' on':'')} onClick={()=>setInviteRole('closer')}>Closer</button>
+          <button className={'af-seg-b'+(inviteRole==='admin'?' on':'')} onClick={()=>setInviteRole('admin')}>Admin</button>
+        </div>
+        <button className="btn btn-accent" disabled={busy} onClick={gen}><I.plus style={{width:15,height:15}}/>Inviter {inviteRole==='admin'?'un admin':'un closer'}</button>
       </div>
     </div>
   );
