@@ -3435,7 +3435,7 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
   const [groupBy,setGroupBy]=React.useState('urgence');   // 'urgence' | 'domaine'
   const [panelOpen,setPanelOpen]=React.useState(false);   // panneau Filtres (saison + groupement + échéance)
   const [expanded,setExpanded]=React.useState({});        // leadId -> bool (déplier « +N autres »)
-  const [openSecs,setOpenSecs]=React.useState(()=>new Set()); // clés de section OUVERTES (vide par défaut = tout replié)
+  const [collapsedSecs,setCollapsedSecs]=React.useState(()=>new Set()); // clés de section REPLIÉES (vide par défaut = tout ouvert)
   const ALL_DUE=['late','today','week','later','none'];
   const ALL_DOM=['rdv','appel','argent','suivi','admin'];
   const [dueFilter,setDueFilter]=React.useState(()=>new Set(ALL_DUE)); // échéances visibles (défaut : toutes)
@@ -3682,11 +3682,11 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
               </div>
             </div>
 
-            {sections.map(s=>{ const col=!openSecs.has(s.key); return (
+            {sections.map(s=>{ const col=collapsedSecs.has(s.key); return (
               <React.Fragment key={s.key}>
                 <div className={'af-sec af-sec-btn'+(col?' af-col':'')} style={{'--sc':'var('+s.v+')'}} role="button" tabIndex={0}
-                  onClick={()=>setOpenSecs(p=>{ const n=new Set(p); n.has(s.key)?n.delete(s.key):n.add(s.key); return n; })}
-                  onKeyDown={e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); setOpenSecs(p=>{ const n=new Set(p); n.has(s.key)?n.delete(s.key):n.add(s.key); return n; }); } }}
+                  onClick={()=>setCollapsedSecs(p=>{ const n=new Set(p); n.has(s.key)?n.delete(s.key):n.add(s.key); return n; })}
+                  onKeyDown={e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); setCollapsedSecs(p=>{ const n=new Set(p); n.has(s.key)?n.delete(s.key):n.add(s.key); return n; }); } }}
                   title={col?'Déplier':'Replier'}>
                   <span className="af-sec-chev" aria-hidden="true">{I.chev({})}</span>
                   <span className="af-sec-dot"></span>
