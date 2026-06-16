@@ -600,6 +600,8 @@ input,textarea{font-family:inherit; color:inherit}
 .cl-del-act{display:flex; gap:8px}
 .cl-del-confirm{background:var(--danger); color:#fff; border:none; font-size:12.5px; font-weight:700; padding:8px 14px; border-radius:9px; cursor:pointer}
 .cl-del-confirm:disabled{opacity:.6; cursor:default}
+.role-badge{font-size:10.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; padding:3px 9px; border-radius:20px; background:var(--surface-3); color:var(--t2); flex:none}
+.role-badge.admin{background:var(--accent-tint); color:var(--accent)}
 .cl-lead{display:flex; align-items:center; gap:10px; row-gap:4px; flex-wrap:wrap; width:100%; text-align:left; padding:9px 34px 9px 10px; border-radius:9px; cursor:pointer; position:relative; transition:background var(--speed) var(--ease)}
 .cl-lead:hover{background:var(--surface)}
 .cl-lead-name{font-size:13.5px; font-weight:700; width:150px; flex:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
@@ -4521,15 +4523,20 @@ function TeamScreen({ userId, toast, leads, onOpenLead, cqPending }){
   const linkFor = t => base+'?invite='+t;
   const load=()=>{
     SB.from('profiles').select('id,name,role,created_at').order('created_at').then(({data})=>setProfiles(data||[]));
-    SB.from('invites').select('token,email,name,used_at,created_at').order('created_at',{ascending:false}).then(({data})=>setInvites(data||[]));
+    SB.from('invites').select('token,email,name,role,used_at,created_at').order('created_at',{ascending:false}).then(({data})=>setInvites(data||[]));
   };
   useEffect(load,[]);
+  const [inviteRole,setInviteRole]=useState('closer'); // rôle de la prochaine invitation (closer | admin)
   const gen=async()=>{ setBusy(true); try{
-    const {data,error}=await SB.from('invites').insert({created_by:userId}).select('token').single();
-    if(error) throw error;
-    try{ await navigator.clipboard.writeText(linkFor(data.token)); }catch(e){}
-    toast('Lien d’invitation créé','Copié — envoie-le au closer','ok'); load();
+    const r=await callFn('admin-closer',{action:'create_invite',role:inviteRole});
+    try{ await navigator.clipboard.writeText(linkFor(r.token)); }catch(e){}
+    toast('Lien d’invitation créé','Copié — '+(inviteRole==='admin'?'invitation ADMIN':'invitation closer'),'ok'); load();
   }catch(e){ toast('Erreur', e.message, 'info'); } finally{ setBusy(false); } };
+  // PROMOUVOIR / RÉTROGRADER (admin <-> closer) via l'edge admin-gated. 0 écriture HubSpot.
+  const setMemberRole=async(id,role,nm)=>{ try{
+    await callFn('admin-closer',{action:'set_role',targetId:id,role});
+    toast(role==='admin'?'Passé admin':'Repassé closer',(nm||'')+' — accès mis à jour','ok'); load();
+  }catch(e){ toast('Changement impossible', e.message, 'info'); } };
   const copy=t=>{ try{ navigator.clipboard.writeText(linkFor(t)); toast('Lien copié',null,'ok'); }catch(e){} };
   const delCloser=async(closerId,nm)=>{
     try{
@@ -4640,7 +4647,13 @@ function TeamScreen({ userId, toast, leads, onOpenLead, cqPending }){
     <div className="mgr-pad">
       <div className="mgr-head">
         <div><h1>Cockpit closers</h1><p>Vue manager — performance, pipeline et leads de chaque closer en un coup d’œil.</p></div>
-        <button className="btn btn-accent" disabled={busy} onClick={gen}><I.plus style={{width:15,height:15}}/>Inviter un closer</button>
+        <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+          <div className="af-seg" title="Rôle de l’invitation">
+            <button className={'af-seg-b'+(inviteRole==='closer'?' on':'')} onClick={()=>setInviteRole('closer')}>Closer</button>
+            <button className={'af-seg-b'+(inviteRole==='admin'?' on':'')} onClick={()=>setInviteRole('admin')}>Admin</button>
+          </div>
+          <button className="btn btn-accent" disabled={busy} onClick={gen}><I.plus style={{width:15,height:15}}/>Inviter {inviteRole==='admin'?'un admin':'un closer'}</button>
+        </div>
       </div>
 
       <div className="mgr-kpis">
@@ -4678,13 +4691,28 @@ function TeamScreen({ userId, toast, leads, onOpenLead, cqPending }){
           : ranked.map((c,i)=><CloserCard key={c.key} closerId={c.key} rank={i+1} name={c.name} leads={c.leads} maxCa={maxCa} clock={clock} onOpenLead={onOpenLead} onDelete={delCloser} defaultOpen={i===0&&ranked.length<=2}/>)}
       </div>
 
+      <div className="mgr-sec"><span className="eyebrow">Accès & rôles</span><span className="mgr-count">{profiles.length}</span></div>
+      <div className="lb-list">
+        <div className="lb-card"><div className="lb-body" style={{borderTop:'none'}}>
+          {profiles.length===0 ? <div className="lb-empty">Aucun membre.</div>
+            : profiles.map(p=>(
+              <div key={p.id} className="cl-lead" style={{cursor:'default'}}>
+                <span style={{flex:1,fontWeight:600}}>{p.name||'—'}{p.id===userId && <em style={{color:'var(--t3)',fontWeight:500}}> (toi)</em>}</span>
+                <span className={'role-badge'+(p.role==='admin'?' admin':'')}>{p.role==='admin'?'Admin':'Closer'}</span>
+                {p.id!==userId && <button className="btn btn-soft" style={{padding:'5px 11px',fontSize:12}} onClick={()=>setMemberRole(p.id, p.role==='admin'?'closer':'admin', p.name)}>{p.role==='admin'?'Repasser closer':'Passer admin'}</button>}
+              </div>
+            ))}
+        </div></div>
+      </div>
+
       <div className="mgr-sec"><span className="eyebrow">Invitations en attente</span><span className="mgr-count">{pending.length}</span></div>
       <div className="lb-list">
         <div className="lb-card"><div className="lb-body" style={{borderTop:'none'}}>
-          {pending.length===0 ? <div className="lb-empty">Aucun lien en attente. Clique « Inviter un closer ».</div>
+          {pending.length===0 ? <div className="lb-empty">Aucun lien en attente. Clique « Inviter ».</div>
             : pending.map(i=>(
               <div key={i.token} className="cl-lead" style={{cursor:'default'}}>
                 <span className="mono" style={{fontSize:12,color:'var(--t3)',flex:1}}>invite …{String(i.token).slice(-6)}{i.name?(' · '+i.name):''}</span>
+                <span className={'role-badge'+(i.role==='admin'?' admin':'')}>{i.role==='admin'?'Admin':'Closer'}</span>
                 <button className="btn btn-soft" style={{padding:'5px 11px',fontSize:12}} onClick={()=>copy(i.token)}>Copier le lien</button>
               </div>
             ))}
