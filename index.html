@@ -3615,9 +3615,9 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
   const total=cards.length;
   const DUE_OPTS=[['late','En retard','--danger'],['today',"Aujourd'hui",'--accent'],['week','Cette semaine','--warm'],['later','Plus tard','--t3'],['none','Sans date','--t4']];
   const DOM_OPTS=[['rdv','RDV','--accent'],['appel','Appel','--warm'],['argent','Financier','--ok'],['suivi','Suivi','--t3'],['admin','Admin','--t4']];
-  // Depuis « Tout » (tout sélectionné) -> un clic affiche UNIQUEMENT ce bucket. Ensuite un clic ajoute/retire (sélection multiple). Vide -> revient à Tout.
-  const toggleDue=k=>setDueFilter(s=>{ if(s.size===ALL_DUE.length) return new Set([k]); const n=new Set(s); n.has(k)?n.delete(k):n.add(k); return n.size?n:new Set(ALL_DUE); });
-  const toggleDom=k=>setDomFilter(s=>{ if(s.size===ALL_DOM.length) return new Set([k]); const n=new Set(s); n.has(k)?n.delete(k):n.add(k); return n.size?n:new Set(ALL_DOM); });
+  // SÉLECTION UNIQUE : un clic affiche UNIQUEMENT ce bucket (jamais d'accumulation). « Tout » remet tout.
+  const toggleDue=k=>setDueFilter(new Set([k]));
+  const toggleDom=k=>setDomFilter(new Set([k]));
   const filtersActive = !!seasonFilter || groupBy!=='urgence' || dueFilter.size!==ALL_DUE.length || domFilter.size!==ALL_DOM.length;
   const SlidersIc=(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}><path d="M4 7h8M17.5 7H20M4 17h2.5M11 17h9"/><circle cx="14.5" cy="7" r="2.5"/><circle cx="8" cy="17" r="2.5"/></svg>;
 
