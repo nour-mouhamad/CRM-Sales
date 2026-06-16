@@ -2229,6 +2229,7 @@ function ActionCard({ label, done, editing, onToggle, onEditStart, onEditCancel,
       {onDate && <label className={'actcard-date'+(due?' set':'')} title="Quand ? (échéance de l’action)" onClick={e=>e.stopPropagation()}>{I.agenda({})}
         <input type="date" value={due?toLocalInput(due).slice(0,10):''} onChange={e=>onDate(e.target.value?new Date(e.target.value+'T09:00').toISOString():null)}/>
       </label>}
+      {onDate && due && <button className="actcard-btn" title="Supprimer l’échéance (garder l’action)" onClick={e=>{ e.stopPropagation(); onDate(null); }}>{I.x({})}</button>}
       <button className="actcard-btn" title="Modifier" onClick={onEditStart}>{I.pencil({})}</button>
       <button className="actcard-btn del" title="Supprimer" onClick={onDelete}>{I.trash({})}</button>
     </div>
@@ -3452,6 +3453,8 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
 
   // ===== URGENCE TEMPORELLE = COULEUR (barre gauche de ligne + échéance teintée), dérivée de it.due réel =====
   const URG=['late','today','week','later','none'];        // index = rang (0 = plus urgent) ; au-delà d'une semaine -> 'later'
+  // garde-fou : une échéance avant 2000 (epoch 1970…) ou invalide = PAS d'échéance -> jamais de faux "20619 j de retard"
+  const vDue=(d)=>{ if(!d) return null; const t=new Date(d).getTime(); return (isNaN(t)||t<946684800000)?null:d; };
   const urgRank=(due)=>{ if(!due) return 4; const t=new Date(due).getTime(); if(t<T.start) return 0; if(t<T.endToday) return 1; if(t<T.endWeek) return 2; return 3; };
   const urgVar={late:'--danger',today:'--accent',week:'--warm',later:'--b3',none:'--b2'};
   const overdueDays=(due)=>{ if(!due) return 0; const t=new Date(due).getTime(); return t<T.start? Math.floor((T.start-t)/86400000) : 0; };
@@ -3480,9 +3483,9 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
     for(const l of (leads||[])){
       if(l.column==='lost' || l.column==='desabonne') continue; // lead abandonné -> aucune action
       if(isRealAction(l.nextAction, l.column) && l.actionDoneFor!==l.nextAction)
-        out.push({ key:l.id+':main', kind:'action', lead:l, label:l.nextAction, due:l.nextActionDue||null, onCheck:()=>onToggleAction(l,true) });
+        out.push({ key:l.id+':main', kind:'action', lead:l, label:l.nextAction, due:vDue(l.nextActionDue), onCheck:()=>onToggleAction(l,true) });
       (l.extraActions||[]).forEach((a,i)=>{ if(a&&a.label&&a.label.trim()&&!a.done)
-        out.push({ key:l.id+':x'+i, kind:'action', lead:l, label:a.label, due:a.due_at||null, onCheck:()=>onToggleExtra(l,i) }); });
+        out.push({ key:l.id+':x'+i, kind:'action', lead:l, label:a.label, due:vDue(a.due_at), onCheck:()=>onToggleExtra(l,i) }); });
       const allRdv=[];
       if(l.calendiqRdv && l.calendiqRdv.start_at) allRdv.push({ start_at:l.calendiqRdv.start_at, meet:l.calendiqRdv.meet_link||null, type:l.calendiqRdv.type });
       const rmeta=l.rdvMeta||{};
