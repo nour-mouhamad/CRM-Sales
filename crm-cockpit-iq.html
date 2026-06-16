@@ -366,20 +366,18 @@ input,textarea{font-family:inherit; color:inherit}
 .af-panel-sel:hover{border-color:var(--b3)}
 /* total leads (barre du haut, à gauche du bouton Filtres) */
 .af-total{font-size:13px; font-weight:700; color:var(--t3); font-variant-numeric:tabular-nums}
-/* chips d'échéance = filtres cliquables façon stats (point + nombre + label) ; éteint = grisé, allumé = teinté de sa couleur */
+/* chips de filtre = stats cliquables (point + nombre + label). ÉTEINT = gris plat. ALLUMÉ = pastille pleine de sa couleur (état évident). */
 .af-fchips{display:flex; flex-wrap:wrap; gap:7px}
-.af-fchip{display:inline-flex; align-items:center; gap:7px; padding:7px 11px; border-radius:10px; border:1.5px solid var(--b1); background:var(--surface-2); cursor:pointer; font-family:inherit; opacity:.5; transition:opacity var(--speed) var(--ease), border-color var(--speed) var(--ease), background var(--speed) var(--ease)}
-.af-fchip .af-fchip-dot{width:8px; height:8px; border-radius:50%; background:var(--fc); flex:none}
-.af-fchip b{font-size:13.5px; font-weight:800; color:var(--t1); font-variant-numeric:tabular-nums; line-height:1}
-.af-fchip span{font-size:12px; font-weight:700; color:var(--t2)}
-.af-fchip:hover{opacity:1; border-color:var(--b3)}
-.af-fchip.on{opacity:1; border-color:color-mix(in srgb, var(--fc) 55%, transparent); background:color-mix(in srgb, var(--fc) 13%, var(--surface-2))}
-.af-fchip.on b{color:var(--fc)}
-/* "Tout" : chip neutre sans point, sélectionne toute la dimension */
-.af-fchip-all{opacity:1}
-.af-fchip-all b{color:var(--t2)}
-.af-fchip-all.on{border-color:var(--accent); background:var(--accent-tint)}
-.af-fchip-all.on b{color:var(--accent)}
+.af-fchip{display:inline-flex; align-items:center; gap:7px; padding:7px 12px; border-radius:10px; border:1.5px solid var(--b1); background:var(--surface-2); cursor:pointer; font-family:inherit; transition:all var(--speed) var(--ease)}
+.af-fchip .af-fchip-dot{width:8px; height:8px; border-radius:50%; background:var(--b3); flex:none; transition:background var(--speed) var(--ease)}
+.af-fchip b{font-size:13.5px; font-weight:800; color:var(--t3); font-variant-numeric:tabular-nums; line-height:1}
+.af-fchip span{font-size:12px; font-weight:700; color:var(--t3)}
+.af-fchip:hover{border-color:var(--b3); background:var(--surface-3)}
+.af-fchip.on{border-color:var(--fc); background:color-mix(in srgb, var(--fc) 16%, var(--surface)); box-shadow:inset 0 0 0 1px var(--fc)}
+.af-fchip.on .af-fchip-dot{background:var(--fc)}
+.af-fchip.on b, .af-fchip.on span{color:var(--fc)}
+/* "Tout" : pas de point, couleur accent */
+.af-fchip-all{--fc:var(--accent)}
 
 /* en-tête de section agrégée (urgence OU domaine) : pastille + compteur + ligne. Cliquable = repli/dépli (menu déroulant). */
 .af-sec{display:flex; align-items:center; gap:9px; margin:22px 0 10px}
@@ -3617,8 +3615,9 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
   const total=cards.length;
   const DUE_OPTS=[['late','En retard','--danger'],['today',"Aujourd'hui",'--accent'],['week','Cette semaine','--warm'],['later','Plus tard','--t3'],['none','Sans date','--t4']];
   const DOM_OPTS=[['rdv','RDV','--accent'],['appel','Appel','--warm'],['argent','Financier','--ok'],['suivi','Suivi','--t3'],['admin','Admin','--t4']];
-  const toggleDue=k=>setDueFilter(s=>{ const n=new Set(s); n.has(k)?n.delete(k):n.add(k); return n.size?n:new Set(ALL_DUE); }); // jamais vide -> revient à tout
-  const toggleDom=k=>setDomFilter(s=>{ const n=new Set(s); n.has(k)?n.delete(k):n.add(k); return n.size?n:new Set(ALL_DOM); });
+  // Depuis « Tout » (tout sélectionné) -> un clic affiche UNIQUEMENT ce bucket. Ensuite un clic ajoute/retire (sélection multiple). Vide -> revient à Tout.
+  const toggleDue=k=>setDueFilter(s=>{ if(s.size===ALL_DUE.length) return new Set([k]); const n=new Set(s); n.has(k)?n.delete(k):n.add(k); return n.size?n:new Set(ALL_DUE); });
+  const toggleDom=k=>setDomFilter(s=>{ if(s.size===ALL_DOM.length) return new Set([k]); const n=new Set(s); n.has(k)?n.delete(k):n.add(k); return n.size?n:new Set(ALL_DOM); });
   const filtersActive = !!seasonFilter || groupBy!=='urgence' || dueFilter.size!==ALL_DUE.length || domFilter.size!==ALL_DOM.length;
   const SlidersIc=(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}><path d="M4 7h8M17.5 7H20M4 17h2.5M11 17h9"/><circle cx="14.5" cy="7" r="2.5"/><circle cx="8" cy="17" r="2.5"/></svg>;
 
