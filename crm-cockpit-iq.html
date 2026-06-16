@@ -2455,7 +2455,7 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
   const [cpfOpen,setCpfOpen]=useState(false); // RDV CPF avec NM (sur l'agenda de NM)
   const [rdvEdit,setRdvEdit]=useState(null); // {id,type,dur,dt} si reprogrammation, null si nouveau
   const openNewRdv=()=>{ setRdvEdit(null); setRdvOpen(true); };
-  const openEditRdv=(rdv)=>{ const t=rdv.type||'r1'; setRdvEdit({ id:rdv.id, type:t, dur:rdv.duration_minutes||RDV_DUR[t]||45, dt:toLocalInput(rdv.start_at) }); setRdvOpen(true); };
+  const openEditRdv=(rdv)=>{ const t=rdv.type||'r1'; setRdvEdit({ id:rdv.id, type:t, dur:rdv.duration_minutes||RDV_DUR[t]||45, dt:toLocalInput(rdv.start_at), organizer_id:rdv.organizer_id||null }); setRdvOpen(true); };
   const closeRdv=()=>{ setRdvOpen(false); setRdvEdit(null); };
   const moveBtnRef=useRef(null);
   const [movePos,setMovePos]=useState(null);
@@ -2469,7 +2469,7 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
     <div className="fiche">
       {noteOpen && <NoteModal mode={noteMode} onClose={()=>setNoteOpen(false)} onNote={(t,ti,tx)=>{ onNote(t,ti,tx); setNoteOpen(false); }}/>}
       {recapOpen && <RecapModal lead={lead} onClose={()=>setRecapOpen(false)} onEditField={onEditField} onNote={onNote} onAdvanceStage={onAdvanceStage} onSetRdvOutcome={(rdv,oc)=>onRdvOutcome(rdv,oc,'ia')}/>}
-      {rdvOpen && <AddRdvModal lead={lead} initial={rdvEdit} organizerId={calendiqOrganizer} onClose={closeRdv} onAdd={(t,d,iso)=>onAddRdv(t,d,iso, rdvEdit?rdvEdit.id:null)}/>}
+      {rdvOpen && <AddRdvModal lead={lead} initial={rdvEdit} organizerId={(rdvEdit&&rdvEdit.organizer_id)||calendiqOrganizer} onClose={closeRdv} onAdd={(t,d,iso)=>onAddRdv(t,d,iso, rdvEdit?rdvEdit.id:null, rdvEdit?rdvEdit.organizer_id:null)}/>}
       {cpfOpen && <AddRdvModal lead={lead} cpf organizerId={CPF_OWNER.organizer} onClose={()=>setCpfOpen(false)} onAdd={(t,d,iso)=>onCpfRdv(iso,d)}/>}
       <div className="fiche-head">
         <button className="back" onClick={onBack}><I.back/>{backLabel||'Mes leads'}</button>
@@ -2501,7 +2501,7 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
               </div>
               <ManualRdvField lead={lead} calendiqRdvs={lead.rdvs||[]}
                 onCalModify={calendiqReady?openEditRdv:null}
-                onCalCancel={calendiqReady?(rdv=>{ if(window.confirm('Annuler ce RDV dans CalendIQ ? Le créneau Google + l’email d’annulation seront gérés par CalendIQ.')) onCancelRdv(rdv.id); }):null}
+                onCalCancel={rdv=>{ if(window.confirm('Supprimer ce RDV dans CalendIQ ? Le créneau Google + l’email d’annulation seront gérés par CalendIQ.')) onCancelRdv(rdv.id); }}
                 onSave={onManualRdv} onRemove={onManualRemoveRdv} onOutcome={onRdvOutcome} onClearOutcome={onClearRdvOutcome}/>
               <div className="field">
                 <span className="eyebrow">Action</span>
@@ -3929,7 +3929,7 @@ function App({session, onLogout}){
         const type=mm.type || (i===0?'r1':i===1?'r2':'r3'); // override explicite (booking CRM) sinon ordre chrono
         // lien Meet : celui du meeting > celui qu'on a stocké > legacy single (UNIQUEMENT le meeting de même horaire)
         const legacy = (l.rdvMeetLink && l.rdv_at && Math.abs(new Date(m.start_at)-new Date(l.rdv_at))<60000) ? l.rdvMeetLink : null;
-        return { id:m.id, source:'calendiq', type, start_at:m.start_at, duration_minutes:m.duration_minutes||null, meet_link:m.meet_link||mm.meet_link||legacy||null, outcome:(mm.outcome==='present'||mm.outcome==='no_show')?mm.outcome:null };
+        return { id:m.id, source:'calendiq', type, start_at:m.start_at, duration_minutes:m.duration_minutes||null, meet_link:m.meet_link||mm.meet_link||legacy||null, outcome:(mm.outcome==='present'||mm.outcome==='no_show')?mm.outcome:null, organizer_id:m.organizer_id||null };
       });
       const next=pickNext(cand);
       return { ...l, rdvs, _cqCloserId: next?._closerId || null, calendiqRdv:{ ...next, meet_link: next.meet_link || l.rdvMeetLink || null } };
@@ -4065,9 +4065,10 @@ function App({session, onLogout}){
   // Ajouter / reprogrammer un RDV : crée un VRAI RDV dans le CalendIQ du closer (insert + Meet + email).
   // Si replaceMeetingId fourni (reprogrammation) : on booke le nouveau PUIS on annule l'ancien (ordre sûr =
   // jamais de lead sans RDV). Reflète côté CRM (rdv_at + type + auto-claim R1 + note + refresh).
-  const addCalendiqRdv=useCallback(async(type, durationMin, startIso, replaceMeetingId)=>{
+  const addCalendiqRdv=useCallback(async(type, durationMin, startIso, replaceMeetingId, organizerOverride)=>{
     if(!sel) return;
-    const orgId = profile && profile.calendiq_organizer_id;
+    // reprogrammation d'un RDV existant -> on rebooke sous l'organizer D'ORIGINE (reste sur l'agenda du bon closer, même si c'est l'admin qui édite).
+    const orgId = organizerOverride || (profile && profile.calendiq_organizer_id);
     if(!orgId){ toast('Connecte ton CalendIQ d’abord','Onglet Agenda','info'); throw new Error('CalendIQ non connecté'); }
     const name=`${sel.prenom||''} ${sel.nom||''}`.trim()||sel.email||'Lead';
     // 1) booke le nouveau créneau (insert + event Google/Meet + email) — comme la page de booking
@@ -4093,7 +4094,7 @@ function App({session, onLogout}){
       : { rdv_at:startIso, rdvType:type, rdvMeetLink:booked.meet_link||null, rdvMeta:nextMeta, ...(claim?{owner:userId}:{}), ...stagePatch };
     // reflet immédiat : on injecte le meeting fraîchement booké dans la liste CalendIQ (sans attendre le refetch ~20 s)
     setCqMeetings(ms=>[ ...ms.filter(x=>x.id!==booked.id),
-      { id:booked.id, title:'IQ Project × '+(sel.prenom||name), start_at:startIso, duration_minutes:durationMin,
+      { id:booked.id, organizer_id:orgId, title:'IQ Project × '+(sel.prenom||name), start_at:startIso, duration_minutes:durationMin,
         booker_name:name, booker_email:sel.email||null, booker_phone:sel.tel||null, status:'confirmed',
         meet_link:booked.meet_link||null, _closerId:userId, _closerName:(profile&&profile.name)||'Moi' } ]);
     patch(sel.id,p);
