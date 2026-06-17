@@ -1029,6 +1029,19 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .rdvcard-join{flex:1 0 100%; display:inline-flex; align-items:center; justify-content:center; gap:6px; height:36px; padding:0 16px; border-radius:9px; background:var(--accent-tint); color:var(--accent); font-size:13px; font-weight:700; white-space:nowrap; text-decoration:none; cursor:pointer; transition:background var(--speed),color var(--speed)}
 .rdvcard-join:hover{background:var(--accent); color:var(--on-accent)}
 .rdvcard-join svg{width:15px; height:15px}
+/* Données HubSpot (fiche) : toutes les props importées, repliable */
+.hs-all{border:1px solid var(--b1); border-radius:10px; background:var(--surface-2); overflow:hidden}
+.hs-all-sum{display:flex; align-items:center; gap:8px; padding:10px 12px; cursor:pointer; list-style:none; color:var(--t2); font-size:12px; font-weight:700}
+.hs-all-sum::-webkit-details-marker{display:none}
+.hs-all-sum svg{width:14px; height:14px; color:var(--t3)}
+.hs-all-sum span{flex:1; text-transform:uppercase; letter-spacing:.05em; font-size:10.5px; color:var(--t3)}
+.hs-all-chev{display:inline-flex; transition:transform var(--speed) var(--ease)}
+.hs-all[open] .hs-all-chev{transform:rotate(90deg)}
+.hs-all-body{padding:4px 12px 12px; max-height:340px; overflow:auto}
+.hs-all-gt{font-size:10.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--accent); margin:8px 0 5px}
+.hs-all-row{display:flex; gap:10px; padding:4px 0; border-top:1px solid color-mix(in srgb, var(--b1) 60%, transparent); font-size:12px}
+.hs-all-k{flex:0 0 42%; color:var(--t3); word-break:break-word}
+.hs-all-v{flex:1; color:var(--t1); word-break:break-word; white-space:pre-wrap}
 .rdvcard-tools{display:flex; gap:8px; margin-left:auto}
 .rdvcard-btn{width:34px; height:34px; flex:none; border-radius:9px; display:grid; place-items:center; color:var(--t3); background:var(--surface); border:1px solid var(--b1); cursor:pointer; transition:color var(--speed),border-color var(--speed)}
 .rdvcard-btn:hover{color:var(--t1); border-color:var(--b3)}
@@ -1556,6 +1569,7 @@ function dbToLead(r, acts){
     offer:(r.montant==null||r.montant==='')?0:(Number(r.montant)||0), aPayer:(r.montant_a_payer==null?'':r.montant_a_payer), quiPaie:r.qui_paie||'', paid:r.statut_paiement==='paye', statut_paiement:r.statut_paiement||'aucun',
     cpf:(Number(r.cpf_dispo)||0), metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'', saison:r.saison||null,
     rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, rdvMeetLink:r.rdv_meet_link||null, rdvMeta, hubspot_deal_id:r.hubspot_deal_id||null, date_creation:r.date_creation||null, hsImport:r.hs_import||null, starred:!!r.starred,
+    hsAll:(r.hs_sync && r.hs_sync.allProps && typeof r.hs_sync.allProps==='object')?r.hs_sync.allProps:null,
     timeline:actsToTimeline(acts2)
   };
 }
@@ -2577,6 +2591,23 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
                   </div>
                 )}
               </div>
+              {lead.hsAll && ((lead.hsAll.deal&&Object.keys(lead.hsAll.deal).length)||(lead.hsAll.contact&&Object.keys(lead.hsAll.contact).length)) ? (
+                <div className="field">
+                  <details className="hs-all">
+                    <summary className="hs-all-sum">{I.sync({})}<span>Données HubSpot</span><i className="hs-all-chev">{I.chev({})}</i></summary>
+                    <div className="hs-all-body">
+                      {[['deal','Transaction'],['contact','Contact']].map(([grp,lbl])=> (lead.hsAll[grp]&&Object.keys(lead.hsAll[grp]).length>0) ? (
+                        <div key={grp} className="hs-all-grp">
+                          <div className="hs-all-gt">{lbl}</div>
+                          {Object.entries(lead.hsAll[grp]).map(([k,v])=>(
+                            <div key={k} className="hs-all-row"><span className="hs-all-k">{k}</span><span className="hs-all-v">{Array.isArray(v)?v.join(', '):String(v)}</span></div>
+                          ))}
+                        </div>
+                      ) : null)}
+                    </div>
+                  </details>
+                </div>
+              ) : null}
             </>); })()}
           </div>
         </div>
