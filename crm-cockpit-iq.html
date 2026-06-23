@@ -457,6 +457,21 @@ input,textarea{font-family:inherit; color:inherit}
 /* repli « +N autres » par carte (cap la hauteur des leads chargés) */
 .af-more{display:block; width:100%; text-align:left; padding:8px 14px; border:none; border-top:1px solid var(--b1); background:var(--surface-2); color:var(--t2); font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; transition:color var(--speed) var(--ease)}
 .af-more:hover{color:var(--accent)}
+/* masquer / démasquer une action (page « À faire ») */
+.af-hide{flex:none; display:grid; place-items:center; width:26px; height:26px; border-radius:7px; border:none; background:none; color:var(--t4); cursor:pointer; opacity:0; transition:all var(--speed) var(--ease)}
+.af-hide svg{width:15px; height:15px}
+.af-row:hover .af-hide{opacity:1}
+.af-hide:hover{color:var(--accent); background:var(--surface-3)}
+.af-hide:focus-visible{opacity:1; outline:2px solid var(--accent); outline-offset:-2px}
+.af-unhide{flex:none; display:inline-flex; align-items:center; gap:5px; padding:5px 11px; border-radius:8px; border:1px solid var(--accent); background:var(--accent-tint); color:var(--accent); font-size:11.5px; font-weight:700; cursor:pointer; font-family:inherit; transition:all var(--speed) var(--ease)}
+.af-unhide svg{width:13px; height:13px; stroke-width:2.8}
+.af-unhide:hover{background:var(--accent); color:#fff}
+.af-rdvic.muted{color:var(--t4); background:var(--surface-3)}
+.af-hidden-btn.on{border-color:var(--accent); color:var(--accent); background:var(--accent-tint)}
+.af-hidden-n{display:inline-grid; place-items:center; min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:var(--surface-3); color:var(--t2); font-size:11px; font-weight:800; font-variant-numeric:tabular-nums}
+.af-hidden-btn.on .af-hidden-n{background:var(--accent); color:#fff}
+.af-mode-tag{display:inline-flex; align-items:center; gap:5px; margin-left:10px; padding:3px 9px; border-radius:var(--r-pill); background:var(--accent-tint); color:var(--accent); font-size:12px; font-weight:700; vertical-align:middle}
+.af-mode-tag svg{width:13px; height:13px}
 
 /* densité compacte : icône seule pour domaine + resserrement */
 [data-density="compact"] .af-dom em{display:none}
@@ -818,13 +833,28 @@ input,textarea{font-family:inherit; color:inherit}
 .tl-recap-body{padding:11px 14px 13px; border-top:1px solid var(--b1)}
 .tl-recap-body .recap-md{font-size:12.5px}
 
-/* email copiable + tel dans la fiche */
-.contact.copy{cursor:pointer; color:var(--t1); background:var(--surface-2); border:1px solid var(--b1); padding:6px 11px; border-radius:8px; transition:all var(--speed)}
-.contact.copy:hover{border-color:var(--accent); color:var(--accent)}
-.contact.copy:hover svg{color:var(--accent)}
+/* email copiable + tel dans la fiche (chip = zone copiable + crayon édition) */
+.contact.copy{color:var(--t1); background:var(--surface-2); border:1px solid var(--b1); padding:6px 11px; border-radius:8px; transition:all var(--speed); gap:4px}
+.contact.copy:hover{border-color:var(--accent)}
+.contact .copy-main{display:inline-flex; align-items:center; gap:7px; cursor:pointer; color:inherit}
+.contact.copy:hover .copy-main{color:var(--accent)}
+.contact.copy:hover .copy-main svg{color:var(--accent)}
 .contact.copy .copy-ic{width:13px; height:13px; color:var(--t3); margin-left:2px}
 .contact.copy.copied{border-color:var(--ok); color:var(--ok)}
 .contact.copy.copied svg{color:var(--ok)}
+.copy-edit{display:inline-flex; align-items:center; justify-content:center; background:none; border:none; padding:2px; margin-left:1px; cursor:pointer; color:var(--t4); border-radius:5px; opacity:0; transition:all var(--speed)}
+.contact.copy:hover .copy-edit{opacity:1}
+.copy-edit:hover{color:var(--accent); background:var(--surface-1)}
+.copy-edit svg{width:13px; height:13px; color:inherit}
+/* état vide : ajouter un téléphone / email */
+.contact.add{cursor:pointer; color:var(--t4); background:transparent; border:1px dashed var(--b1); padding:6px 11px; border-radius:8px; transition:all var(--speed); font-weight:500}
+.contact.add:hover{border-color:var(--accent); color:var(--accent)}
+.contact.add svg{color:inherit}
+/* édition inline */
+.contact.edit{background:var(--surface-2); border:1px solid var(--accent); padding:5px 10px; border-radius:8px}
+.contact.edit svg{color:var(--accent)}
+.contact-inp{background:transparent; border:none; outline:none; color:var(--t1); font-size:13px; font-weight:500; font-family:inherit; min-width:190px; padding:0}
+.contact-inp::placeholder{color:var(--t4)}
 
 /* modale large + scrollable */
 .modal.wide{width:720px; padding:0; max-height:calc(100vh - 60px); display:flex; flex-direction:column}
@@ -1565,7 +1595,7 @@ function dbToLead(r, acts){
   return {
     id:r.id, prenom:r.prenom||'', nom:r.nom||'', tel:r.telephone||'', email:r.email||'',
     source:r.source, heat:r.heat||null, column:COL_DB2UI(r.colonne), owner:r.owner_closer_id||null,
-    nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, nextActionDue:r.next_action_due||null, extraActions:Array.isArray(r.extra_actions)?r.extra_actions:[], live:false, noShow,
+    nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, nextActionDue:r.next_action_due||null, extraActions:Array.isArray(r.extra_actions)?r.extra_actions:[], hiddenActions:Array.isArray(r.hidden_actions)?r.hidden_actions:[], live:false, noShow,
     offer:(r.montant==null||r.montant==='')?0:(Number(r.montant)||0), aPayer:(r.montant_a_payer==null?'':r.montant_a_payer), quiPaie:r.qui_paie||'', paid:r.statut_paiement==='paye', statut_paiement:r.statut_paiement||'aucun',
     cpf:(Number(r.cpf_dispo)||0), metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'', saison:r.saison||null,
     rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, rdvMeetLink:r.rdv_meet_link||null, rdvMeta, hubspot_deal_id:r.hubspot_deal_id||null, date_creation:r.date_creation||null, hsImport:r.hs_import||null, starred:!!r.starred,
@@ -1603,6 +1633,7 @@ async function saveLead(id, uiPatch){
   if('actionDoneFor' in uiPatch) m.action_done_for=uiPatch.actionDoneFor;
   if('nextActionDue' in uiPatch) m.next_action_due=uiPatch.nextActionDue;
   if('extraActions' in uiPatch) m.extra_actions=uiPatch.extraActions;
+  if('hiddenActions' in uiPatch) m.hidden_actions=Array.isArray(uiPatch.hiddenActions)?uiPatch.hiddenActions:[];
   if('starred' in uiPatch) m.starred=uiPatch.starred;
   if('heat' in uiPatch) m.heat=uiPatch.heat;
   if('offer' in uiPatch) m.montant=uiPatch.offer;
@@ -1611,6 +1642,8 @@ async function saveLead(id, uiPatch){
   if('owner' in uiPatch) m.owner_closer_id=uiPatch.owner;
   if('paid' in uiPatch) m.statut_paiement=uiPatch.paid?'paye':'aucun';
   if('statut_paiement' in uiPatch) m.statut_paiement=uiPatch.statut_paiement;
+  if('email' in uiPatch) m.email=(uiPatch.email&&String(uiPatch.email).trim())||null;
+  if('telephone' in uiPatch) m.telephone=(uiPatch.telephone&&String(uiPatch.telephone).trim())||null;
   if('metier' in uiPatch) m.metier=uiPatch.metier;
   if('objectif' in uiPatch) m.objectif=uiPatch.objectif;
   if('budget' in uiPatch) m.budget=uiPatch.budget;
@@ -1938,14 +1971,46 @@ function fmtPhone(t){
   if(m) return '0'+m[1]+' '+m[2]+' '+m[3]+' '+m[4]+' '+m[5];
   return t;
 }
-function CopyField({value, icon, copyVal, title}){
+function CopyField({value, icon, copyVal, title, kind, onSave, addLabel}){
   const [done,setDone]=useState(false);
-  const copy=()=>{ try{ navigator.clipboard.writeText(copyVal||value); }catch(e){} setDone(true); setTimeout(()=>setDone(false),1400); };
+  const [editing,setEditing]=useState(false);
+  const [val,setVal]=useState('');
+  const inp=useRef(null);
+  const finished=useRef(false);
+  const raw=String(copyVal!=null?copyVal:(value||'')||'');
+  useEffect(()=>{ if(editing&&inp.current){ inp.current.focus(); inp.current.select(); } },[editing]);
+  const copy=()=>{ try{ navigator.clipboard.writeText(raw); }catch(e){} setDone(true); setTimeout(()=>setDone(false),1400); };
+  const start=()=>{ if(!onSave) return; finished.current=false; setVal(raw); setEditing(true); };
+  const commit=()=>{ if(finished.current) return; finished.current=true; setEditing(false); const v=val.trim(); if(v!==raw.trim()&&onSave) onSave(v||null); };
+  const cancel=()=>{ if(finished.current) return; finished.current=true; setEditing(false); };
+  if(editing){
+    return (
+      <span className="contact edit">
+        {icon({})}
+        <input ref={inp} className="contact-inp" type={kind==='email'?'email':'tel'} value={val} placeholder={addLabel||''}
+          onChange={e=>setVal(e.target.value)}
+          onKeyDown={e=>{ if(e.key==='Enter'){e.preventDefault(); commit();} else if(e.key==='Escape'){e.preventDefault(); cancel();} }}
+          onBlur={commit}/>
+      </span>
+    );
+  }
+  if(!raw){
+    if(!onSave) return null;
+    return (
+      <span className="contact add" onClick={start} tabIndex={0} role="button"
+        onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault(); start();}}} title={addLabel||'Ajouter'}>
+        {icon({})}<span>{addLabel||'Ajouter'}</span>
+      </span>
+    );
+  }
   return (
-    <span className={`contact copy ${done?'copied':''}`} onClick={copy} tabIndex={0} role="button"
-      onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault(); copy();}}}
-      title={title||'Cliquer pour copier'}>
-      {icon({})}<span className="mono">{value}</span>{done?<I.check className="copy-ic"/>:<I.copy className="copy-ic"/>}
+    <span className={`contact copy ${done?'copied':''}`}>
+      <span className="copy-main" onClick={copy} tabIndex={0} role="button"
+        onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault(); copy();}}}
+        title={title||'Cliquer pour copier'}>
+        {icon({})}<span className="mono">{value}</span>{done?<I.check className="copy-ic"/>:<I.copy className="copy-ic"/>}
+      </span>
+      {onSave && <button type="button" className="copy-edit" onClick={start} title="Modifier" tabIndex={0}><I.pencil/></button>}
     </span>
   );
 }
@@ -2491,8 +2556,8 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
           <h1>{lead.prenom} {lead.nom}</h1>
           <div className="fiche-meta">
             {lead.date_creation && <span className="fiche-date"><I.agenda style={{width:13,height:13}}/>Lead créé le {fmtDay(lead.date_creation)}</span>}
-            {lead.tel && <CopyField value={fmtPhone(lead.tel)} copyVal={lead.tel} icon={I.phone} title="Copier le numéro"/>}
-            {lead.email && <CopyField value={lead.email} icon={I.mail} title="Copier l’email"/>}
+            <CopyField value={lead.tel?fmtPhone(lead.tel):''} copyVal={lead.tel||''} icon={I.phone} title="Copier le numéro" kind="tel" addLabel="Ajouter un téléphone" onSave={v=>onEditField('tel','telephone', v)}/>
+            <CopyField value={lead.email||''} copyVal={lead.email||''} icon={I.mail} title="Copier l’email" kind="email" addLabel="Ajouter un email" onSave={v=>onEditField('email','email', v)}/>
           </div>
           {lead.hsImport&&lead.hsImport.contact&&(()=>{ const c=lead.hsImport.contact; const r=[['Poste',c.poste],['Entreprise',c.entreprise],['Ville',c.ville]].filter(x=>x[1]); return (r.length||c.linkedin)?(
             <div className="hs-mini">
@@ -3461,8 +3526,10 @@ function Onboarding({ profile, onConnect, loadCalendiq, myLeadsCount, onFinish, 
    Agrège, sur TOUS les leads : actions réelles (manuelles + recap, JAMAIS les défauts d'étape),
    RDV à venir, relances (no-show / lead chaud). Groupé par échéance, filtre + réassignation par closer,
    case à cocher bidirectionnelle avec la fiche. Lecture des leads existants : ne modifie aucune autre structure. */
-function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar, onReassign, seasonFilter, setSeasonFilter, seasonCounts }){
+const EyeOff=(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M3 3l18 18"/><path d="M10.6 6.2A9.8 9.8 0 0 1 12 6c5 0 9 4.5 10 6-.4.8-1.2 2-2.5 3.2"/><path d="M6.6 6.7C4 8.2 2.4 10.5 2 12c1 1.5 5 6 10 6 1.4 0 2.7-.3 3.9-.9"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>;
+function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar, onReassign, onHideAction, onUnhideAction, seasonFilter, setSeasonFilter, seasonCounts }){
   const [closers,setClosers]=React.useState([]);
+  const [showHidden,setShowHidden]=React.useState(false); // vue « Masqués » (bascule via la pastille du haut)
   const [filter,setFilter]=React.useState('all');         // 'all' | closerId
   const [groupBy,setGroupBy]=React.useState('urgence');   // 'urgence' | 'domaine'
   const [panelOpen,setPanelOpen]=React.useState(false);   // panneau Filtres (saison + groupement + échéance)
@@ -3513,10 +3580,11 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
     const now=Date.now(); const out=[];
     for(const l of (leads||[])){
       if(l.column==='lost' || l.column==='desabonne') continue; // lead abandonné -> aucune action
+      const hSet=new Set(Array.isArray(l.hiddenActions)?l.hiddenActions:[]); // identifiants d'actions masquées de ce lead
       if(isRealAction(l.nextAction, l.column) && l.actionDoneFor!==l.nextAction)
-        out.push({ key:l.id+':main', kind:'action', lead:l, label:l.nextAction, due:vDue(l.nextActionDue), onCheck:()=>onToggleAction(l,true) });
-      (l.extraActions||[]).forEach((a,i)=>{ if(a&&a.label&&a.label.trim()&&!a.done)
-        out.push({ key:l.id+':x'+i, kind:'action', lead:l, label:a.label, due:vDue(a.due_at), onCheck:()=>onToggleExtra(l,i) }); });
+        out.push({ key:l.id+':main', kind:'action', lead:l, label:l.nextAction, due:vDue(l.nextActionDue), hideId:'main', hidden:hSet.has('main'), onCheck:()=>onToggleAction(l,true) });
+      (l.extraActions||[]).forEach((a,i)=>{ if(a&&a.label&&a.label.trim()&&!a.done){ const hid='x:'+(a.id||('i'+i));
+        out.push({ key:l.id+':x'+i, kind:'action', lead:l, label:a.label, due:vDue(a.due_at), hideId:hid, hidden:hSet.has(hid), onCheck:()=>onToggleExtra(l,i) }); } });
       const allRdv=[];
       if(l.calendiqRdv && l.calendiqRdv.start_at) allRdv.push({ start_at:l.calendiqRdv.start_at, meet:l.calendiqRdv.meet_link||null, type:l.calendiqRdv.type });
       const rmeta=l.rdvMeta||{};
@@ -3540,7 +3608,10 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
   },[items]);
   // coche : masque tout de suite (suppression) + lance le toggle ; au commit du write -> marque committée (la purge fera le reste).
   const check=(it)=>{ doneRef.current.add(it.key); bump(); Promise.resolve(it.onCheck()).then(()=>{ committedRef.current.add(it.key); bump(); }).catch(()=>{ doneRef.current.delete(it.key); committedRef.current.delete(it.key); bump(); }); };
-  const visItems=React.useMemo(()=>items.filter(it=>!doneRef.current.has(it.key)),[items,tick]);
+  // mode normal : actions visibles (non masquées) + tous les RDV. Mode « Masqués » : UNIQUEMENT les actions masquées.
+  const visItems=React.useMemo(()=>items.filter(it=> (showHidden ? it.hidden : !it.hidden) && !doneRef.current.has(it.key)),[items,showHidden,tick]);
+  const hiddenCount=React.useMemo(()=>items.reduce((n,it)=>n+(it.hidden?1:0),0),[items]); // nb total d'actions masquées (scope filtre/saison courant)
+  React.useEffect(()=>{ if(showHidden && hiddenCount===0) setShowHidden(false); },[showHidden,hiddenCount]); // plus rien de masqué -> sortie auto de la vue
 
   // ===== REGROUPEMENT PAR LEAD : 1 carte = 1 lead, N lignes dedans ; tout est ordonné par urgence puis échéance =====
   const cards=React.useMemo(()=>{
@@ -3571,16 +3642,21 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
       <div key={it.key} className="af-row" data-urg={u} style={{'--uc':'var('+urgVar[u]+')'}}
         onClick={()=>onOpenLead(it.lead.id)} role="button" tabIndex={0}
         onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); onOpenLead(it.lead.id); } }}>
-        {it.kind==='action'
-          ? <span className="af-chk" role="checkbox" aria-checked="false" tabIndex={0}
-              onClick={e=>{ e.stopPropagation(); check(it); }}
-              onKeyDown={e=>{ if(e.key===' '||e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); check(it); } }}
-              title="Marquer comme fait">{I.check({})}</span>
-          : <span className="af-rdvic" aria-hidden="true">{I.agenda({})}</span>}
+        {showHidden
+          ? <span className="af-rdvic muted" aria-hidden="true" title="Action masquée">{EyeOff({})}</span>
+          : (it.kind==='action'
+              ? <span className="af-chk" role="checkbox" aria-checked="false" tabIndex={0}
+                  onClick={e=>{ e.stopPropagation(); check(it); }}
+                  onKeyDown={e=>{ if(e.key===' '||e.key==='Enter'){ e.preventDefault(); e.stopPropagation(); check(it); } }}
+                  title="Marquer comme fait">{I.check({})}</span>
+              : <span className="af-rdvic" aria-hidden="true">{I.agenda({})}</span>)}
         <span className="af-label">{it.label}</span>
         {it.kind==='rdv' && it.meet && <a className="af-meet" href={normMeet(it.meet)} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()}>{I.video({})}<span>Rejoindre</span></a>}
         <span className={'af-dom '+dom.tone} title={dom.label}>{dom.ic({})}<em>{dom.label}</em></span>
         <span className={'af-due'+(it._u===0?' late':it._u===1?' today':it._u===2?' week':'')}>{od>0 ? od+'j de retard' : dueLabel(it.due)}</span>
+        {it.kind==='action' && (showHidden
+          ? <button className="af-unhide" onClick={e=>{ e.stopPropagation(); onUnhideAction&&onUnhideAction(it.lead, it.hideId); }} title="Réafficher dans À faire">{I.check({})}<span>Démasquer</span></button>
+          : (onHideAction && <button className="af-hide" onClick={e=>{ e.stopPropagation(); onHideAction(it.lead, it.hideId); }} title="Masquer cette action" aria-label="Masquer cette action">{EyeOff({})}</button>))}
       </div>
     );
   };
@@ -3659,8 +3735,8 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
     <div className="mgr-pad">
       <div className="screen-head">
         <div className="screen-title">
-          <h1>À faire</h1>
-          <p>Une carte par lead — toutes ses actions regroupées, par {groupBy==='domaine'?'domaine':'urgence'}</p>
+          <h1>À faire{showHidden && <span className="af-mode-tag">{EyeOff({})}Masqués</span>}</h1>
+          <p>{showHidden ? 'Actions masquées — clique « Démasquer » pour la réafficher dans À faire.' : 'Une carte par lead — toutes ses actions regroupées, par '+(groupBy==='domaine'?'domaine':'urgence')}</p>
         </div>
         <div className="todo-filters">
           <button className={'todo-chip'+(filter==='all'?' on':'')} onClick={()=>setFilter('all')}>Tous</button>
@@ -3672,8 +3748,11 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
         ? <div className="sync-ok">{I.check({})}<div><b style={{fontSize:16,color:'var(--t1)'}}>Rien à faire</b><div style={{fontSize:13,marginTop:4}}>Aucune action en attente. Ajoute une action sur une fiche, ou un RDV apparaîtra ici.</div></div></div>
         : <>
             <div className="af-bar" style={{justifyContent:'flex-start'}}>
-              <span className="af-total">{total} lead{total>1?'s':''}</span>
+              <span className="af-total">{total} lead{total>1?'s':''}{showHidden?' masqué'+(total>1?'s':''):''}</span>
               <div className="af-tools">
+                {(hiddenCount>0 || showHidden) && <button className={'af-filter-btn af-hidden-btn'+(showHidden?' on':'')} onClick={()=>setShowHidden(s=>!s)} title={showHidden?'Revenir aux actions actives':'Voir les actions masquées'}>
+                  {EyeOff({})}{showHidden?'Retour':'Masqués'}<span className="af-hidden-n">{hiddenCount}</span>
+                </button>}
                 <button className={'af-filter-btn'+(panelOpen?' on':'')+(filtersActive?' has':'')} onClick={()=>setPanelOpen(o=>!o)} aria-expanded={panelOpen}>
                   {SlidersIc({})}Filtres{filtersActive && <i className="af-filter-dot"></i>}
                 </button>
@@ -4089,6 +4168,9 @@ function App({session, onLogout}){
   const toggleActionFor=(lead,checked)=>{ const v=checked?(lead.nextAction||null):null; patch(lead.id,{actionDoneFor:v}); return saveLead(lead.id,{actionDoneFor:v}); };
   const toggleExtraFor=(lead,idx)=>{ const arr=(lead.extraActions||[]).map((x,j)=>j===idx?{...x,done:!x.done}:x); patch(lead.id,{extraActions:arr}); return saveLead(lead.id,{extraActions:arr}); };
   const toggleStar=(lead)=>{ const v=!lead.starred; patch(lead.id,{starred:v}); return saveLead(lead.id,{starred:v}); };
+  // masquer/démasquer une action dans la page « À faire » (persisté par-lead, jsonb hidden_actions) — n'affecte QUE cette vue, jamais la fiche.
+  const hideActionFor=(lead,hideId)=>{ const cur=Array.isArray(lead.hiddenActions)?lead.hiddenActions:[]; if(cur.includes(hideId)) return Promise.resolve(); const arr=[...cur,hideId]; patch(lead.id,{hiddenActions:arr}); return saveLead(lead.id,{hiddenActions:arr}); };
+  const unhideActionFor=(lead,hideId)=>{ const cur=Array.isArray(lead.hiddenActions)?lead.hiddenActions:[]; const arr=cur.filter(x=>x!==hideId); patch(lead.id,{hiddenActions:arr}); return saveLead(lead.id,{hiddenActions:arr}); };
   const reassignOwner=(id,closerId)=>{ patch(id,{owner:closerId||null}); saveLead(id,{owner:closerId||null}); };
   // appropriation du lead par le closer connecté (toggle) — owner_closer_id = id de l'utilisateur auth
   // 3 états : libre -> je m'approprie ; à moi -> je libère ; à un autre closer -> bloqué (pas de vol)
@@ -4347,7 +4429,7 @@ function App({session, onLogout}){
         {screen==='agenda' && <Agenda meetings={cqMeetings} sources={cqSources} loading={cqLoading} error={cqError}
             isAdmin={isAdmin} profile={profile} onConnect={connectCalendiq} onDisconnect={disconnectCalendiq}
             onRefresh={loadCalendiq} onOpenLead={openLead} meetingLeadId={meetingLeadId}/>}
-        {screen==='todo' && isAdmin && <AFaire leads={leadsView} onOpenLead={openLead} onToggleAction={toggleActionFor} onToggleExtra={toggleExtraFor} onToggleStar={toggleStar} onReassign={reassignOwner} seasonFilter={seasonFilter} setSeasonFilter={setSeasonFilter} seasonCounts={seasonCounts}/>}
+        {screen==='todo' && isAdmin && <AFaire leads={leadsView} onOpenLead={openLead} onToggleAction={toggleActionFor} onToggleExtra={toggleExtraFor} onToggleStar={toggleStar} onReassign={reassignOwner} onHideAction={hideActionFor} onUnhideAction={unhideActionFor} seasonFilter={seasonFilter} setSeasonFilter={setSeasonFilter} seasonCounts={seasonCounts}/>}
         {screen==='team' && isAdmin && <TeamScreen userId={userId} toast={toast} leads={leadsView} onOpenLead={openLead} cqPending={cqLoading && !cqMeetings.length}/>}
         {screen==='console' && isAdmin && <Console toast={toast} onOpenLead={openLead} setSyncBusy={setSyncBusy} reloadLeads={reload}/>}
       </main>
