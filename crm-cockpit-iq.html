@@ -1274,6 +1274,10 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .addlead-row{display:flex; gap:10px}
 .addlead-form input{flex:1; width:100%; padding:11px 13px; border-radius:10px; border:1.5px solid var(--b1); background:var(--surface-2); color:var(--t1); font-size:14px; font-family:inherit; outline:none; box-sizing:border-box}
 .addlead-form input:focus{border-color:var(--accent)}
+.addlead-sel{width:100%; padding:11px 36px 11px 13px; border-radius:10px; border:1.5px solid var(--b1); background:var(--surface-2); color:var(--t1); font-size:14px; font-family:inherit; outline:none; box-sizing:border-box; cursor:pointer; -webkit-appearance:none; appearance:none; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238a8a8a' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>"); background-repeat:no-repeat; background-position:right 12px center}
+.addlead-sel:focus{border-color:var(--accent)}
+.addlead-sel.empty{color:var(--t3)}
+.addlead-sel option{color:var(--t1); background:var(--surface-2)}
 .addlead-foot{display:flex; gap:10px; margin-top:6px}
 .addlead-foot .btn{flex:1; justify-content:center; padding:12px}
 /* ---- modale Note (note écrite / NRP) ---- */
@@ -1672,7 +1676,7 @@ async function createLead(fields){
     nom: (fields.nom||'').trim()||null,
     email: (fields.email||'').trim()||null,
     telephone: (fields.telephone||'').trim()||null,
-    source: 'manuel',
+    source: (fields.source||'').trim()||'manuel',
     colonne: COL_UI2DB(fields.column||'contacter'),
     date_creation: new Date().toISOString().slice(0,10),
   };
@@ -1759,6 +1763,16 @@ const SOURCE_INFO = {
   perso:      {label:'Contact perso', via:'Contact personnel', angle:'Relation directe → approche personnalisée.'},
   autre:      {label:'Autre source', via:'Origine non renseignée (migré depuis HubSpot)', angle:'Qualifier l\'intention pendant l\'appel.'},
 };
+
+// Sources réelles d'un lead = onglets du filtre « Lead à contacter » (hors « Tous »).
+// SOURCE DE VÉRITÉ UNIQUE partagée par le filtre colonne ET le formulaire d'ajout → toujours synchro.
+const LEAD_SOURCES = [
+  {k:'lead_gen',     label:'Lead gen'},
+  {k:'webi_participe',label:'Participé webi'},
+  {k:'webi_inscrit', label:'Inscrit webi'},
+  {k:'webinaire',    label:'Webinaire'},
+  {k:'mff',          label:'MFF'},
+];
 
 // Colonnes = miroir du pipe HubSpot IQ Project (les stages d'entrée Lead gen/Webinaire/MFF
 // sont regroupés dans « Lead à contacter », distingués par le filtre source).
@@ -2378,7 +2392,7 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
   const [overCol, setOverCol] = useState(null);
   const [over, setOver] = useState(null); // {cardId, pos}
   // ATC est désormais une COLONNE à part entière -> retiré du filtre source
-  const SRC_TABS=[{k:'all',label:'Tous'},{k:'lead_gen',label:'Lead gen'},{k:'webi_participe',label:'Participé webi'},{k:'webi_inscrit',label:'Inscrit webi'},{k:'webinaire',label:'Webinaire'},{k:'mff',label:'MFF'}];
+  const SRC_TABS=[{k:'all',label:'Tous'}, ...LEAD_SOURCES]; // « Tous » + sources réelles (source de vérité unique)
   const [src, setSrc] = useState(()=>{ const s=persistedState('iqcrm_src','all'); return SRC_TABS.some(o=>o.k===s)?s:'all'; }); // filtre par source (persiste)
   const [srcOpen, setSrcOpen] = useState(false); // menu du sélecteur ouvert
   useEffect(()=>localStorage.setItem('iqcrm_src',JSON.stringify(src)),[src]);
@@ -2469,7 +2483,7 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
                   <span className="col-dot"></span>
                   <h3>{c.label}</h3>
                   <span className="col-count">{colItems.length}</span>
-                  <button className="col-add" title="Ajouter un lead" aria-label="Ajouter un lead" onClick={()=>onAddLead(c.id)}><I.plus/></button>
+                  <button className="col-add" title="Ajouter un lead" aria-label="Ajouter un lead" onClick={()=>onAddLead(c.id, (c.id==='contacter'&&src!=='all')?src:null)}><I.plus/></button>
                 </div>
                 {c.id==='contacter' && (()=>{ const cur=SRC_TABS.find(o=>o.k===src)||SRC_TABS[0]; return (
                   <div className="srcdd">
@@ -3100,8 +3114,8 @@ function TlCard({ ev, onEditNote, onDeleteNote }){
   );
 }
 
-function AddLeadModal({ column, onClose, onAdd }){
-  const [f,setF]=useState({prenom:'',nom:'',email:'',telephone:''});
+function AddLeadModal({ column, defaultSource, onClose, onAdd }){
+  const [f,setF]=useState({prenom:'',nom:'',email:'',telephone:'',source:defaultSource||''});
   const [saving,setSaving]=useState(false);
   const [err,setErr]=useState(null);
   const set=(k)=>(e)=>setF(s=>({...s,[k]:e.target.value}));
@@ -3118,6 +3132,10 @@ function AddLeadModal({ column, onClose, onAdd }){
         <div className="addlead-row"><input placeholder="Prénom" value={f.prenom} onChange={set('prenom')} autoFocus/><input placeholder="Nom" value={f.nom} onChange={set('nom')}/></div>
         <input type="email" placeholder="Email" value={f.email} onChange={set('email')}/>
         <input placeholder="Téléphone (ex : +33…)" value={f.telephone} onChange={set('telephone')}/>
+        <select className={'addlead-sel'+(f.source?'':' empty')} value={f.source} onChange={set('source')}>
+          <option value="">Source — non précisée</option>
+          {LEAD_SOURCES.map(o=><option key={o.k} value={o.k}>{o.label}</option>)}
+        </select>
         {err && <div className="rdv-err">{err}</div>}
         <div className="addlead-foot">
           <button type="button" className="btn btn-ghost" onClick={onClose}>Annuler</button>
@@ -4443,7 +4461,7 @@ function App({session, onLogout}){
       {/* WORK */}
       <main className="work">
         {screen==='leads' && <Board leads={leadsView} search={search} setSearch={setSearch} view={view||'mine'} setView={setView} userId={userId}
-            onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col)=>setAddTarget(col)} onDelete={deleteLead}/>}
+            onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col,defSrc)=>setAddTarget({col,defSrc})} onDelete={deleteLead}/>}
         {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen(origin)} backLabel={SCREEN_LABEL[origin]||'Retour'} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
             onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} onManualRdv={setManualRdv} onManualRemoveRdv={removeManualRdv} onRdvOutcome={setRdvOutcome} onClearRdvOutcome={clearRdvOutcome} onCpfRdv={bookCpfRdv} isAdminView={isAdmin} closers={closers} rdvClosers={cqSources} onAssign={reassignOwner} calendiqReady={isAdmin ? cqSources.length>0 : !!(profile&&profile.calendiq_organizer_id)} calendiqOrganizer={profile&&profile.calendiq_organizer_id}/>}
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen(origin)}>Retour ({SCREEN_LABEL[origin]||'Mes leads'})</button></div>}
@@ -4456,7 +4474,7 @@ function App({session, onLogout}){
       </main>
 
       {/* OVERLAYS */}
-      {addTarget && <AddLeadModal column={addTarget} onClose={()=>setAddTarget(null)} onAdd={addLead}/>}
+      {addTarget && <AddLeadModal column={addTarget.col} defaultSource={addTarget.defSrc} onClose={()=>setAddTarget(null)} onAdd={addLead}/>}
       {showSettings && <div className="backdrop" onClick={()=>setShowSettings(false)}><Settings theme={theme} setTheme={setTheme} density={density} setDensity={setDensity} onSimulate={simulate} onReset={resetData} onClose={()=>setShowSettings(false)}/></div>}
       {payTarget && <PaymentModal lead={payTarget.lead} onClose={()=>setPayTarget(null)} onSend={sendPayment}/>}
       {incoming && <Incoming lead={incoming} onTake={takeIncoming} onDismiss={()=>{setIncoming(null); localStorage.setItem('iqcrm_sarahDone',JSON.stringify(true));}}/>}
