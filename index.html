@@ -2443,7 +2443,6 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
       <div className="screen-head">
         <div className="screen-title">
           <h1>Mes leads</h1>
-          <p>Pipeline de closing</p>
         </div>
         <div className="head-tools">
           <div className="viewtog">
@@ -2454,9 +2453,6 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
             <I.search/><input placeholder="Rechercher un lead…" value={search} onChange={e=>setSearch(e.target.value)}/>
           </div>
         </div>
-      </div>
-      <div style={{padding:'0 26px 8px'}}>
-        <span className="hint"><I.leads/>Glissez une carte pour changer de colonne — chaque colonne est triée du plus récent au plus ancien</span>
       </div>
       <div className="board-wrap">
         <div className="board">
