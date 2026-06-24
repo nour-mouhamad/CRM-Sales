@@ -1297,6 +1297,7 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .addlead-sel:focus{border-color:var(--accent)}
 .addlead-sel.empty{color:var(--t3)}
 .addlead-sel option{color:var(--t1); background:var(--surface-2)}
+.src-sel{margin-top:4px; font-weight:700; padding-top:9px; padding-bottom:9px}
 .addlead-foot{display:flex; gap:10px; margin-top:6px}
 .addlead-foot .btn{flex:1; justify-content:center; padding:12px}
 /* ---- modale Note (note écrite / NRP) ---- */
@@ -1666,6 +1667,7 @@ async function saveLead(id, uiPatch){
   if('offer' in uiPatch) m.montant=uiPatch.offer;
   if('aPayer' in uiPatch) m.montant_a_payer=(uiPatch.aPayer===''||uiPatch.aPayer==null)?null:Number(uiPatch.aPayer);
   if('quiPaie' in uiPatch) m.qui_paie=uiPatch.quiPaie||null;
+  if('source' in uiPatch) m.source=uiPatch.source||null;
   if('owner' in uiPatch) m.owner_closer_id=uiPatch.owner;
   if('paid' in uiPatch) m.statut_paiement=uiPatch.paid?'paye':'aucun';
   if('statut_paiement' in uiPatch) m.statut_paiement=uiPatch.statut_paiement;
@@ -2633,10 +2635,14 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
         <div className="panel">
           <div className="panel-head"><span className="eyebrow">Situation</span></div>
           <div className="panel-body">
-            {(()=>{ const si=SOURCE_INFO[lead.source]||{label:lead.source||'—'}; return (<>
+            {(()=>{ const srcInList=LEAD_SOURCES.some(o=>o.k===lead.source); return (<>
               <div className="field">
                 <span className="eyebrow">Source du lead</span>
-                <div className="val" style={{fontWeight:700}}>{si.label}</div>
+                <select className={'addlead-sel src-sel'+(lead.source?'':' empty')} value={lead.source||''} onChange={e=>onEditField('source','source', e.target.value||null)}>
+                  {!lead.source && <option value="">— choisir la source —</option>}
+                  {!srcInList && lead.source && <option value={lead.source}>{(SOURCE_INFO[lead.source]||{label:lead.source}).label}</option>}
+                  {LEAD_SOURCES.map(o=><option key={o.k} value={o.k}>{o.label}</option>)}
+                </select>
               </div>
               <ManualRdvField lead={lead} calendiqRdvs={lead.rdvs||[]}
                 onCalModify={calendiqReady?openEditRdv:null}
