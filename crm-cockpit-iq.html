@@ -786,7 +786,21 @@ input,textarea{font-family:inherit; color:inherit}
 .rt-edit h3{font-size:14px; font-weight:800; margin:8px 0 4px; color:var(--t1)}
 .rt-edit b{font-weight:800; color:var(--t1)}
 .rt-edit ul{margin:4px 0 4px 18px}
+.rt-edit ol{margin:4px 0 4px 20px}
+.rt-edit i,.rt-edit em{font-style:italic}
+.rt-edit u{text-decoration:underline}
+.rt-edit blockquote{margin:4px 0; padding-left:12px; border-left:2px solid var(--b3)}
 .rt-edit:focus{outline:none}
+/* rendu des notes enrichies dans la timeline (HTML sanitisé) */
+.recap-md ul{margin:4px 0 4px 18px; padding-left:4px; list-style:disc}
+.recap-md ol{margin:4px 0 4px 20px; padding-left:4px; list-style:decimal}
+.recap-md li{margin:2px 0}
+.recap-md h3{font-weight:800; color:var(--t1); font-size:13px; margin:8px 0 4px}
+.recap-md b,.recap-md strong{font-weight:800; color:var(--t1)}
+.recap-md u{text-decoration:underline}
+.recap-md i,.recap-md em{font-style:italic}
+.recap-md blockquote{margin:4px 0; padding-left:12px; border-left:2px solid var(--b3)}
+.recap-md a{color:var(--accent); text-decoration:underline}
 .recap-action-edit{display:flex; align-items:center; gap:9px; padding:3px 0}
 .recap-action-edit input{flex:1; min-width:0; background:var(--surface); border:1px solid var(--b1); border-radius:7px; padding:6px 9px; color:var(--t1); font-size:13px; font-family:inherit}
 .recap-action-edit input:focus{border-color:var(--accent); outline:none}
@@ -2843,7 +2857,8 @@ async function callFn(name, body){
 function NoteModal({ mode, onClose, onNote }){
   const nrp = mode==='nrp';
   const [text,setText]=useState('');
-  const save=()=>{ if(nrp){ onNote('appel','NRP — ne répond pas', text.trim()); } else { onNote('note','Note', text.trim()); } };
+  const empty = htmlIsEmpty(text);
+  const save=()=>{ const body=empty?'':text; if(nrp){ onNote('appel','NRP — ne répond pas', body); } else { if(empty) return; onNote('note','Note', body); } };
   return (<>
     <div className="backdrop" onClick={onClose}></div>
     <div className="modal" onClick={e=>e.stopPropagation()}>
@@ -2851,8 +2866,8 @@ function NoteModal({ mode, onClose, onNote }){
       <div className="m-fixhead"><span className="eyebrow m-eye">Historique</span><div style={{fontSize:20,fontWeight:800,letterSpacing:'-.02em',marginTop:6}}>{nrp?'NRP — note rapide':'Ajouter une note'}</div></div>
       <div className="note-body">
         {nrp && <div className="note-sub">Ne répond pas — ajoute une note rapide si besoin (optionnel) :</div>}
-        <textarea className="note-ta" autoFocus placeholder={nrp?'Note rapide de l’appel (optionnel)…':'Ta note…'} value={text} onChange={e=>setText(e.target.value)}/>
-        <div className="note-foot"><button className="btn btn-ghost" onClick={onClose}>Annuler</button><button className="btn btn-accent" disabled={!nrp && !text.trim()} onClick={save}>{nrp?'Enregistrer le NRP':'Ajouter la note'}</button></div>
+        <RichText html={text} onChange={setText} autoFocus placeholder={nrp?'Note rapide de l’appel (optionnel)… — gras, listes, alinéa (⌘B/I/U)':'Ta note… — gras, listes, alinéa (⌘B/I/U)'}/>
+        <div className="note-foot"><button className="btn btn-ghost" onClick={onClose}>Annuler</button><button className="btn btn-accent" disabled={!nrp && empty} onClick={save}>{nrp?'Enregistrer le NRP':'Ajouter la note'}</button></div>
       </div>
     </div>
   </>);
@@ -2876,9 +2891,39 @@ function mdToHtml(md){
     return '<div>'+bold(t)+'</div>';
   }).join('');
 }
-// nettoyage avant rendu HTML (anti-injection léger) : retire scripts/styles et handlers on*
-const sanitizeHtml = (h)=> String(h||'').replace(/<\/?(script|style|iframe|object|embed)[^>]*>/gi,'').replace(/ on\w+="[^"]*"/gi,'').replace(/ on\w+='[^']*'/gi,'');
+// styles inline autorisés (visuels only, aucun vecteur d'exécution) — préserve gras/listes/alinéa/taille
+const SAFE_STYLE_PROP=/^(font-size|font-weight|font-style|text-decoration|text-decoration-line|text-align|margin-left|padding-left|text-indent)$/;
+function safeStyle(str){ const out=[]; String(str||'').split(';').forEach(d=>{ const i=d.indexOf(':'); if(i<0) return; const p=d.slice(0,i).trim().toLowerCase(), v=d.slice(i+1).trim(); if(!SAFE_STYLE_PROP.test(p)) return; if(/url\(|expression|javascript:|@import|<|>/i.test(v)) return; out.push(p+':'+v); }); return out.join('; '); }
+// Sanitisation par WHITELIST DOM : toute balise/attribut hors liste est dénoué (unwrap) ou supprimé.
+// Sert l'éditeur de notes (HTML auteur) ET le rendu des notes HubSpot importées.
+function sanitizeHtml(html){
+  try{
+    const TAGS={B:1,STRONG:1,I:1,EM:1,U:1,UL:1,OL:1,LI:1,H1:1,H2:1,H3:1,H4:1,BR:1,DIV:1,SPAN:1,P:1,A:1,FONT:1,BLOCKQUOTE:1};
+    const DROP={SCRIPT:1,STYLE:1,IFRAME:1,OBJECT:1,EMBED:1,NOSCRIPT:1,TEMPLATE:1,TITLE:1,TEXTAREA:1,LINK:1,META:1,SVG:1};
+    const tpl=document.createElement('template'); tpl.innerHTML=String(html||'');
+    const walk=(node)=>{ Array.prototype.slice.call(node.childNodes).forEach((el)=>{
+      if(el.nodeType===3) return;                          // texte : OK
+      if(el.nodeType!==1){ el.remove(); return; }          // commentaires/autres : out
+      if(DROP[el.tagName]){ el.remove(); return; }         // dangereux : supprimé AVEC son contenu
+      if(!TAGS[el.tagName]){                                // balise non whitelistée -> unwrap (garde le texte)
+        const p=el.parentNode; while(el.firstChild) p.insertBefore(el.firstChild,el); p.removeChild(el); return; }
+      Array.prototype.slice.call(el.attributes).forEach((a)=>{ const n=a.name.toLowerCase();
+        if(n==='href' && el.tagName==='A'){ const v=(a.value||'').trim(); if(!/^(https?:|mailto:)/i.test(v)) el.removeAttribute('href'); else { el.setAttribute('rel','noopener noreferrer'); el.setAttribute('target','_blank'); } }
+        else if(n==='size' && el.tagName==='FONT'){ if(!/^[1-7]$/.test((a.value||'').trim())) el.removeAttribute('size'); }
+        else if(n==='style'){ const s=safeStyle(a.value); el.removeAttribute('style'); if(s) el.setAttribute('style',s); }
+        else el.removeAttribute(a.name);                   // tue on*, srcset, javascript:, data-*, class, etc.
+      });
+      walk(el);
+    }); };
+    walk(tpl.content);
+    return tpl.innerHTML;
+  }catch(e){ // filet de sécurité si DOM indispo
+    return String(html||'').replace(/<\/?(script|style|iframe|object|embed)[^>]*>/gi,'').replace(/ on\w+="[^"]*"/gi,'').replace(/ on\w+='[^']*'/gi,'');
+  }
+}
 const isHtml = (s)=> /<[a-z!/][\s\S]*>/i.test(String(s||''));
+// vrai si le HTML de l'éditeur est vide (que des balises/espaces) -> évite d'enregistrer une note blanche
+const htmlIsEmpty = (h)=> !String(h||'').replace(/<[^>]*>/g,'').replace(/&nbsp;/gi,' ').replace(/\u00a0/g,' ').trim();
 function MdText({ text }){
   if(isHtml(text)) return <div className="recap-md" dangerouslySetInnerHTML={{__html: sanitizeHtml(text)}}/>;
   const lines=String(text||'').split('\n');
@@ -2891,29 +2936,50 @@ function MdText({ text }){
     return <div key={i} className="recap-p">{mdInline(t)}</div>;
   })}</div>);
 }
-// éditeur WYSIWYG (contentEditable) : barre Gras / Souligné / Italique / Titre / Liste / taille. Valeur = HTML.
-function RichText({ html, onChange, placeholder }){
+// éditeur WYSIWYG (contentEditable) : gras/italique/souligné, titre, listes puces+numéros, alinéa, taille.
+// Valeur = HTML. Uncontrolled (init innerHTML une seule fois) -> le curseur n'est jamais réinitialisé.
+function RichText({ html, onChange, placeholder, autoFocus }){
   const ref=React.useRef(null);
-  React.useEffect(()=>{ if(ref.current && ref.current.innerHTML!==(html||'')) ref.current.innerHTML=html||''; },[]); // init une seule fois
+  React.useEffect(()=>{ if(!ref.current) return; if(ref.current.innerHTML!==(html||'')) ref.current.innerHTML=html||''; if(autoFocus){ ref.current.focus(); } },[]); // init une seule fois
   const sync=()=>{ if(ref.current) onChange(ref.current.innerHTML); };
   const cmd=(c,v)=>{ try{ document.execCommand('styleWithCSS',false,true); }catch(e){} document.execCommand(c,false,v||null); if(ref.current) ref.current.focus(); sync(); };
+  // raccourcis markdown en début de ligne, déclenchés sur espace : "- "/"* " -> puces, "1. " -> numéros
+  const mdShortcut=()=>{ try{
+    const sel=window.getSelection(); if(!sel||!sel.rangeCount) return;
+    const node=sel.anchorNode; if(!node||node.nodeType!==3) return;
+    const t=node.textContent;
+    if(/^[-*]\s$/.test(t)){ node.textContent=''; cmd('insertUnorderedList'); }
+    else if(/^1\.\s$/.test(t)){ node.textContent=''; cmd('insertOrderedList'); }
+  }catch(e){} };
+  const onInput=(e)=>{ if(e.nativeEvent && e.nativeEvent.data===' ') mdShortcut(); sync(); };
+  const onKeyDown=(e)=>{
+    if(e.metaKey||e.ctrlKey){ const k=e.key.toLowerCase();
+      if(k==='b'){ e.preventDefault(); cmd('bold'); return; }
+      if(k==='i'){ e.preventDefault(); cmd('italic'); return; }
+      if(k==='u'){ e.preventDefault(); cmd('underline'); return; } }
+    if(e.key==='Tab'){ e.preventDefault(); cmd(e.shiftKey?'outdent':'indent'); }
+  };
   const Btn=({on,t,children,style})=> <button type="button" className="rt-b" style={style} title={t} onMouseDown={e=>e.preventDefault()} onClick={on}>{children}</button>;
   return (
     <div className="rt">
       <div className="rt-bar">
-        <Btn on={()=>cmd('bold')} t="Gras"><b>B</b></Btn>
-        <Btn on={()=>cmd('italic')} t="Italique"><i>I</i></Btn>
-        <Btn on={()=>cmd('underline')} t="Souligné"><u>S</u></Btn>
+        <Btn on={()=>cmd('bold')} t="Gras (⌘B)"><b>B</b></Btn>
+        <Btn on={()=>cmd('italic')} t="Italique (⌘I)"><i>I</i></Btn>
+        <Btn on={()=>cmd('underline')} t="Souligné (⌘U)"><u>S</u></Btn>
         <span className="rt-sep"/>
         <Btn on={()=>cmd('formatBlock','H3')} t="Titre">Titre</Btn>
         <Btn on={()=>cmd('insertUnorderedList')} t="Liste à puces">• Liste</Btn>
+        <Btn on={()=>cmd('insertOrderedList')} t="Liste numérotée">1. Liste</Btn>
+        <span className="rt-sep"/>
+        <Btn on={()=>cmd('outdent')} t="Diminuer l’alinéa (⇧Tab)">⇤</Btn>
+        <Btn on={()=>cmd('indent')} t="Augmenter l’alinéa (Tab)">⇥</Btn>
         <span className="rt-sep"/>
         <Btn on={()=>cmd('fontSize','2')} t="Petit" style={{fontSize:11}}>A</Btn>
         <Btn on={()=>cmd('fontSize','4')} t="Normal" style={{fontSize:14}}>A</Btn>
         <Btn on={()=>cmd('fontSize','6')} t="Grand" style={{fontSize:17}}>A</Btn>
       </div>
       <div className="rt-edit" ref={ref} contentEditable suppressContentEditableWarning
-        data-ph={placeholder||''} onInput={sync} onBlur={sync}/>
+        data-ph={placeholder||''} onInput={onInput} onKeyDown={onKeyDown} onBlur={sync}/>
     </div>
   );
 }
@@ -3064,8 +3130,9 @@ function TlCard({ ev, onEditNote, onDeleteNote }){
   const tone = isRecap ? 'accent' : (tlTone[ev.type] || (ev.paid?'ok':''));
   const Icon = isRecap ? I.spark : (tlIcon[ev.type] || I.note);
   const canEdit = !!ev.id && !ev.readOnly; // récap éditable aussi (éditeur riche), pas seulement les notes
-  const startEdit=(e)=>{ e.stopPropagation(); setDraft(ev.text||''); setEditing(true); setOpen(true); };
-  const save=()=>{ onEditNote(ev.id, draft.trim()); setEditing(false); };
+  // édition : récap = texte markdown tel quel ; note = HTML (on convertit l'ancien texte brut pour garder sauts de ligne / échapper < >)
+  const startEdit=(e)=>{ e.stopPropagation(); setDraft(isRecap ? (ev.text||'') : (ev.text ? (isHtml(ev.text)?ev.text:escHtml(ev.text).replace(/\n/g,'<br>')) : '')); setEditing(true); setOpen(true); };
+  const save=()=>{ onEditNote(ev.id, isRecap ? draft.trim() : (htmlIsEmpty(draft)?'':draft)); setEditing(false); };
   const toggle=()=>{ if(editing) return; if(hasBody) setOpen(o=>!o); };
   return (
     <div className={`tl-recap ${tone}`}>
@@ -3090,7 +3157,7 @@ function TlCard({ ev, onEditNote, onDeleteNote }){
             <div className="tl-edit">
               {isRecap
                 ? <RichText html={draft} onChange={setDraft} placeholder="Résumé du call (modifiable)…"/>
-                : <textarea value={draft} onChange={e=>setDraft(e.target.value)} autoFocus placeholder="Ta note…"/>}
+                : <RichText html={draft} onChange={setDraft} autoFocus placeholder="Ta note… — gras, listes, alinéa (⌘B/I/U)"/>}
               <div className="tl-edit-actions">
                 <button className="btn btn-accent" onClick={save}>Enregistrer</button>
                 <button className="btn btn-ghost" onClick={()=>setEditing(false)}>Annuler</button>
@@ -3114,7 +3181,7 @@ function TlCard({ ev, onEditNote, onDeleteNote }){
               </div>
             )}
           </>) : (<>
-            {ev.text && (ev.html ? <MdText text={ev.text}/> : <div className="tl-card-text">{ev.text}</div>)}
+            {ev.text && ((ev.html || isHtml(ev.text)) ? <MdText text={ev.text}/> : <div className="tl-card-text">{ev.text}</div>)}
             {ev.granola && (
               <div className="tl-granola">
                 <div className="g-head"><I.spark style={{width:13,height:13,strokeWidth:2,color:'var(--accent)'}}/><span className="eyebrow">Recap Granola</span></div>
