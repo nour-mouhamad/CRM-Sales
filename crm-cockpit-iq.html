@@ -311,29 +311,34 @@ input,textarea{font-family:inherit; color:inherit}
 .action-add:disabled{color:var(--t3); cursor:not-allowed; text-decoration:none; opacity:.7}
 /* cartes action (format rectangle, comme les notes Historique) */
 .actlist{display:flex; flex-direction:column; gap:8px}
-.actcard{display:flex; align-items:center; gap:10px; padding:9px 11px; border:1px solid var(--b1); border-radius:10px; background:var(--surface-2); transition:border-color var(--speed)}
+.actcard{display:flex; align-items:flex-start; gap:10px; padding:9px 11px; border:1px solid var(--b1); border-radius:10px; background:var(--surface-2); transition:border-color var(--speed)}
 .actcard:hover{border-color:var(--b3)}
 .actcard.done{opacity:.6}
 .actcard.done .actcard-tx{text-decoration:line-through; color:var(--t3)}
-.actcard-box{width:22px; height:22px; flex:none; border-radius:7px; border:1.8px solid var(--b3); display:grid; place-items:center; color:transparent; cursor:pointer; transition:background var(--speed),border-color var(--speed)}
+.actcard-box{width:22px; height:22px; flex:none; margin-top:1px; border-radius:7px; border:1.8px solid var(--b3); display:grid; place-items:center; color:transparent; cursor:pointer; transition:background var(--speed),border-color var(--speed)}
 .actcard-box svg{width:13px; height:13px; stroke-width:3}
 .actcard:hover .actcard-box{border-color:var(--accent)}
 .actcard.done .actcard-box{background:var(--accent); border-color:var(--accent); color:var(--on-accent)}
-.actcard-tx{flex:1; min-width:0; font-size:13.5px; font-weight:600; color:var(--t1); line-height:1.4; cursor:text; word-break:break-word}
-.actcard-btn{width:26px; height:26px; flex:none; border-radius:7px; display:grid; place-items:center; color:var(--t3); background:none; cursor:pointer; opacity:0; transition:opacity var(--speed),color var(--speed),background var(--speed)}
-.actcard:hover .actcard-btn{opacity:1}
+.actcard-body{flex:1; min-width:0; display:flex; flex-direction:column; gap:6px; cursor:text; padding-top:2px}
+.actcard-tx{font-size:13.5px; font-weight:600; color:var(--t1); line-height:1.45; overflow-wrap:anywhere; white-space:pre-wrap}
+.actcard-due{display:inline-flex; align-items:center; gap:5px; align-self:flex-start; font-size:11px; font-weight:700; color:var(--accent); background:var(--accent-tint); border-radius:999px; padding:3px 5px 3px 8px; letter-spacing:.01em}
+.actcard-due svg{width:12px; height:12px}
+.actcard-due-x{display:grid; place-items:center; width:15px; height:15px; border-radius:50%; background:none; border:none; color:var(--accent); cursor:pointer; opacity:.6; padding:0; transition:opacity var(--speed),background var(--speed)}
+.actcard-due-x:hover{opacity:1; background:rgba(0,0,0,.18)}
+.actcard-due-x svg{width:10px; height:10px; stroke-width:2.6}
+.actcard-tools{display:flex; align-items:center; gap:2px; flex:none}
+.actcard-btn{position:relative; width:26px; height:26px; flex:none; border-radius:7px; display:grid; place-items:center; color:var(--t3); background:none; border:none; cursor:pointer; opacity:0; transition:opacity var(--speed),color var(--speed),background var(--speed)}
+.actcard:hover .actcard-tools .actcard-btn{opacity:1}
 .actcard-btn:hover{color:var(--t1); background:var(--surface)}
 .actcard-btn.del:hover{color:var(--danger)}
-.actcard-btn.ok{opacity:1; color:var(--accent)}
 .actcard-btn svg{width:14px; height:14px; stroke-width:2}
-.actcard.editing{padding:7px 9px; gap:7px}
-.actcard-input{flex:1; min-width:0; background:var(--surface); border:1.5px solid var(--accent); border-radius:7px; padding:6px 9px; color:var(--t1); font-size:13.5px; font-weight:600; font-family:inherit; outline:none}
-/* date « quand ? » sur une action */
-.actcard-date{display:inline-flex; align-items:center; gap:3px; color:var(--t3); cursor:pointer; border-radius:7px; padding:3px 5px; flex:none}
-.actcard-date.set{color:var(--accent)}
-.actcard-date svg{width:15px; height:15px}
-.actcard-date input{background:transparent; border:none; color:inherit; font-size:11.5px; font-family:inherit; cursor:pointer; outline:none; color-scheme:dark; width:150px}
-.actcard-date input::-webkit-calendar-picker-indicator{filter:invert(.6); cursor:pointer}
+.actcard-btn.cal input{position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; color-scheme:dark}
+/* mode édition : textarea auto-extensible (tout le texte reste visible) */
+.actcard.editing{align-items:flex-end; padding:8px 9px; gap:7px}
+.actcard-input{flex:1; min-width:0; background:var(--surface); border:1.5px solid var(--accent); border-radius:8px; padding:8px 10px; color:var(--t1); font-size:13.5px; font-weight:600; line-height:1.45; font-family:inherit; outline:none; resize:none; overflow-y:auto; box-sizing:border-box; min-height:36px; max-height:200px}
+.actcard-editbtns{display:flex; gap:4px; flex:none}
+.actcard.editing .actcard-btn{opacity:1}
+.actcard-btn.ok{color:var(--accent)}
 /* ===== PAGE À FAIRE ===== */
 /* ===== PAGE À FAIRE — 1 carte = 1 lead ; urgence = barre gauche de LIGNE + échéance teintée ; domaine = pastille ===== */
 
@@ -2319,28 +2324,39 @@ function ManualRdvField({ lead, calendiqRdvs, onCalModify, onCalCancel, onSave, 
 /* Carte action (format rectangle, comme les notes Historique) : cocher (réalisée) + éditer + supprimer */
 function ActionCard({ label, done, editing, onToggle, onEditStart, onEditCancel, onEditSave, onDelete, placeholder, due, onDate }){
   const [v,setV]=useState(label||'');
-  useEffect(()=>{ if(editing) setV(label||''); },[editing]);
+  const taRef=React.useRef(null);
+  // auto-grow : la hauteur du textarea suit le contenu → tout le texte reste visible (plafonné à 200px puis scroll)
+  const grow=(el)=>{ if(!el) return; el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,200)+'px'; };
+  useEffect(()=>{ if(!editing) return; setV(label||''); requestAnimationFrame(()=>{ const el=taRef.current; if(!el) return; grow(el); el.focus(); const n=el.value.length; el.setSelectionRange(n,n); }); },[editing]);
   if(editing){
     return (
       <div className="actcard editing">
-        <input className="actcard-input" autoFocus value={v} placeholder={placeholder}
-          onChange={e=>setV(e.target.value)}
-          onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); onEditSave(v.trim()); } if(e.key==='Escape') onEditCancel(); }}/>
-        <button className="actcard-btn ok" title="Valider" onClick={()=>onEditSave(v.trim())}>{I.check({})}</button>
-        <button className="actcard-btn" title="Annuler" onClick={onEditCancel}>{I.x({})}</button>
+        <textarea ref={taRef} className="actcard-input" rows={1} value={v} placeholder={placeholder}
+          onChange={e=>{ setV(e.target.value); grow(e.target); }}
+          onKeyDown={e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); onEditSave(v.trim()); } if(e.key==='Escape'){ e.preventDefault(); onEditCancel(); } }}/>
+        <div className="actcard-editbtns">
+          <button className="actcard-btn ok" title="Valider (Entrée)" onClick={()=>onEditSave(v.trim())}>{I.check({})}</button>
+          <button className="actcard-btn" title="Annuler (Échap)" onClick={onEditCancel}>{I.x({})}</button>
+        </div>
       </div>
     );
   }
   return (
     <div className={'actcard'+(done?' done':'')}>
       <span className="actcard-box" onClick={onToggle} role="checkbox" aria-checked={done} title={done?'Marquer non fait':'Marquer comme fait'}>{I.check({})}</span>
-      <span className="actcard-tx" onClick={onEditStart} title="Cliquer pour modifier">{label||placeholder}</span>
-      {onDate && <label className={'actcard-date'+(due?' set':'')} title="Quand ? (échéance de l’action)" onClick={e=>e.stopPropagation()}>{I.agenda({})}
-        <input type="datetime-local" value={due?toLocalInput(due):''} onChange={e=>onDate(e.target.value?new Date(e.target.value).toISOString():null)}/>
-      </label>}
-      {onDate && due && <button className="actcard-btn" title="Supprimer l’échéance (garder l’action)" onClick={e=>{ e.stopPropagation(); onDate(null); }}>{I.x({})}</button>}
-      <button className="actcard-btn" title="Modifier" onClick={onEditStart}>{I.pencil({})}</button>
-      <button className="actcard-btn del" title="Supprimer" onClick={onDelete}>{I.trash({})}</button>
+      <div className="actcard-body" onClick={onEditStart}>
+        <span className="actcard-tx" title="Cliquer pour modifier">{label||placeholder}</span>
+        {due && <span className="actcard-due" onClick={e=>e.stopPropagation()}>{I.agenda({})}{fmtWhen(due)}
+          {onDate && <button className="actcard-due-x" title="Retirer l’échéance" onClick={()=>onDate(null)}>{I.x({})}</button>}
+        </span>}
+      </div>
+      <div className="actcard-tools">
+        {onDate && <label className="actcard-btn cal" title={due?'Modifier l’échéance':'Ajouter une échéance'} onClick={e=>e.stopPropagation()}>{I.agenda({})}
+          <input type="datetime-local" value={due?toLocalInput(due):''} onChange={e=>onDate(e.target.value?new Date(e.target.value).toISOString():null)}/>
+        </label>}
+        <button className="actcard-btn" title="Modifier" onClick={onEditStart}>{I.pencil({})}</button>
+        <button className="actcard-btn del" title="Supprimer" onClick={onDelete}>{I.trash({})}</button>
+      </div>
     </div>
   );
 }
