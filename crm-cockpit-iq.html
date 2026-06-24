@@ -1308,15 +1308,19 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .note-foot{display:flex; gap:10px}
 .note-foot .btn{flex:1; justify-content:center; padding:11px}
 /* ---- supprimer un lead (carte) ---- */
-.card-del{position:absolute; top:8px; right:8px; width:24px; height:24px; border-radius:7px; display:grid; place-items:center; color:var(--t3); background:var(--surface-2); border:1px solid var(--b1); opacity:0; transition:opacity var(--speed),color var(--speed),border-color var(--speed); cursor:pointer; z-index:3}
-.card:hover .card-del, .card:focus-within .card-del{opacity:1}
+/* cluster haut-droit : poubelle (au survol) + badge owner (persistant), côte à côte, jamais superposés */
+.card-tr{position:absolute; top:8px; right:8px; display:flex; align-items:center; gap:6px; z-index:3}
+.card-del{width:24px; height:24px; border-radius:7px; display:none; place-items:center; color:var(--t3); background:var(--surface-2); border:1px solid var(--b1); transition:color var(--speed),border-color var(--speed); cursor:pointer}
+.card:hover .card-del, .card:focus-within .card-del{display:grid}
 .card-del:hover{color:var(--danger); border-color:var(--danger)}
 .card-del svg{width:14px; height:14px; stroke-width:2}
-/* ---- attribution closer : badge owner sur carte ---- */
-.owner-badge{margin-left:auto; flex:none; height:20px; min-width:20px; padding:0 6px; border-radius:999px; border:1px solid var(--b2); background:var(--surface-2); color:var(--t3); font-size:10px; font-weight:800; letter-spacing:.02em; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; line-height:1; transition:filter var(--speed)}
-.owner-badge:hover{filter:brightness(1.15)}
-.owner-badge.pool{border-style:dashed; color:var(--t4)}
-.owner-badge .ob-plus{font-size:13px; font-weight:700; margin-top:-1px}
+/* ---- attribution closer : badge owner (pastille ronde, à droite, façon avatar) ---- */
+.owner-badge{flex:none; width:24px; height:24px; border-radius:50%; padding:0; border:1px solid var(--b2); background:var(--surface-2); color:var(--t3); font-size:9.5px; font-weight:800; letter-spacing:.01em; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; line-height:1; white-space:nowrap; transition:filter var(--speed),transform var(--speed)}
+.owner-badge:hover{filter:brightness(1.15); transform:scale(1.08)}
+.owner-badge.pool{border-style:dashed; color:var(--t4); background:transparent}
+.owner-badge .ob-plus{font-size:14px; font-weight:600; margin-top:-1px}
+/* le texte de la carte laisse la place au badge persistant à droite */
+.card-top.has-owner .card-id{padding-right:32px}
 /* ---- sélection multiple ---- */
 .card.selected{border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-tint)}
 .card-sel{position:absolute; top:8px; left:8px; width:20px; height:20px; border-radius:6px; border:1.8px solid var(--b3); background:var(--surface); display:grid; place-items:center; color:transparent; z-index:4; cursor:pointer}
@@ -2418,7 +2422,7 @@ function ActionCard({ label, done, editing, onToggle, onEditStart, onEditCancel,
 // couleur déterministe par closer (même id -> toujours la même couleur ; sert badge + chips-légende)
 const CLOSER_COLORS=['#e8833a','#3a86e8','#36c08a','#c065d8','#e85a7a','#d9a441','#5ad0d8','#8a7de8'];
 function closerColor(id){ if(!id) return null; let h=0; const s=String(id); for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return CLOSER_COLORS[h%CLOSER_COLORS.length]; }
-function initialsFromName(name){ const p=String(name||'').trim().split(/\s+/).filter(Boolean); if(!p.length) return '?'; return ((p[0][0]||'')+(p.length>1?(p[p.length-1][0]||''):'')).toUpperCase(); }
+function initialsFromName(name){ const clean=String(name||'').replace(/\([^)]*\)/g,' ').trim(); const p=clean.split(/[\s\-]+/).filter(Boolean); if(!p.length) return '?'; if(p.length===1) return p[0].slice(0,2).toUpperCase(); return ((p[0][0]||'')+(p[p.length-1][0]||'')).toUpperCase(); }
 // popover (portal fixed) pour choisir un closer — partagé par le badge carte ET la barre d'action masse
 function CloserPicker({ closers, currentId, anchor, onPick, onClose }){
   const n=(closers||[]).length;
@@ -2465,25 +2469,26 @@ const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDrag
          onClick={clickCard} tabIndex={0} role="button"
          onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault(); clickCard(e);}}}>
       {selecting && <span className="card-sel" title="Sélectionner (Maj+clic = plage)" onClick={e=>{ e.stopPropagation(); onToggleSelect(lead.id, e.shiftKey); }}>{I.check({})}</span>}
-      <button className="card-del" title="Supprimer ce lead" aria-label="Supprimer ce lead" draggable={false}
-              onClick={e=>{ e.stopPropagation(); onDelete(lead.id); }} onKeyDown={e=>e.stopPropagation()}>{I.trash({})}</button>
-      <div className="card-top">
+      <div className="card-tr">
+        {!selecting && <button className="card-del" title="Supprimer ce lead" aria-label="Supprimer ce lead" draggable={false}
+              onClick={e=>{ e.stopPropagation(); onDelete(lead.id); }} onKeyDown={e=>e.stopPropagation()}>{I.trash({})}</button>}
+        {canAssign && (
+          <button className={'owner-badge'+(lead.owner?'':' pool')} draggable={false}
+            style={lead.owner?{background:(ownerColor||'#888')+'22', color:ownerColor||undefined, borderColor:(ownerColor||'#888')+'66'}:undefined}
+            title={lead.owner?('Closer : '+(ownerName||'?')+' · cliquer pour réassigner'):'Non attribué · cliquer pour assigner à un closer'}
+            onClick={e=>{ e.stopPropagation(); setMenu({x:e.clientX,y:e.clientY}); }}>
+            {lead.owner ? initialsFromName(ownerName) : <span className="ob-plus">+</span>}
+          </button>
+        )}
+      </div>
+      <div className={'card-top'+(canAssign?' has-owner':'')}>
         <Avatar lead={lead} size="sz-sm"/>
         <div className="card-id">
           <div className="card-name">{lead.prenom} {lead.nom}
             {lead.noShow && <span className="tag tag-noshow">No-show</span>}
             {lead.saison && <span className="tag tag-saison" title={SEASON_LABEL[lead.saison]||lead.saison}>{lead.saison}</span>}
           </div>
-          <div className="card-sub"><Src source={lead.source}/>
-            {canAssign && (
-              <button className={'owner-badge'+(lead.owner?'':' pool')} draggable={false}
-                style={lead.owner?{background:(ownerColor||'#888')+'22', color:ownerColor||undefined, borderColor:(ownerColor||'#888')+'66'}:undefined}
-                title={lead.owner?('Closer : '+(ownerName||'?')+' · cliquer pour réassigner'):'Non attribué · cliquer pour assigner à un closer'}
-                onClick={e=>{ e.stopPropagation(); setMenu({x:e.clientX,y:e.clientY}); }}>
-                {lead.owner ? initialsFromName(ownerName) : <span className="ob-plus">+</span>}
-              </button>
-            )}
-          </div>
+          <div className="card-sub"><Src source={lead.source}/></div>
         </div>
       </div>
       {actionEl}
