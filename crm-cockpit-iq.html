@@ -1312,6 +1312,43 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .card:hover .card-del, .card:focus-within .card-del{opacity:1}
 .card-del:hover{color:var(--danger); border-color:var(--danger)}
 .card-del svg{width:14px; height:14px; stroke-width:2}
+/* ---- attribution closer : badge owner sur carte ---- */
+.owner-badge{margin-left:auto; flex:none; height:20px; min-width:20px; padding:0 6px; border-radius:999px; border:1px solid var(--b2); background:var(--surface-2); color:var(--t3); font-size:10px; font-weight:800; letter-spacing:.02em; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; line-height:1; transition:filter var(--speed)}
+.owner-badge:hover{filter:brightness(1.15)}
+.owner-badge.pool{border-style:dashed; color:var(--t4)}
+.owner-badge .ob-plus{font-size:13px; font-weight:700; margin-top:-1px}
+/* ---- sélection multiple ---- */
+.card.selected{border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-tint)}
+.card-sel{position:absolute; top:8px; left:8px; width:20px; height:20px; border-radius:6px; border:1.8px solid var(--b3); background:var(--surface); display:grid; place-items:center; color:transparent; z-index:4; cursor:pointer}
+.card.selected .card-sel{background:var(--accent); border-color:var(--accent); color:var(--on-accent)}
+.card-sel svg{width:12px; height:12px; stroke-width:3}
+.card.selecting .card-del{display:none}
+/* ---- barre de filtre closer ---- */
+.ownerbar{display:flex; align-items:center; gap:12px; padding:0 26px 10px; flex-wrap:wrap}
+.ownerchips{display:flex; align-items:center; gap:6px; flex-wrap:wrap}
+.ochip{display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:999px; border:1px solid var(--b1); background:var(--surface-2); color:var(--t2); font-size:12.5px; font-weight:700; cursor:pointer; transition:border-color var(--speed),color var(--speed),background var(--speed)}
+.ochip:hover{border-color:var(--b3); color:var(--t1)}
+.ochip.on{background:var(--accent); border-color:var(--accent); color:var(--on-accent)}
+.ochip-dot{width:9px; height:9px; border-radius:50%; flex:none; background:var(--t3)}
+.ochip-dot.pool{background:transparent; border:1.5px dashed var(--t3)}
+.ochip.on .ochip-dot.pool{border-color:var(--on-accent)}
+.selbtn{margin-left:auto; padding:6px 13px; font-size:12.5px}
+.selbtn.on{background:var(--accent); color:var(--on-accent); border-color:var(--accent)}
+/* ---- barre d'action masse ---- */
+.bulkbar{position:fixed; left:50%; transform:translateX(-50%); bottom:22px; z-index:120; display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:14px; background:var(--surface); border:1px solid var(--b2); box-shadow:0 14px 40px rgba(0,0,0,.42)}
+.bulkbar-n{font-size:13px; font-weight:800; color:var(--t1); padding:0 4px}
+.bulkbar .btn{padding:8px 13px; font-size:12.5px}
+/* ---- popover d'attribution (portal, fixed) ---- */
+.cp-ov{position:fixed; inset:0; z-index:199}
+.cp-menu{min-width:212px; max-height:300px; overflow:auto; background:var(--surface); border:1px solid var(--b2); border-radius:12px; box-shadow:0 18px 50px rgba(0,0,0,.45); padding:6px}
+.cp-title{font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--t4); padding:6px 9px 4px}
+.cp-item{display:flex; align-items:center; gap:9px; width:100%; padding:8px 9px; border-radius:8px; border:0; background:none; color:var(--t1); font-size:13px; font-weight:600; cursor:pointer; text-align:left}
+.cp-item:hover{background:var(--surface-2)}
+.cp-item.active{color:var(--accent)}
+.cp-dot{width:11px; height:11px; border-radius:50%; flex:none; background:var(--t3)}
+.cp-dot.pool{background:transparent; border:1.5px dashed var(--t3)}
+.cp-check{margin-left:auto; display:grid; place-items:center; color:var(--accent)}
+.cp-check svg{width:14px; height:14px; stroke-width:2.5}
 /* ---- bouton Annuler dans un toast ---- */
 .t-undo{margin-left:auto; flex:none; padding:6px 12px; border-radius:8px; border:1px solid var(--b3); background:transparent; color:var(--t1); font-size:12.5px; font-weight:700; cursor:pointer; white-space:nowrap}
 .t-undo:hover{background:var(--surface-3); border-color:var(--accent); color:var(--accent)}
@@ -2377,9 +2414,38 @@ function ActionCard({ label, done, editing, onToggle, onEditStart, onEditCancel,
   );
 }
 
+/* ============================================================= ATTRIBUTION CLOSER */
+// couleur déterministe par closer (même id -> toujours la même couleur ; sert badge + chips-légende)
+const CLOSER_COLORS=['#e8833a','#3a86e8','#36c08a','#c065d8','#e85a7a','#d9a441','#5ad0d8','#8a7de8'];
+function closerColor(id){ if(!id) return null; let h=0; const s=String(id); for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return CLOSER_COLORS[h%CLOSER_COLORS.length]; }
+function initialsFromName(name){ const p=String(name||'').trim().split(/\s+/).filter(Boolean); if(!p.length) return '?'; return ((p[0][0]||'')+(p.length>1?(p[p.length-1][0]||''):'')).toUpperCase(); }
+// popover (portal fixed) pour choisir un closer — partagé par le badge carte ET la barre d'action masse
+function CloserPicker({ closers, currentId, anchor, onPick, onClose }){
+  const n=(closers||[]).length;
+  const left=Math.max(10, Math.min(anchor.x, window.innerWidth-232));
+  const top=Math.max(10, Math.min(anchor.y, window.innerHeight-Math.min(300,(n+2)*42+34)));
+  return ReactDOM.createPortal(
+    <>
+      <div className="cp-ov" onMouseDown={e=>e.stopPropagation()} onClick={onClose}></div>
+      <div className="cp-menu" style={{position:'fixed', left, top, zIndex:200}} onMouseDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
+        <div className="cp-title">Assigner à</div>
+        <button className={'cp-item'+(!currentId?' active':'')} onClick={()=>onPick(null)}><span className="cp-dot pool"></span>Pool (non attribué){!currentId && <span className="cp-check">{I.check({})}</span>}</button>
+        {(closers||[]).map(c=>(
+          <button key={c.id} className={'cp-item'+(currentId===c.id?' active':'')} onClick={()=>onPick(c.id)}>
+            <span className="cp-dot" style={{background:closerColor(c.id)}}></span>{c.name||'Closer'}
+            {currentId===c.id && <span className="cp-check">{I.check({})}</span>}
+          </button>
+        ))}
+      </div>
+    </>, document.body);
+}
+
 /* ============================================================= LEAD CARD */
-const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDragEnd, dragging, onCardDragOver, dropPos, onDelete}){
+const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDragEnd, dragging, onCardDragOver, dropPos, onDelete, ownerName, ownerColor, closers, onAssign, isAdmin, selecting, selected, onToggleSelect}){
   const col = lead.column;
+  const [menu,setMenu]=React.useState(null);
+  const canAssign = isAdmin && closers && closers.length>0;
+  const clickCard=(e)=>{ if(selecting){ onToggleSelect(lead.id, e.shiftKey); } else { onOpen(lead.id); } };
   let actionEl;
   if(col==='encaisser'){
     actionEl = <div className={'card-action '+(lead.paid?'paid':'money')}>{lead.paid?<I.check style={{width:13,height:13,strokeWidth:2.4}}/>:null}<span className="amt">{eur(lead.offer)}</span> {lead.paid?'payé':(lead.statut_paiement==='lien_envoye'?'lien envoyé — en attente':'à encaisser')}</div>;
@@ -2391,13 +2457,14 @@ const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDrag
     actionEl = <div className="card-action"><span className={`live ${lead.live?'':'idle'}`}></span>{lead.nextAction}</div>;
   }
   return (
-    <div className={`card ${dragging?'dragging':''} ${dropPos?('drop-'+dropPos):''}`} draggable
+    <div className={`card ${dragging?'dragging':''} ${dropPos?('drop-'+dropPos):''} ${selecting?'selecting':''} ${selected?'selected':''}`} draggable={!selecting}
          onDragStart={()=>onDragStart(lead.id)} onDragEnd={onDragEnd}
          onDragOver={e=>{ e.preventDefault(); e.stopPropagation();
            const r=e.currentTarget.getBoundingClientRect();
            onCardDragOver(lead.id, (e.clientY-r.top)<r.height/2?'before':'after', col); }}
-         onClick={()=>onOpen(lead.id)} tabIndex={0} role="button"
-         onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault(); onOpen(lead.id);}}}>
+         onClick={clickCard} tabIndex={0} role="button"
+         onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault(); clickCard(e);}}}>
+      {selecting && <span className="card-sel" title="Sélectionner (Maj+clic = plage)" onClick={e=>{ e.stopPropagation(); onToggleSelect(lead.id, e.shiftKey); }}>{I.check({})}</span>}
       <button className="card-del" title="Supprimer ce lead" aria-label="Supprimer ce lead" draggable={false}
               onClick={e=>{ e.stopPropagation(); onDelete(lead.id); }} onKeyDown={e=>e.stopPropagation()}>{I.trash({})}</button>
       <div className="card-top">
@@ -2407,19 +2474,29 @@ const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDrag
             {lead.noShow && <span className="tag tag-noshow">No-show</span>}
             {lead.saison && <span className="tag tag-saison" title={SEASON_LABEL[lead.saison]||lead.saison}>{lead.saison}</span>}
           </div>
-          <div className="card-sub"><Src source={lead.source}/></div>
+          <div className="card-sub"><Src source={lead.source}/>
+            {canAssign && (
+              <button className={'owner-badge'+(lead.owner?'':' pool')} draggable={false}
+                style={lead.owner?{background:(ownerColor||'#888')+'22', color:ownerColor||undefined, borderColor:(ownerColor||'#888')+'66'}:undefined}
+                title={lead.owner?('Closer : '+(ownerName||'?')+' · cliquer pour réassigner'):'Non attribué · cliquer pour assigner à un closer'}
+                onClick={e=>{ e.stopPropagation(); setMenu({x:e.clientX,y:e.clientY}); }}>
+                {lead.owner ? initialsFromName(ownerName) : <span className="ob-plus">+</span>}
+              </button>
+            )}
+          </div>
         </div>
       </div>
       {actionEl}
       {lead.calendiqRdv && new Date(lead.calendiqRdv.start_at).getTime()>=Date.now()-3600000 && (
         <div className="card-rdv">{I.agenda({})}<span>{cqDayLabel(lead.calendiqRdv.start_at)} · {cqTime(lead.calendiqRdv.start_at)}</span></div>
       )}
+      {menu && <CloserPicker closers={closers} currentId={lead.owner} anchor={menu} onClose={()=>setMenu(null)} onPick={(cid)=>{ onAssign(lead.id, cid); setMenu(null); }}/>}
     </div>
   );
 });
 
 /* ============================================================= KANBAN BOARD */
-function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDelete, view, setView, userId}){
+function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDelete, view, setView, userId, isAdmin, closers, onAssign}){
   const [dragId, setDragId] = useState(null);
   const [overCol, setOverCol] = useState(null);
   const [over, setOver] = useState(null); // {cardId, pos}
@@ -2428,6 +2505,31 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
   const [src, setSrc] = useState(()=>{ const s=persistedState('iqcrm_src','all'); return SRC_TABS.some(o=>o.k===s)?s:'all'; }); // filtre par source (persiste)
   const [srcOpen, setSrcOpen] = useState(false); // menu du sélecteur ouvert
   useEffect(()=>localStorage.setItem('iqcrm_src',JSON.stringify(src)),[src]);
+
+  // ---- attribution closer (admin) : filtre par owner + mode sélection multiple ----
+  const [ownerFilter, setOwnerFilter] = useState(()=>persistedState('iqcrm_owner','all')); // 'all' | 'pool' | closerId
+  useEffect(()=>localStorage.setItem('iqcrm_owner',JSON.stringify(ownerFilter)),[ownerFilter]);
+  const [selecting, setSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(()=>new Set());
+  const [bulkMenu, setBulkMenu] = useState(null); // {x,y} ancre du popover masse
+  const closerById = useMemo(()=>{ const m=new Map(); (closers||[]).forEach(c=>m.set(c.id,c)); return m; },[closers]);
+  // refs : sélection par plage (Maj+clic) + handler d'attribution STABLES -> ne cassent pas le React.memo des ~950 cartes
+  const colItemsRef = useRef({});       // colId -> leads affichés (ordre courant) pour calculer les plages
+  const lastSelRef = useRef(null);      // {colId, idx} dernier clic
+  const assignRef = useRef(onAssign); assignRef.current=onAssign;
+  const assignCard = useCallback((id,cid)=>{ if(assignRef.current) assignRef.current(id,cid); },[]);
+  const toggleSelect = useCallback((id, shift)=>{
+    const disp=colItemsRef.current||{}; let colId=null, idx=-1, arr=null;
+    for(const k in disp){ const a=disp[k]; const i=a.findIndex(x=>x.id===id); if(i!==-1){ colId=k; idx=i; arr=a; break; } }
+    setSelectedIds(prev=>{ const next=new Set(prev); const last=lastSelRef.current;
+      if(shift && last && last.colId===colId && arr){ const lo=Math.min(last.idx,idx), hi=Math.max(last.idx,idx); for(let i=lo;i<=hi;i++){ if(arr[i]) next.add(arr[i].id); } }
+      else { if(next.has(id)) next.delete(id); else next.add(id); }
+      return next; });
+    lastSelRef.current={colId,idx};
+  },[]);
+  const clearSel = ()=>setSelectedIds(new Set());
+  const exitSel = ()=>{ setSelecting(false); setSelectedIds(new Set()); lastSelRef.current=null; };
+  const doBulkAssign = (cid)=>{ Array.from(selectedIds).forEach(id=>assignRef.current && assignRef.current(id,cid)); setBulkMenu(null); clearSel(); };
 
   // compteurs par source — calculés sur la SEULE colonne « Lead à contacter »
   const srcCounts = useMemo(()=>{
@@ -2444,10 +2546,12 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
     return leads.filter(l=>{
       // vue « Mes leads » = lead qui m'appartient OU dont un RDV CalendIQ est calé avec moi (option B)
       if(view==='mine' && !(l.owner===userId || l._cqCloserId===userId)) return false;
+      // filtre par closer (admin) : 'pool' = non attribué, sinon un closer précis
+      if(ownerFilter!=='all'){ if(ownerFilter==='pool'){ if(l.owner) return false; } else if(l.owner!==ownerFilter) return false; }
       if(q && !hay.get(l).includes(q)) return false;
       return true;
     });
-  },[leads,hay,search,view,userId]);
+  },[leads,hay,search,view,userId,ownerFilter]);
 
   // handlers STABLES (useCallback) + regroupement mémoïsé : avec ~949 cartes, seules
   // les cartes réellement concernées (carte tirée / survolée) se re-rendent pendant un drag.
@@ -2484,6 +2588,12 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
     setDragId(null); setOverCol(null); setOver(null);
   };
 
+  // items réellement affichés par colonne (filtre source appliqué) — partagé entre le rendu et la sélection par plage
+  const displayedByCol={};
+  for(const c of COLUMNS){ const ci=byCol[c.id]||[]; displayedByCol[c.id]=(c.id==='contacter'&&src!=='all'&&!search.trim())?ci.filter(l=>l.source===src):ci; }
+  colItemsRef.current=displayedByCol;
+  const showOwnerTools = isAdmin && (closers||[]).length>0;
+
   return (
     <>
       <div className="screen-head">
@@ -2500,11 +2610,25 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
           </div>
         </div>
       </div>
+      {showOwnerTools && (
+        <div className="ownerbar">
+          <div className="ownerchips">
+            <button className={'ochip'+(ownerFilter==='all'?' on':'')} onClick={()=>setOwnerFilter('all')}>Tous</button>
+            {(closers||[]).map(c=>(
+              <button key={c.id} className={'ochip'+(ownerFilter===c.id?' on':'')} onClick={()=>setOwnerFilter(c.id)}>
+                <span className="ochip-dot" style={{background:closerColor(c.id)}}></span>{c.name||'Closer'}
+              </button>
+            ))}
+            <button className={'ochip'+(ownerFilter==='pool'?' on':'')} onClick={()=>setOwnerFilter('pool')}><span className="ochip-dot pool"></span>Pool</button>
+          </div>
+          <button className={'btn btn-soft selbtn'+(selecting?' on':'')} onClick={()=> selecting?exitSel():setSelecting(true)}>{selecting?'Annuler la sélection':'Sélectionner'}</button>
+        </div>
+      )}
       <div className="board-wrap">
         <div className="board">
           {COLUMNS.map(c=>{
             const colItems = byCol[c.id]||[];        // total colonne (compteur du titre — non filtré par source)
-            const items = (c.id==='contacter' && src!=='all' && !search.trim()) ? colItems.filter(l=>l.source===src) : colItems; // cartes affichées (filtre source ignoré pendant une recherche)
+            const items = displayedByCol[c.id];      // cartes affichées (filtre source ignoré pendant une recherche)
             return (
               <div key={c.id}
                 className={`col ${overCol===c.id?'drag-over':''}`}
@@ -2546,7 +2670,11 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
                       onOpen={openCard}
                       onDragStart={startDrag}
                       onDragEnd={endDrag}
-                      onDelete={delCard}/>
+                      onDelete={delCard}
+                      isAdmin={isAdmin} closers={closers} onAssign={assignCard}
+                      ownerName={l.owner?((closerById.get(l.owner)||{}).name||null):null}
+                      ownerColor={l.owner?closerColor(l.owner):null}
+                      selecting={selecting} selected={selectedIds.has(l.id)} onToggleSelect={toggleSelect}/>
                   ))}
                 </div>
               </div>
@@ -2554,6 +2682,15 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
           })}
         </div>
       </div>
+      {showOwnerTools && selecting && (
+        <div className="bulkbar">
+          <span className="bulkbar-n">{selectedIds.size} sélectionné{selectedIds.size>1?'s':''}</span>
+          <button className="btn btn-accent" disabled={!selectedIds.size} onClick={e=>setBulkMenu({x:e.clientX,y:e.clientY})}>Assigner à…</button>
+          <button className="btn btn-ghost" disabled={!selectedIds.size} onClick={clearSel}>Désélectionner</button>
+          <button className="btn btn-ghost" onClick={exitSel}>Quitter</button>
+        </div>
+      )}
+      {bulkMenu && <CloserPicker closers={closers} currentId={null} anchor={bulkMenu} onPick={doBulkAssign} onClose={()=>setBulkMenu(null)}/>}
     </>
   );
 }
@@ -4550,6 +4687,7 @@ function App({session, onLogout}){
       {/* WORK */}
       <main className="work">
         {screen==='leads' && <Board leads={leadsView} search={search} setSearch={setSearch} view={view||'mine'} setView={setView} userId={userId}
+            isAdmin={isAdmin} closers={closers} onAssign={reassignOwner}
             onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col,defSrc)=>setAddTarget({col,defSrc})} onDelete={deleteLead}/>}
         {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen(origin)} backLabel={SCREEN_LABEL[origin]||'Retour'} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
             onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} onManualRdv={setManualRdv} onManualRemoveRdv={removeManualRdv} onRdvOutcome={setRdvOutcome} onClearRdvOutcome={clearRdvOutcome} onCpfRdv={bookCpfRdv} isAdminView={isAdmin} closers={closers} rdvClosers={cqSources} onAssign={reassignOwner} calendiqReady={isAdmin ? cqSources.length>0 : !!(profile&&profile.calendiq_organizer_id)} calendiqOrganizer={profile&&profile.calendiq_organizer_id}/>}
