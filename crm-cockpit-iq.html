@@ -2104,6 +2104,20 @@ function fmtRdv(iso){ try{ const s=new Date(iso).toLocaleString('fr-FR',{weekday
 function fmtDay(d){ try{ return new Date(d).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}); }catch(e){ return ''; } }
 // normalise pour la recherche : minuscules + sans accents (é→e, ô→o…) -> recherche insensible accents/casse
 const deburr = (s)=> String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+// normalise un numéro de tél pour la recherche : ne garde que les chiffres et ramène les préfixes FR
+// (+33 / 0033 / 33 international / 0 national) à une forme canonique sans le préfixe.
+// => "+33 7 68 07 87 00", "07.68.07.87.00", "0033768078700", "0768078700" donnent TOUS "768078700"
+//    -> espaces/points/parenthèses et format +33 vs 07 n'empêchent plus le match (recherche partielle incluse).
+function normTel(s){
+  const raw=String(s==null?'':s);
+  let d=raw.replace(/\D/g,'');
+  if(!d) return '';
+  if(d.startsWith('0033')) d=d.slice(4);                                   // 0033… -> …
+  else if(raw.replace(/[^\d+]/g,'').startsWith('+33')) d=d.replace(/^33/,'');// +33… -> …
+  else if(d.startsWith('33') && d.length>=11) d=d.slice(2);                // 33XXXXXXXXX (intl sans +) -> …
+  if(d.startsWith('0')) d=d.slice(1);                                      // 0 national de tête -> …
+  return d;
+}
 // ISO -> valeur d'un <input type="datetime-local"> (heure locale) — pour pré-remplir la reprogrammation
 function toLocalInput(iso){ const d=new Date(iso); if(isNaN(d)) return ''; const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }
 
@@ -2506,6 +2520,10 @@ const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDrag
 
 /* ============================================================= KANBAN BOARD */
 function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDelete, view, setView, userId, isAdmin, closers, onAssign}){
+  // valeur de recherche différée : l'<input> reste contrôlé par `search` (frappe instantanée),
+  // mais le filtrage + re-render des ~950 cartes part de `dq` -> rendu interruptible (React 18 concurrent),
+  // donc la barre reste fluide et cliquable même quand la liste est lourde.
+  const dq = React.useDeferredValue(search);
   const [dragId, setDragId] = useState(null);
   const [overCol, setOverCol] = useState(null);
   const [over, setOver] = useState(null); // {cardId, pos}
@@ -2549,19 +2567,24 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
     return c;
   },[leads]);
 
-  // index de recherche pré-normalisé : 1 deburr par lead par changement de DATA (au lieu de ~950 par frappe) — mêmes 5 champs, mêmes résultats
+  // index de recherche pré-normalisé : 1 deburr par lead par changement de DATA (au lieu de ~950 par frappe) — mêmes 5 champs (texte)
   const hay = useMemo(()=>{ const m=new Map(); for(const l of leads) m.set(l, deburr(`${l.prenom} ${l.nom} ${l.metier} ${l.email} ${l.tel}`)); return m; },[leads]);
+  // index téléphone normalisé (préfixe/espaces neutralisés) : permet de chercher par +33… comme par 07…, avec ou sans espaces
+  const telIdx = useMemo(()=>{ const m=new Map(); for(const l of leads) m.set(l, normTel(l.tel)); return m; },[leads]);
   const visible = useMemo(()=>{
-    const q = search.trim() ? deburr(search.trim()) : '';
+    const raw = dq.trim();
+    const q = raw ? deburr(raw) : '';        // requête texte (nom/métier/email, insensible casse+accents)
+    const qtel = raw ? normTel(raw) : '';    // requête téléphone normalisée ('' si aucun chiffre)
     return leads.filter(l=>{
       // vue « Mes leads » = lead qui m'appartient OU dont un RDV CalendIQ est calé avec moi (option B)
       if(view==='mine' && !(l.owner===userId || l._cqCloserId===userId)) return false;
       // filtre par closer (admin) : 'pool' = non attribué, sinon un closer précis
       if(ownerFilter!=='all'){ if(ownerFilter==='pool'){ if(l.owner) return false; } else if(l.owner!==ownerFilter) return false; }
-      if(q && !hay.get(l).includes(q)) return false;
+      // match si le texte OU le téléphone normalisé correspond (téléphone : format/préfixe sans incidence)
+      if(q){ const okTxt=hay.get(l).includes(q); const okTel=qtel && telIdx.get(l).includes(qtel); if(!okTxt && !okTel) return false; }
       return true;
     });
-  },[leads,hay,search,view,userId,ownerFilter]);
+  },[leads,hay,telIdx,dq,view,userId,ownerFilter]);
 
   // handlers STABLES (useCallback) + regroupement mémoïsé : avec ~949 cartes, seules
   // les cartes réellement concernées (carte tirée / survolée) se re-rendent pendant un drag.
@@ -2600,7 +2623,7 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
 
   // items réellement affichés par colonne (filtre source appliqué) — partagé entre le rendu et la sélection par plage
   const displayedByCol={};
-  for(const c of COLUMNS){ const ci=byCol[c.id]||[]; displayedByCol[c.id]=(c.id==='contacter'&&src!=='all'&&!search.trim())?ci.filter(l=>l.source===src):ci; }
+  for(const c of COLUMNS){ const ci=byCol[c.id]||[]; displayedByCol[c.id]=(c.id==='contacter'&&src!=='all'&&!dq.trim())?ci.filter(l=>l.source===src):ci; }
   colItemsRef.current=displayedByCol;
   const showOwnerTools = isAdmin && (closers||[]).length>0;
 
@@ -4143,7 +4166,9 @@ function App({session, onLogout}){
   const selIdRef=useRef(null);
   // injecte/rafraîchit l'historique d'un lead dans le state (lazy)
   const loadTimelineFor=useCallback((id)=>{ if(!id) return; loadLeadTimeline(id).then(tl=>setLeads(ls=>ls.map(l=>l.id===id?{...l,timeline:tl}:l))).catch(()=>{}); },[]);
-  const reload=useCallback(()=>{ loadLeads().then(d=>{ setLeads(d); setLoaded(true); const sid=selIdRef.current; if(sid) loadTimelineFor(sid); }); },[loadTimelineFor]);
+  // chargement en masse marqué « transition » : le render des ~950 cartes devient interruptible
+  // -> l'entête (barre de recherche) reste cliquable dès l'ouverture, plus de gel des premières secondes.
+  const reload=useCallback(()=>{ loadLeads().then(d=>{ const sid=selIdRef.current; React.startTransition(()=>{ setLeads(d); setLoaded(true); }); if(sid) loadTimelineFor(sid); }); },[loadTimelineFor]);
   useEffect(()=>{ reload(); },[reload]);
   // pendant une synchro HubSpot (init / envoi groupé) on suspend le realtime puis on recharge 1 fois (anti-flicker)
   const syncBusyRef=useRef(false);
