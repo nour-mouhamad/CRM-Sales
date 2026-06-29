@@ -2527,6 +2527,8 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
   const [dragId, setDragId] = useState(null);
   const [overCol, setOverCol] = useState(null);
   const [over, setOver] = useState(null); // {cardId, pos}
+  // rendu progressif : nb max de cartes montées par colonne (monte par paliers — cf. effet plus bas)
+  const [cap, setCap] = useState(40);
   // ATC est désormais une COLONNE à part entière -> retiré du filtre source
   const SRC_TABS=[{k:'all',label:'Tous'}, ...LEAD_SOURCES]; // « Tous » + sources réelles (source de vérité unique)
   const [src, setSrc] = useState(()=>{ const s=persistedState('iqcrm_src','all'); return SRC_TABS.some(o=>o.k===s)?s:'all'; }); // filtre par source (persiste)
@@ -2625,6 +2627,27 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
   const displayedByCol={};
   for(const c of COLUMNS){ const ci=byCol[c.id]||[]; displayedByCol[c.id]=(c.id==='contacter'&&src!=='all'&&!dq.trim())?ci.filter(l=>l.source===src):ci; }
   colItemsRef.current=displayedByCol;
+
+  // ---- RENDU PROGRESSIF (anti-gel à l'ouverture) ----
+  // Le gel de quelques secondes au chargement = le COMMIT React synchrone de ~950 cartes d'un coup
+  // (~14 000 nœuds DOM). startTransition/useDeferredValue n'accélèrent QUE la phase render, jamais le
+  // commit : c'est lui qui bloque le thread, d'où « je clique, rien, puis 3 s plus tard tout apparaît
+  // avec ce que j'avais tapé ». Parade : ne committer qu'un petit lot par colonne au 1er paint (barre
+  // de recherche cliquable tout de suite), puis monter le reste par paliers sur les frames suivantes —
+  // le thread rend la main au navigateur entre chaque palier, clics + frappe restent fluides.
+  let maxRender=0; for(const c of COLUMNS){ const n=(displayedByCol[c.id]||[]).length; if(n>maxRender) maxRender=n; }
+  const hasData = leads.length>0;
+  // on repart d'un petit lot à chaque nouvelle vue lourde montée à neuf (chargement, ET effacement de
+  // la recherche qui re-monte les ~950 cartes). Pendant la frappe le résultat est petit -> 40 suffit,
+  // aucun palier visible. Une MAJ temps réel ne change pas dq -> cartes déjà montées, commit quasi nul.
+  useEffect(()=>{ setCap(40); },[dq]);
+  useEffect(()=>{
+    if(!hasData || cap>=maxRender) return;
+    let id2; // double rAF : on attend que le palier précédent ait peint avant de monter le suivant
+    const id1=requestAnimationFrame(()=>{ id2=requestAnimationFrame(()=>setCap(c=>c>=maxRender?c:c+120)); });
+    return ()=>{ cancelAnimationFrame(id1); if(id2) cancelAnimationFrame(id2); };
+  },[cap,hasData,maxRender]);
+
   const showOwnerTools = isAdmin && (closers||[]).length>0;
 
   return (
@@ -2710,7 +2733,7 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
                 ); })()}
                 <div className="col-body">
                   {items.length===0 && <div className="col-empty">—</div>}
-                  {items.map(l=>(
+                  {(cap<items.length?items.slice(0,cap):items).map(l=>(
                     <LeadCard key={l.id} lead={l} dragging={dragId===l.id}
                       dropPos={dragId && over && over.cardId===l.id && over.cardId!==dragId ? over.pos : null}
                       onCardDragOver={handleCardDragOver}
