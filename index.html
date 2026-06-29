@@ -257,6 +257,23 @@ input,textarea{font-family:inherit; color:inherit}
 .back:hover{background:var(--surface-2); color:var(--t1)}
 .back svg{width:15px; height:15px; stroke-width:2}
 .fiche-id h1{font-size:22px; display:flex; align-items:center; gap:9px}
+/* édition inline du nom (titre fiche) */
+.name-h1 .name-txt{cursor:text; border-radius:7px; padding:1px 3px; margin:-1px -3px; transition:background var(--speed)}
+.name-h1 .name-txt:hover{background:var(--surface-2)}
+.name-edit-btn{display:inline-flex; align-items:center; justify-content:center; background:none; border:none; padding:4px; cursor:pointer; color:var(--t4); border-radius:6px; opacity:0; transition:all var(--speed)}
+.name-h1:hover .name-edit-btn{opacity:1}
+.name-edit-btn:hover{color:var(--accent); background:var(--surface-2)}
+.name-edit-btn svg{width:15px; height:15px; color:inherit}
+.name-add{display:inline-flex; align-items:center; gap:8px; cursor:pointer; color:var(--t3); font-weight:700; font-size:18px; transition:color var(--speed)}
+.name-add:hover{color:var(--t1)}
+.name-add svg{width:16px; height:16px}
+.name-edit{display:inline-flex; align-items:center; gap:8px; flex-wrap:wrap}
+.name-inp{font-family:'Gabarito',system-ui,sans-serif; font-weight:800; font-size:22px; letter-spacing:-.02em; line-height:1.08; color:var(--t1); background:var(--surface-2); border:1px solid var(--b2); border-radius:9px; padding:3px 10px; min-width:5ch; max-width:42vw; transition:border-color var(--speed),background var(--speed)}
+.name-inp:focus{outline:none; border-color:var(--accent); background:var(--surface)}
+.name-inp::placeholder{color:var(--t4); font-weight:700}
+.name-save{display:inline-flex; align-items:center; justify-content:center; background:var(--accent); color:var(--on-accent); border:none; padding:6px; cursor:pointer; border-radius:8px; transition:background var(--speed)}
+.name-save:hover{background:var(--accent-h)}
+.name-save svg{width:16px; height:16px; stroke-width:2.4}
 .fiche-contacts{display:flex; align-items:center; gap:14px; margin-top:6px; flex-wrap:wrap}
 .contact{display:inline-flex; align-items:center; gap:7px; font-size:13px; color:var(--t2); font-weight:500}
 .contact svg{width:14px; height:14px; stroke-width:1.9; color:var(--t3)}
@@ -1716,6 +1733,8 @@ async function saveLead(id, uiPatch){
   if('owner' in uiPatch) m.owner_closer_id=uiPatch.owner;
   if('paid' in uiPatch) m.statut_paiement=uiPatch.paid?'paye':'aucun';
   if('statut_paiement' in uiPatch) m.statut_paiement=uiPatch.statut_paiement;
+  if('prenom' in uiPatch) m.prenom=(uiPatch.prenom&&String(uiPatch.prenom).trim())||null;
+  if('nom' in uiPatch) m.nom=(uiPatch.nom&&String(uiPatch.nom).trim())||null;
   if('email' in uiPatch) m.email=(uiPatch.email&&String(uiPatch.email).trim())||null;
   if('telephone' in uiPatch) m.telephone=(uiPatch.telephone&&String(uiPatch.telephone).trim())||null;
   if('metier' in uiPatch) m.metier=uiPatch.metier;
@@ -2096,6 +2115,48 @@ function CopyField({value, icon, copyVal, title, kind, onSave, addLabel}){
       </span>
       {onSave && <button type="button" className="copy-edit" onClick={start} title="Modifier" tabIndex={0}><I.pencil/></button>}
     </span>
+  );
+}
+
+// Édition inline du nom du lead (titre de la fiche) : prénom + nom, même idiome que CopyField
+// (clic crayon -> 2 champs, Entrée/blur = enregistre, Échap = annule). Persiste via onEditField -> saveLead.
+function NameEdit({ lead, onEditField }){
+  const [editing,setEditing]=useState(false);
+  const [p,setP]=useState('');
+  const [n,setN]=useState('');
+  const pRef=useRef(null);
+  const done=useRef(false);
+  const prenom=lead.prenom||'', nom=lead.nom||'';
+  const full=`${prenom} ${nom}`.trim();
+  useEffect(()=>{ if(editing&&pRef.current){ pRef.current.focus(); pRef.current.select(); } },[editing]);
+  const start=()=>{ done.current=false; setP(prenom); setN(nom); setEditing(true); };
+  const commit=()=>{ if(done.current) return; done.current=true; setEditing(false);
+    const np=p.trim(), nn=n.trim();
+    if(np!==prenom.trim()) onEditField('prenom','prenom', np||null);
+    if(nn!==nom.trim()) onEditField('nom','nom', nn||null);
+  };
+  const cancel=()=>{ if(done.current) return; done.current=true; setEditing(false); };
+  // ne committe au blur que si le focus quitte VRAIMENT le groupe (et pas en passant prénom -> nom)
+  const onBlur=(e)=>{ if(e.relatedTarget && e.currentTarget.contains(e.relatedTarget)) return; commit(); };
+  const onKey=(e)=>{ if(e.key==='Enter'){ e.preventDefault(); commit(); } else if(e.key==='Escape'){ e.preventDefault(); cancel(); } };
+  if(editing){
+    return (
+      <div className="name-edit" onBlur={onBlur}>
+        <input ref={pRef} className="name-inp" value={p} placeholder="Prénom" size={Math.max(p.length,6)} onChange={e=>setP(e.target.value)} onKeyDown={onKey}/>
+        <input className="name-inp" value={n} placeholder="Nom" size={Math.max(n.length,5)} onChange={e=>setN(e.target.value)} onKeyDown={onKey}/>
+        <button type="button" className="name-save" title="Enregistrer (Entrée)" onClick={commit}>{I.check({})}</button>
+      </div>
+    );
+  }
+  return (
+    <h1 className="name-h1">
+      {full
+        ? <><span className="name-txt" onClick={start} tabIndex={0} role="button" title="Modifier le nom"
+              onKeyDown={e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); start(); } }}>{prenom} {nom}</span>
+           <button type="button" className="name-edit-btn" onClick={start} title="Modifier le nom" tabIndex={0}><I.pencil/></button></>
+        : <span className="name-add" onClick={start} tabIndex={0} role="button" title="Nommer ce lead"
+              onKeyDown={e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); start(); } }}><I.pencil/> Nommer ce lead</span>}
+    </h1>
   );
 }
 
@@ -2822,7 +2883,7 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
       <div className="fiche-head">
         <button className="back" onClick={onBack}><I.back/>{backLabel||'Mes leads'}</button>
         <div className="fiche-id">
-          <h1>{lead.prenom} {lead.nom}</h1>
+          <NameEdit lead={lead} onEditField={onEditField}/>
           <div className="fiche-meta">
             {lead.date_creation && <span className="fiche-date"><I.agenda style={{width:13,height:13}}/>Lead créé le {fmtDay(lead.date_creation)}</span>}
             <CopyField value={lead.tel?fmtPhone(lead.tel):''} copyVal={lead.tel||''} icon={I.phone} title="Copier le numéro" kind="tel" addLabel="Ajouter un téléphone" onSave={v=>onEditField('tel','telephone', v)}/>
