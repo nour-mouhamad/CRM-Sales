@@ -211,13 +211,70 @@ input,textarea{font-family:inherit; color:inherit}
   transition:background var(--speed), border-color var(--speed), box-shadow var(--speed);
 }
 .col.drag-over{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-tint); background:var(--accent-tint)}
-.col-head{display:flex; align-items:center; gap:8px; padding:13px 14px 10px}
-.col-dot{width:8px; height:8px; border-radius:99px; background:var(--b3)}
-.col-head h3{font-size:13px; font-weight:700; letter-spacing:-.01em}
-.col-count{font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; color:var(--t3); background:var(--surface); border:1px solid var(--b1); border-radius:6px; padding:1px 7px}
+.col-head{position:relative; display:flex; align-items:center; gap:8px; padding:13px 14px 10px}
+.col-dot{width:8px; height:8px; border-radius:99px; background:var(--b3); flex:none}
+.col-head h3,.col-name{font-size:13px; font-weight:700; letter-spacing:-.01em; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.col-name.editable{cursor:text; border-radius:6px; padding:1px 4px; margin:-1px -4px; transition:background var(--speed)}
+.col-name.editable:hover{background:var(--surface)}
+.col-name-inp{font-family:'Gabarito',system-ui,sans-serif; font-size:13px; font-weight:700; letter-spacing:-.01em; color:var(--t1); background:var(--surface); border:1px solid var(--accent); border-radius:7px; padding:2px 7px; width:142px; outline:none}
+.col-name-inp.ghost{width:170px}
+.col-count{font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; color:var(--t3); background:var(--surface); border:1px solid var(--b1); border-radius:6px; padding:1px 7px; flex:none}
+.col-kebab{margin-left:auto; width:26px; height:26px; border-radius:7px; display:grid; place-items:center; color:var(--t4); background:none; border:none; cursor:pointer; opacity:0; transition:all var(--speed)}
+.col:hover .col-kebab{opacity:1}
+.col-kebab:hover{background:var(--surface); color:var(--t1)}
 .col-add{margin-left:auto; width:26px; height:26px; border-radius:7px; display:grid; place-items:center; color:var(--t3)}
 .col-add:hover{background:var(--surface); color:var(--t1)}
 .col-add svg{width:15px; height:15px; stroke-width:2}
+/* menu ⋯ de colonne (admin) */
+.col-menu-ov{position:fixed; inset:0; z-index:40}
+.col-menu{position:absolute; top:40px; right:8px; z-index:41; width:218px; background:var(--surface); border:1px solid var(--b1); border-radius:12px; box-shadow:var(--sh-pop); padding:7px}
+.col-menu-sw{display:flex; gap:6px; padding:3px 4px 8px; border-bottom:1px solid var(--b1); margin-bottom:4px}
+.col-menu-sw .sw{width:22px; height:22px; border-radius:7px; cursor:pointer; border:2px solid transparent; transition:transform var(--speed)}
+.col-menu-sw .sw:hover{transform:scale(1.12)}
+.col-menu-sw .sw.on{border-color:var(--t1)}
+.col-menu-item{display:flex; align-items:center; gap:9px; width:100%; padding:8px 9px; border-radius:8px; font-size:13px; font-weight:600; color:var(--t1); background:none; border:none; cursor:pointer; text-align:left; transition:background var(--speed)}
+.col-menu-item:hover:not(:disabled){background:var(--surface-2)}
+.col-menu-item:disabled{opacity:.4; cursor:default}
+.col-menu-item svg{width:15px; height:15px; color:var(--t3); flex:none}
+.col-menu-item .cm-ar{width:15px; text-align:center; color:var(--t3); font-weight:800; flex:none}
+.col-menu-item.danger{color:var(--danger)} .col-menu-item.danger svg{color:var(--danger)}
+.col-menu-item.locked{color:var(--t3); cursor:default}
+.col-menu-del{padding:6px 4px; display:flex; flex-direction:column; gap:8px}
+.cm-del-tx{font-size:12.5px; font-weight:600; color:var(--t2)}
+.cm-del-sel{width:100%; padding:7px 9px; border-radius:8px; border:1px solid var(--b2); background:var(--surface-2); color:var(--t1); font-size:13px; font-weight:600}
+.cm-del-foot{display:flex; gap:7px; justify-content:flex-end}
+.cm-del-foot .btn{padding:6px 12px; font-size:12.5px}
+/* modale « Gérer les colonnes » */
+.colmgr{width:560px; max-width:94vw; max-height:86vh; display:flex; flex-direction:column; background:var(--surface); border:1px solid var(--b1); border-radius:18px; box-shadow:var(--sh-pop); overflow:hidden}
+.colmgr-head{display:flex; align-items:center; justify-content:space-between; padding:18px 20px 14px; border-bottom:1px solid var(--b1)}
+.colmgr-head h3{font-size:18px; font-weight:800; margin-top:2px}
+.colmgr-body{flex:1; overflow-y:auto; padding:12px 14px; display:flex; flex-direction:column; gap:6px}
+.cm-row{display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:10px; border:1px solid transparent; background:var(--surface-2); transition:border-color var(--speed),opacity var(--speed)}
+.cm-row.over{border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-tint)}
+.cm-row.dragging{opacity:.4}
+.cm-grip{cursor:grab; color:var(--t4); display:flex; flex:none} .cm-grip:active{cursor:grabbing}
+.cm-sw-wrap{position:relative; flex:none}
+.cm-sw{width:20px; height:20px; border-radius:6px; border:2px solid var(--surface); box-shadow:0 0 0 1px var(--b2); cursor:pointer}
+.cm-sw-pop{position:absolute; top:27px; left:0; z-index:62; display:flex; gap:6px; padding:8px; background:var(--surface); border:1px solid var(--b1); border-radius:10px; box-shadow:var(--sh-pop)}
+.cm-sw-pop .sw{width:22px; height:22px; border-radius:7px; cursor:pointer; border:2px solid transparent}
+.cm-sw-pop .sw.on{border-color:var(--t1)}
+.cm-label{flex:1; min-width:0; font-family:'Gabarito',system-ui,sans-serif; font-size:14px; font-weight:700; color:var(--t1); background:none; border:1px solid transparent; border-radius:7px; padding:5px 8px; transition:all var(--speed)}
+.cm-label:hover{border-color:var(--b1)} .cm-label:focus{outline:none; border-color:var(--accent); background:var(--surface)}
+.cm-count{font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; color:var(--t3); background:var(--surface); border:1px solid var(--b1); border-radius:6px; padding:2px 8px; flex:none}
+.cm-lock{color:var(--t4); display:flex; flex:none; padding:5px}
+.cm-del{color:var(--t4); background:none; border:none; cursor:pointer; padding:5px; border-radius:7px; flex:none; transition:all var(--speed)}
+.cm-del:hover{color:var(--danger); background:var(--danger-tint)} .cm-del svg{width:15px; height:15px}
+.colmgr-add{display:flex; gap:9px; padding:14px 16px; border-top:1px solid var(--b1)}
+.cm-newinp{flex:1; font-size:14px; font-weight:600; color:var(--t1); background:var(--surface-2); border:1px solid var(--b2); border-radius:9px; padding:9px 12px; outline:none}
+.cm-newinp:focus{border-color:var(--accent)}
+.cm-confirm{width:400px; max-width:92vw; background:var(--surface); border:1px solid var(--b1); border-radius:16px; box-shadow:var(--sh-pop); padding:22px}
+.cm-confirm h4{font-size:17px; font-weight:800; margin:0 0 5px}
+.cm-confirm p{color:var(--t2); font-size:13px; margin:0 0 14px}
+/* tuile fantôme « + Ajouter une colonne » */
+.col-ghost{width:230px; background:transparent; border:1.5px dashed var(--b2); box-shadow:none; align-items:center; justify-content:center; padding:14px 10px}
+.col-ghost-btn{display:inline-flex; align-items:center; gap:7px; color:var(--t3); font-weight:700; font-size:13px; padding:9px 13px; border-radius:9px; background:none; border:none; cursor:pointer; transition:all var(--speed)}
+.col-ghost-btn:hover{color:var(--t1); background:var(--surface-2)}
+.col-ghost-btn svg{width:15px; height:15px; stroke-width:2}
 .col-body{flex:1; min-height:0; overflow-y:auto; padding:4px 10px 12px; display:flex; flex-direction:column; gap:9px}
 .col-empty{margin:6px 4px; padding:18px 12px; border:1px dashed var(--b2); border-radius:10px; text-align:center; color:var(--t4); font-size:12px; font-weight:500}
 
@@ -1659,7 +1716,7 @@ function cqGroupByDay(list){
 }
 
 // pipeline : la DB stocke directement la clé de colonne (fallback null -> 'contacter')
-const COL_DB2UI = c => c || 'contacter';
+const COL_DB2UI = c => { const v = c || 'contacter'; return colExists(v) ? v : 'contacter'; }; // id orphelin/legacy -> colonne réelle (jamais de carte qui disparaît)
 const COL_UI2DB = c => c;
 
 function fmtWhen(ts){
@@ -1861,21 +1918,33 @@ const LEAD_SOURCES = [
 
 // Colonnes = miroir du pipe HubSpot IQ Project (les stages d'entrée Lead gen/Webinaire/MFF
 // sont regroupés dans « Lead à contacter », distingués par le filtre source).
-const COLUMNS = [
-  {id:'contacter', label:'Lead à contacter'},
-  {id:'perso', label:'Contacts perso 👥'},
-  {id:'atc', label:'ATC ☎️'},
-  {id:'rdv1', label:'1er RDV pris 🗓️'},
-  {id:'contacte', label:'Lead contacté 🗣️'},
-  {id:'qualifie', label:'Lead qualifié 🔍'},
-  {id:'closing', label:'Closing 💸'},
-  {id:'encaisser', label:'À encaisser 💸'},
-  {id:'won', label:'Closed Won ✅'},
-  {id:'lost', label:'Lost ❌'},
-  {id:'desabonne', label:'Désabonné ❌'},
-];
-const COL_LABEL = Object.fromEntries(COLUMNS.map(c=>[c.id,c.label]));
-const COL_COLOR = {contacter:'var(--accent)', perso:'var(--cold)', atc:'var(--cold)', rdv1:'var(--warm)', contacte:'var(--warm)', qualifie:'var(--warm)', closing:'var(--accent)', encaisser:'var(--accent)', won:'var(--ok)', lost:'var(--t4)', desabonne:'var(--t4)'};
+// Colonnes par défaut = colonnes « SYSTÈME » : ids GELÉS (logique métier attachée : source filter, paiement,
+// won/lost, auto-claim rdv1, terminaux…). Sert aussi de SECOURS si la table partagée crm_columns est vide/indispo
+// -> le board affiche toujours ces 11 colonnes, ne casse jamais. label/couleur/ordre éditables ; id jamais.
+const DEFAULT_COLUMNS = [
+  {id:'contacter', label:'Lead à contacter', color:'var(--accent)'},
+  {id:'perso',     label:'Contacts perso 👥', color:'var(--cold)'},
+  {id:'atc',       label:'ATC ☎️', color:'var(--cold)'},
+  {id:'rdv1',      label:'1er RDV pris 🗓️', color:'var(--warm)'},
+  {id:'contacte',  label:'Lead contacté 🗣️', color:'var(--warm)'},
+  {id:'qualifie',  label:'Lead qualifié 🔍', color:'var(--warm)'},
+  {id:'closing',   label:'Closing 💸', color:'var(--accent)'},
+  {id:'encaisser', label:'À encaisser 💸', color:'var(--accent)'},
+  {id:'won',       label:'Closed Won ✅', color:'var(--ok)'},
+  {id:'lost',      label:'Lost ❌', color:'var(--t4)'},
+  {id:'desabonne', label:'Désabonné ❌', color:'var(--t4)'},
+].map((c,i)=>({...c, is_system:true, position:i}));
+const SYSTEM_IDS = new Set(DEFAULT_COLUMNS.map(c=>c.id));
+// ordre métier GELÉ des colonnes système (≠ position visuelle) : avancement / anti-rétrogradation des RDV
+const STAGE_ORDER_BASE = {contacter:0, perso:0, atc:1, rdv1:2, contacte:3, qualifie:4, closing:5, encaisser:6, won:7, lost:7, desabonne:7};
+// === MIROIRS LIVE : réassignés par applyColumnConfig() depuis la config partagée crm_columns (cf. plus bas). ===
+// Tout le code lit ces bindings PAR NOM au moment de l'appel -> les rendre `let` réassignables = config dynamique
+// sans toucher aux ~25 lecteurs. Valeurs initiales = défauts (board fonctionnel dès le parse, avant tout fetch).
+let COLUMNS = DEFAULT_COLUMNS.map(c=>({id:c.id,label:c.label}));
+let COL_LABEL = Object.fromEntries(COLUMNS.map(c=>[c.id,c.label]));
+let COL_COLOR = Object.fromEntries(DEFAULT_COLUMNS.map(c=>[c.id,c.color]));
+// palette colonne (mappée sur les tokens CSS du thème -> reste on-brand, honore le contrat var() de COL_COLOR)
+const COL_PALETTE = ['var(--accent)','var(--warm)','var(--cold)','var(--ok)','var(--danger)','var(--t3)','var(--t4)'];
 // SAISONS / cohortes bootcamp (1 cohorte = 1 mois). Code = vérité métier (S16 = Juin 2026). Label court pour les sélecteurs/chips.
 const SEASONS = [
   {code:'S18', label:'S18 — Août 26'},
@@ -1892,7 +1961,8 @@ const SEASONS = [
 ];
 const SEASON_LABEL = Object.fromEntries(SEASONS.map(s=>[s.code,s.label]));
 // libellé d'action par défaut quand un lead change de colonne
-const NEXT_BY_COL = {contacter:'À contacter', perso:'Contact perso à traiter', atc:'Sans réponse — à relancer', rdv1:'R1 à faire', contacte:'À qualifier', qualifie:'À closer', closing:'Closing en cours', encaisser:'Paiement à encaisser', won:'Gagné', lost:'Perdu', desabonne:'Désabonné'};
+let NEXT_BY_COL = {contacter:'À contacter', perso:'Contact perso à traiter', atc:'Sans réponse — à relancer', rdv1:'R1 à faire', contacte:'À qualifier', qualifie:'À closer', closing:'Closing en cours', encaisser:'Paiement à encaisser', won:'Gagné', lost:'Perdu', desabonne:'Désabonné'};
+const DEFAULT_NEXT = {...NEXT_BY_COL}; // libellés d'action par défaut GELÉS des colonnes système
 // une action « réelle » = décidée (manuelle ou recap), PAS le libellé d'étape par défaut. Sert à exclure le bruit de la page « À faire » et de la fiche.
 function isRealAction(nextAction, col){ if(!nextAction) return false; const s=String(nextAction).trim(); return s!=='' && s!=='À contacter' && s!==(NEXT_BY_COL[col]||''); }
 
@@ -1917,13 +1987,52 @@ const inferCallKind = (lead, callType) => {
 // Avancée d'étape automatique quand un RDV est fixé : SEUL le R1 → « 1er RDV pris ».
 // Le R2 (et au-delà) NE change PAS l'étape (décision Nour-Mouhamad). Garde anti-rétrogradation : on n'avance
 // jamais un lead déjà plus loin (qualifié/closing/à encaisser/gagné/perdu/désabonné).
-const STAGE_ORDER = {contacter:0, perso:0, atc:1, rdv1:2, contacte:3, qualifie:4, closing:5, encaisser:6, won:7, lost:7, desabonne:7};
-const RDV_STAGE_TERMINAL = {closing:1, encaisser:1, won:1, lost:1, desabonne:1};
+let STAGE_ORDER = {contacter:0, perso:0, atc:1, rdv1:2, contacte:3, qualifie:4, closing:5, encaisser:6, won:7, lost:7, desabonne:7};
+const RDV_STAGE_TERMINAL = {closing:1, encaisser:1, won:1, lost:1, desabonne:1}; // GELÉ (ids système immuables)
 function rdvTargetStage(type, cur){
   if(type!=='r1') return null;                              // R2/R3 : on ne touche pas à l'étape
   if(RDV_STAGE_TERMINAL[cur]) return null;                  // lead déjà plus avancé → intact
   return STAGE_ORDER.rdv1 > (STAGE_ORDER[cur]||0) ? 'rdv1' : null; // seulement si ça AVANCE
 }
+
+// ============================================================= COLONNES DYNAMIQUES (config partagée crm_columns)
+// id présent dans la config courante ? (utilisé par COL_DB2UI pour router les ids orphelins)
+function colExists(id){ return COLUMNS.some(c=>c.id===id); }
+// rangée(s) DB -> tableau ordonné normalisé [{id,label,color,is_system,position}]. Défensif : ne casse jamais.
+function normalize(rows){
+  let arr;
+  try{
+    if(!rows || !rows.length) arr = DEFAULT_COLUMNS.map(c=>({...c}));
+    else arr = rows.map(r=>({
+      id:String(r.id),
+      label:(r.label==null||String(r.label).trim()==='')?String(r.id):String(r.label),
+      color:r.color||'var(--t3)',
+      is_system: SYSTEM_IDS.has(String(r.id)) || !!r.is_system,
+      position: Number(r.position)||0,
+    }));
+  }catch(e){ arr = DEFAULT_COLUMNS.map(c=>({...c})); }
+  // ré-injecte toute colonne SYSTÈME manquante (une DB corrompue/éditée à la main ne peut jamais retirer une logique métier)
+  const have = new Set(arr.map(c=>c.id));
+  for(const d of DEFAULT_COLUMNS){ if(!have.has(d.id)) arr.push({...d}); }
+  const defOrder = Object.fromEntries(DEFAULT_COLUMNS.map((c,i)=>[c.id,i]));
+  arr.sort((a,b)=> (a.position-b.position) || ((defOrder[a.id]??999)-(defOrder[b.id]??999)) );
+  return arr;
+}
+// réécrit TOUS les miroirs live à partir d'une config normalisée. Pur + idempotent (sûr en StrictMode).
+function applyColumnConfig(cols){
+  COLUMNS     = cols.map(c=>({id:c.id,label:c.label}));
+  COL_LABEL   = Object.fromEntries(cols.map(c=>[c.id, c.label]));
+  COL_COLOR   = Object.fromEntries(cols.map(c=>[c.id, c.color || 'var(--t3)']));            // défaut -> jamais undefined
+  NEXT_BY_COL = Object.fromEntries(cols.map(c=>[c.id, DEFAULT_NEXT[c.id] || c.label || 'À traiter']));
+  // STAGE_ORDER : les ids système gardent leur ordre métier GELÉ ; une colonne user prend l'ordre (système à sa gauche)+0.5
+  const so = {...STAGE_ORDER_BASE}; let lastSys = 0;
+  for(const c of cols){
+    if(SYSTEM_IDS.has(c.id)){ lastSys = STAGE_ORDER_BASE[c.id]; so[c.id] = lastSys; }
+    else { so[c.id] = lastSys + 0.5; }
+  }
+  STAGE_ORDER = so;
+}
+applyColumnConfig(normalize(null)); // initialise les miroirs au parse (= DEFAULT_COLUMNS) : board OK même sans backend
 
 // ===== RÉSULTAT D'UN RDV (présence) — fait structuré, stocké chez nous (CalendIQ = lecture seule) =====
 // présent = le prospect était là (« RDV terminé ») · no-show = absent. C'est la DONNÉE qui pilote l'UI.
@@ -2524,7 +2633,7 @@ function CloserPicker({ closers, currentId, anchor, onPick, onClose }){
 }
 
 /* ============================================================= LEAD CARD */
-const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDragEnd, dragging, onCardDragOver, dropPos, onDelete, ownerName, ownerColor, closers, onAssign, isAdmin, selecting, selected, onToggleSelect}){
+const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDragEnd, dragging, onCardDragOver, dropPos, onDelete, ownerName, ownerColor, closers, onAssign, isAdmin, selecting, selected, onToggleSelect, colVer}){
   const col = lead.column;
   const [menu,setMenu]=React.useState(null);
   const canAssign = isAdmin && closers && closers.length>0;
@@ -2580,7 +2689,81 @@ const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDrag
 });
 
 /* ============================================================= KANBAN BOARD */
-function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDelete, view, setView, userId, isAdmin, closers, onAssign}){
+// En-tête de colonne kanban. Lecture seule pour les closers ; pour un admin : pastille couleur cliquable,
+// titre renommable en place, menu ⋯ (couleur / renommer / déplacer ◄ ► / supprimer avec garde anti-orphelins).
+function ColHead({ col, color, isSystem, count, isAdmin, onAddLead, onRename, onRecolor, onMove, onDelete, otherCols, canLeft, canRight }){
+  const [editing,setEditing]=useState(false);
+  const [val,setVal]=useState('');
+  const [menu,setMenu]=useState(false);
+  const [del,setDel]=useState(false);
+  const [tgt,setTgt]=useState('');
+  const inp=useRef(null);
+  const origRef=useRef(''); // label au DÉBUT de l'édition -> évite d'écraser un renommage concurrent (autre admin, temps réel)
+  useEffect(()=>{ if(editing&&inp.current){ inp.current.focus(); inp.current.select(); } },[editing]);
+  const start=()=>{ if(!isAdmin) return; origRef.current=col.label; setVal(col.label); setMenu(false); setEditing(true); };
+  const commit=()=>{ setEditing(false); const v=val.trim(); if(v && v!==origRef.current) onRename(col.id,v); };
+  return (
+    <div className="col-head">
+      <span className="col-dot" style={{background:color}}></span>
+      {editing
+        ? <input ref={inp} className="col-name-inp" value={val} onChange={e=>setVal(e.target.value)}
+            onKeyDown={e=>{ if(e.key==='Enter'){e.preventDefault();commit();} else if(e.key==='Escape'){e.preventDefault();setEditing(false);} }} onBlur={commit}/>
+        : <h3 className={'col-name'+(isAdmin?' editable':'')} onClick={start} title={isAdmin?'Renommer la colonne':undefined}>{col.label}</h3>}
+      <span className="col-count">{count}</span>
+      {isAdmin && <button className="col-kebab" title="Options de colonne" onClick={()=>setMenu(m=>!m)}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg></button>}
+      <button className="col-add" title="Ajouter un lead" aria-label="Ajouter un lead" onClick={onAddLead}><I.plus/></button>
+      {isAdmin && menu && (<>
+        <div className="col-menu-ov" onClick={()=>{setMenu(false);setDel(false);}}></div>
+        <div className="col-menu">
+          {!del ? (<>
+            <div className="col-menu-sw">{COL_PALETTE.map(c=>(
+              <button key={c} className={'sw'+(color===c?' on':'')} style={{background:c}} title="Couleur" onClick={()=>onRecolor(col.id,c)}/>
+            ))}</div>
+            <button className="col-menu-item" onClick={start}>{I.pencil({})}Renommer</button>
+            <button className="col-menu-item" disabled={!canLeft} onClick={()=>{ onMove(col.id,-1); setMenu(false); }}><span className="cm-ar">←</span>Déplacer à gauche</button>
+            <button className="col-menu-item" disabled={!canRight} onClick={()=>{ onMove(col.id,1); setMenu(false); }}><span className="cm-ar">→</span>Déplacer à droite</button>
+            {isSystem
+              ? <div className="col-menu-item locked" title="Colonne système (logique métier attachée) — non supprimable"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Colonne système</div>
+              : <button className="col-menu-item danger" onClick={()=>{ if(count>0){ setTgt(''); setDel(true); } else { onDelete(col.id,null); setMenu(false); } }}>{I.trash({})}Supprimer</button>}
+          </>) : (
+            <div className="col-menu-del">
+              <div className="cm-del-tx">Déplacer {count} lead{count>1?'s':''} vers :</div>
+              <select className="cm-del-sel" value={tgt} onChange={e=>setTgt(e.target.value)}>
+                <option value="">— choisir —</option>
+                {otherCols.map(o=><option key={o.id} value={o.id}>{o.label}</option>)}
+              </select>
+              <div className="cm-del-foot">
+                <button className="btn btn-ghost" onClick={()=>setDel(false)}>Annuler</button>
+                <button className="btn btn-accent" disabled={!tgt} onClick={()=>{ onDelete(col.id,tgt); setMenu(false); setDel(false); }}>Supprimer</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </>)}
+    </div>
+  );
+}
+// tuile fantôme « + Ajouter une colonne » en bout de board (admin) — style Notion
+function AddColTile({ onAdd }){
+  const [open,setOpen]=useState(false);
+  const [val,setVal]=useState('');
+  const inp=useRef(null);
+  useEffect(()=>{ if(open&&inp.current) inp.current.focus(); },[open]);
+  const save=()=>{ const v=val.trim(); if(v) onAdd(v); setVal(''); setOpen(false); };
+  return (
+    <div className="col col-ghost">
+      {open
+        ? <input ref={inp} className="col-name-inp ghost" placeholder="Nom de la colonne" value={val} onChange={e=>setVal(e.target.value)}
+            onKeyDown={e=>{ if(e.key==='Enter'){e.preventDefault();save();} else if(e.key==='Escape'){e.preventDefault();setOpen(false);setVal('');} }} onBlur={save}/>
+        : <button className="col-ghost-btn" onClick={()=>setOpen(true)}><I.plus/> Ajouter une colonne</button>}
+    </div>
+  );
+}
+
+function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDelete, view, setView, userId, isAdmin, closers, onAssign, colVer, renameCol, recolorCol, reorderCols, addCol, deleteCol}){
+  // déplacement d'une colonne d'un cran (◄/►) -> recalcule l'ordre courant et persiste
+  const moveCol=useCallback((id,dir)=>{ const ids=COLUMNS.map(c=>c.id); const i=ids.indexOf(id), j=i+dir; if(i<0||j<0||j>=ids.length) return; const arr=ids.slice(); arr[i]=ids[j]; arr[j]=ids[i]; reorderCols&&reorderCols(arr); },[reorderCols]);
   // valeur de recherche différée : l'<input> reste contrôlé par `search` (frappe instantanée),
   // mais le filtrage + re-render des ~950 cartes part de `dq` -> rendu interruptible (React 18 concurrent),
   // donc la barre reste fluide et cliquable même quand la liste est lourde.
@@ -2766,12 +2949,11 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
                 onDragOver={e=>{e.preventDefault(); if(overCol!==c.id) setOverCol(c.id); setOver(null);}}
                 onDragLeave={e=>{ if(e.currentTarget===e.target){ setOverCol(null); setOver(null); } }}
                 onDrop={e=>dropOn(e,c.id)}>
-                <div className="col-head">
-                  <span className="col-dot"></span>
-                  <h3>{c.label}</h3>
-                  <span className="col-count">{colItems.length}</span>
-                  <button className="col-add" title="Ajouter un lead" aria-label="Ajouter un lead" onClick={()=>onAddLead(c.id, (c.id==='contacter'&&src!=='all')?src:null)}><I.plus/></button>
-                </div>
+                <ColHead col={c} color={COL_COLOR[c.id]} isSystem={SYSTEM_IDS.has(c.id)} count={colItems.length} isAdmin={isAdmin}
+                  onAddLead={()=>onAddLead(c.id, (c.id==='contacter'&&src!=='all')?src:null)}
+                  onRename={renameCol} onRecolor={recolorCol} onMove={moveCol} onDelete={deleteCol}
+                  otherCols={COLUMNS.filter(x=>x.id!==c.id)}
+                  canLeft={COLUMNS.findIndex(x=>x.id===c.id)>0} canRight={COLUMNS.findIndex(x=>x.id===c.id)<COLUMNS.length-1}/>
                 {c.id==='contacter' && (()=>{ const cur=SRC_TABS.find(o=>o.k===src)||SRC_TABS[0]; return (
                   <div className="srcdd">
                     <button className={`srcdd-btn ${srcOpen?'open':''}`} onClick={()=>setSrcOpen(o=>!o)}>
@@ -2805,12 +2987,13 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
                       isAdmin={isAdmin} closers={closers} onAssign={assignCard}
                       ownerName={l.owner?((closerById.get(l.owner)||{}).name||null):null}
                       ownerColor={l.owner?closerColor(l.owner):null}
-                      selecting={selecting} selected={selectedIds.has(l.id)} onToggleSelect={toggleSelect}/>
+                      selecting={selecting} selected={selectedIds.has(l.id)} onToggleSelect={toggleSelect} colVer={colVer}/>
                   ))}
                 </div>
               </div>
             );
           })}
+          {isAdmin && addCol && <AddColTile onAdd={addCol}/>}
         </div>
       </div>
       {showOwnerTools && selecting && (
@@ -3754,7 +3937,7 @@ function Agenda({ meetings, sources, loading, error, isAdmin, profile, onConnect
 }
 
 /* ============================================================= SETTINGS */
-function Settings({theme,setTheme,density,setDensity,onSimulate,onReset,onClose}){
+function Settings({theme,setTheme,density,setDensity,onSimulate,onReset,onClose,isAdmin,onManageColumns}){
   return (
     <div className="side" onClick={e=>e.stopPropagation()}>
       <div className="side-head"><I.gear style={{width:18,height:18,color:'var(--t2)'}}/><h3>Réglages</h3><button className="x-btn" style={{position:'static'}} onClick={onClose}><I.x/></button></div>
@@ -3774,6 +3957,12 @@ function Settings({theme,setTheme,density,setDensity,onSimulate,onReset,onClose}
             <button className={density==='cozy'?'on':''} onClick={()=>setDensity('cozy')}>Aéré</button>
           </div>
         </div>
+        {isAdmin && (
+          <div className="set-row">
+            <div className="lab"><b>Pipeline</b><span>Renommer, recolorer, réordonner, ajouter des colonnes</span></div>
+            <button className="btn btn-soft" onClick={onManageColumns}><I.leads/>Gérer les colonnes</button>
+          </div>
+        )}
         <div className="set-row">
           <div className="lab"><b>Course au lead</b><span>Simuler un nouveau lead entrant</span></div>
           <button className="btn btn-soft" onClick={onSimulate}><I.bell/>Simuler</button>
@@ -3784,6 +3973,90 @@ function Settings({theme,setTheme,density,setDensity,onSimulate,onReset,onClose}
         </div>
       </div>
     </div>
+  );
+}
+
+/* ============================================================= GESTION DES COLONNES (admin) */
+// pastille de couleur cliquable -> palette (réutilisée dans le manager)
+function ColorSwatch({ color, onPick }){
+  const [open,setOpen]=useState(false);
+  return (
+    <span className="cm-sw-wrap">
+      <button className="cm-sw" style={{background:color}} title="Couleur" onClick={()=>setOpen(o=>!o)}></button>
+      {open && (<>
+        <div className="col-menu-ov" onClick={()=>setOpen(false)}></div>
+        <div className="cm-sw-pop">{COL_PALETTE.map(c=>(
+          <button key={c} className={'sw'+(color===c?' on':'')} style={{background:c}} onClick={()=>{ onPick(c); setOpen(false); }}/>
+        ))}</div>
+      </>)}
+    </span>
+  );
+}
+// Modale « Gérer les colonnes » : liste verticale triable (drag = réordonner, sans collision avec le drag des cartes),
+// renommer (emoji autorisé), recolorer, compteur de leads, verrou système / suppression avec ré-affectation des leads.
+function ColumnsManagerModal({ columns, leads, onClose, onRename, onRecolor, onReorder, onAdd, onDelete }){
+  const counts = useMemo(()=>{ const m={}; for(const l of leads||[]) m[l.column]=(m[l.column]||0)+1; return m; },[leads]);
+  const [order,setOrder]=useState(()=>columns.map(c=>c.id));
+  const [drag,setDrag]=useState(null);
+  const [over,setOver]=useState(null);
+  const [delId,setDelId]=useState(null);
+  const [delTgt,setDelTgt]=useState('');
+  const [newLabel,setNewLabel]=useState('');
+  // resync si la config change ailleurs (temps réel) : on garde l'ordre courant des ids connus + on ajoute les nouveaux
+  useEffect(()=>{ setOrder(prev=>{ const ids=columns.map(c=>c.id); const kept=prev.filter(id=>ids.includes(id)); const added=ids.filter(id=>!kept.includes(id)); return [...kept,...added]; }); },[columns]);
+  const byId=Object.fromEntries(columns.map(c=>[c.id,c]));
+  const ordered=order.map(id=>byId[id]).filter(Boolean);
+  const onDrop=(targetId)=>{ if(!drag||drag===targetId){ setDrag(null); setOver(null); return; } const arr=order.filter(id=>id!==drag); const i=arr.indexOf(targetId); arr.splice(i,0,drag); setOrder(arr); onReorder(arr); setDrag(null); setOver(null); };
+  const addNew=()=>{ const v=newLabel.trim(); if(v){ onAdd(v); setNewLabel(''); } };
+  return (
+    <>
+      <div className="backdrop" onClick={onClose}>
+        <div className="colmgr" onClick={e=>e.stopPropagation()}>
+          <div className="colmgr-head">
+            <div><div className="eyebrow">Pipeline</div><h3>Gérer les colonnes</h3></div>
+            <button className="x-btn" style={{position:'static'}} onClick={onClose}><I.x/></button>
+          </div>
+          <div className="colmgr-body">
+            {ordered.map(c=>{ const n=counts[c.id]||0; return (
+              <div key={c.id} className={'cm-row'+(over===c.id?' over':'')+(drag===c.id?' dragging':'')}
+                draggable onDragStart={()=>setDrag(c.id)} onDragEnd={()=>{setDrag(null);setOver(null);}}
+                onDragOver={e=>{e.preventDefault(); if(over!==c.id) setOver(c.id);}} onDrop={()=>onDrop(c.id)}>
+                <span className="cm-grip" title="Glisser pour réordonner"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></span>
+                <ColorSwatch color={c.color} onPick={(col)=>onRecolor(c.id,col)}/>
+                <input className="cm-label" defaultValue={c.label} key={c.id+'|'+c.label}
+                  onKeyDown={e=>{ if(e.key==='Enter') e.target.blur(); else if(e.key==='Escape'){ e.target.value=c.label; e.target.blur(); } }}
+                  onBlur={e=>{ const v=e.target.value.trim(); if(v && v!==c.label) onRename(c.id,v); else e.target.value=c.label; }}/>
+                <span className="cm-count" title="Leads dans cette colonne">{n}</span>
+                {c.is_system
+                  ? <span className="cm-lock" title="Colonne système (logique métier) — non supprimable"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>
+                  : <button className="cm-del" title="Supprimer la colonne" onClick={()=>{ if(n>0){ setDelTgt(''); setDelId(c.id); } else onDelete(c.id,null); }}>{I.trash({})}</button>}
+              </div>
+            ); })}
+          </div>
+          <div className="colmgr-add">
+            <input className="cm-newinp" placeholder="Nouvelle colonne (emoji ok)…" value={newLabel} onChange={e=>setNewLabel(e.target.value)}
+              onKeyDown={e=>{ if(e.key==='Enter') addNew(); }}/>
+            <button className="btn btn-accent" disabled={!newLabel.trim()} onClick={addNew}><I.plus/>Ajouter</button>
+          </div>
+        </div>
+      </div>
+      {delId && (()=>{ const c=byId[delId]; const n=counts[delId]||0; const opts=columns.filter(x=>x.id!==delId); return (
+        <div className="backdrop" style={{zIndex:60}} onClick={e=>{ e.stopPropagation(); setDelId(null); }}>
+          <div className="cm-confirm" onClick={e=>e.stopPropagation()}>
+            <h4>Supprimer « {c?c.label:''} »</h4>
+            <p>{n} lead{n>1?'s':''} dans cette colonne. Où les déplacer ?</p>
+            <select className="cm-del-sel" value={delTgt} onChange={e=>setDelTgt(e.target.value)}>
+              <option value="">— choisir une colonne —</option>
+              {opts.map(o=><option key={o.id} value={o.id}>{o.label}</option>)}
+            </select>
+            <div className="cm-del-foot" style={{marginTop:16}}>
+              <button className="btn btn-ghost" onClick={()=>setDelId(null)}>Annuler</button>
+              <button className="btn btn-accent" disabled={!delTgt} onClick={()=>{ onDelete(delId,delTgt); setDelId(null); }}>Déplacer &amp; supprimer</button>
+            </div>
+          </div>
+        </div>
+      ); })()}
+    </>
   );
 }
 
@@ -4228,6 +4501,15 @@ function App({session, onLogout}){
   useEffect(()=>{ if(!isDev && profile && !isAdmin && !profile.calendiq_organizer_id && !onbDone) setOnbActive(true); },[profile,isAdmin,isDev,onbDone]);
   const [leads,setLeads]=useState([]);
   const [loaded,setLoaded]=useState(false);
+  // ---- PIPELINE PARTAGÉ : colonnes dynamiques (table crm_columns, temps réel, édition admin) ----
+  const [colCfg,setColCfg]=useState(DEFAULT_COLUMNS);   // config courante [{id,label,color,is_system,position}]
+  const [colVer,setColVer]=useState(0);                 // version -> busте le React.memo des cartes après une édition de colonne
+  const colT=useRef(0);
+  // réécrit les miroirs live (COLUMNS/COL_LABEL/COL_COLOR/NEXT_BY_COL/STAGE_ORDER) AVANT le rendu des enfants
+  React.useMemo(()=>{ applyColumnConfig(colCfg); },[colCfg]);
+  useEffect(()=>{ setColVer(v=>v+1); },[colCfg]);
+  const loadColumns=useCallback(()=>{ SB.from('crm_columns').select('*').order('position').then(({data})=>{ if(data&&data.length) setColCfg(normalize(data)); }).catch(()=>{}); },[]);
+  useEffect(()=>{ loadColumns(); },[loadColumns]);
   const [screen,setScreen]=useState(()=>{ const s=persistedState('iqcrm_screen','leads'); return ['leads','fiche','agenda','team','console','todo'].includes(s)?s:'leads'; });
   // page d'où le lead a été ouvert -> le bouton retour de la fiche y revient (au lieu de « Mes leads » en dur)
   const [origin,setOrigin]=useState(()=>{ const s=persistedState('iqcrm_origin','leads'); return ['leads','agenda','team','console','todo'].includes(s)?s:'leads'; });
@@ -4240,6 +4522,7 @@ function App({session, onLogout}){
 
   const [payTarget,setPayTarget]=useState(null); // {lead}
   const [showSettings,setShowSettings]=useState(false);
+  const [showColMgr,setShowColMgr]=useState(false);
   const [addTarget,setAddTarget]=useState(null); // colonne où ajouter un lead manuellement
   const [incoming,setIncoming]=useState(null);
   const [toasts,setToasts]=useState([]);
@@ -4265,9 +4548,11 @@ function App({session, onLogout}){
       .on('postgres_changes',{event:'*',schema:'public',table:'leads'},reloadDebounced)
       // activites : on ne recharge PAS toute la base — juste l'historique du lead ouvert (léger)
       .on('postgres_changes',{event:'*',schema:'public',table:'activites'},()=>{ if(syncBusyRef.current) return; const sid=selIdRef.current; if(sid) loadTimelineFor(sid); })
+      // colonnes : un admin a renommé/recoloré/ajouté/supprimé/réordonné -> tous les boards se rafraîchissent
+      .on('postgres_changes',{event:'*',schema:'public',table:'crm_columns'},()=>{ clearTimeout(colT.current); colT.current=setTimeout(loadColumns,250); })
       .subscribe();
-    return ()=>{ SB.removeChannel(ch); clearTimeout(reloadT.current); };
-  },[reloadDebounced,loadTimelineFor]);
+    return ()=>{ SB.removeChannel(ch); clearTimeout(reloadT.current); clearTimeout(colT.current); };
+  },[reloadDebounced,loadTimelineFor,loadColumns]);
   useEffect(()=>localStorage.setItem('iqcrm_screen',JSON.stringify(screen)),[screen]);
   useEffect(()=>{ selIdRef.current=selId; localStorage.setItem('iqcrm_sel',JSON.stringify(selId)); },[selId]);
   useEffect(()=>{ localStorage.setItem('iqcrm_origin',JSON.stringify(origin)); },[origin]);
@@ -4298,6 +4583,20 @@ function App({session, onLogout}){
   useEffect(()=>{ const h=(e)=>{ if((e.metaKey||e.ctrlKey)&&(e.key==='z'||e.key==='Z')){ const tg=e.target; if(tg&&(tg.tagName==='INPUT'||tg.tagName==='TEXTAREA'||tg.isContentEditable)) return; e.preventDefault(); undoHotkey(); } }; window.addEventListener('keydown',h); return ()=>window.removeEventListener('keydown',h); },[undoHotkey]);
 
   const patch=useCallback((id,fn)=>setLeads(ls=>ls.map(l=>l.id===id?{...l,...(typeof fn==='function'?fn(l):fn)}:l)),[]);
+
+  // ---- GESTION DES COLONNES (admin) : optimiste -> écriture crm_columns -> rollback par re-fetch si erreur ----
+  const colWriteFail=useCallback(()=>{ toast('Modif colonne échouée','Vérifie ta connexion / tes droits','info'); loadColumns(); },[toast,loadColumns]);
+  const renameCol=useCallback((id,label)=>{ const v=String(label||'').trim(); if(!v) return; setColCfg(cs=>cs.map(c=>c.id===id?{...c,label:v}:c)); SB.from('crm_columns').update({label:v,updated_by:userId}).eq('id',id).then(({error})=>{ if(error) colWriteFail(); }); },[userId,colWriteFail]);
+  const recolorCol=useCallback((id,color)=>{ if(!color) return; setColCfg(cs=>cs.map(c=>c.id===id?{...c,color}:c)); SB.from('crm_columns').update({color,updated_by:userId}).eq('id',id).then(({error})=>{ if(error) colWriteFail(); }); },[userId,colWriteFail]);
+  const reorderCols=useCallback((orderedIds)=>{ setColCfg(cs=>{ const by=Object.fromEntries(cs.map(c=>[c.id,c])); return orderedIds.map((id,i)=>by[id]&&({...by[id],position:i})).filter(Boolean); }); Promise.all(orderedIds.map((id,i)=>SB.from('crm_columns').update({position:i,updated_by:userId}).eq('id',id))).then(rs=>{ if(rs.some(r=>r&&r.error)) colWriteFail(); }); },[userId,colWriteFail]);
+  const addCol=useCallback((label,color)=>{ const v=String(label||'').trim()||'Nouvelle colonne'; const base=(deburr(v).replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,24))||'col'; let id; do{ id=base+'-'+Math.random().toString(36).slice(2,6); }while(SYSTEM_IDS.has(id)||colCfg.some(c=>c.id===id)); const pos=Math.max(-1,...colCfg.map(c=>c.position))+1; const row={id,label:v,color:color||'var(--cold)',position:pos,is_system:false}; setColCfg(cs=>[...cs,{...row}]); SB.from('crm_columns').insert({...row,updated_by:userId}).then(({error})=>{ if(error) colWriteFail(); }); return id; },[colCfg,userId,colWriteFail]);
+  const deleteCol=useCallback(async(id,targetId)=>{ const col=colCfg.find(c=>c.id===id); if(!col||col.is_system) return; const tgt=(targetId&&colExists(targetId)&&targetId!==id)?targetId:'contacter'; const moving=leads.filter(l=>l.column===id);
+    if(moving.length){ for(const l of moving) patch(l.id,{column:tgt});                       // optimiste
+      const { error:mvErr }=await SB.from('leads').update({colonne:tgt}).eq('colonne',id);    // ré-affectation VÉRIFIABLE (saveLead n'échoue jamais)
+      if(mvErr){ colWriteFail(); reload(); return; }                                          // échec -> on N'EFFACE PAS la colonne (pas de leads dumpés dans 'contacter')
+    }
+    setColCfg(cs=>cs.filter(c=>c.id!==id));
+    const { error }=await SB.from('crm_columns').delete().eq('id',id); if(error) colWriteFail(); else toast('Colonne supprimée', moving.length?`${moving.length} lead(s) déplacé(s)`:null,'info'); },[colCfg,leads,patch,toast,colWriteFail,reload]);
 
   // AUTO-NETTOYAGE (admin) : un lead rattaché à un closer SUPPRIMÉ (owner sans profil) est libéré (owner -> null)
   // pour qu'il se ré-attribue normalement. Tourne 1× par session, avec garde-fou : si la lecture des profils
@@ -4821,6 +5120,7 @@ function App({session, onLogout}){
       <main className="work">
         {screen==='leads' && <Board leads={leadsView} search={search} setSearch={setSearch} view={view||'mine'} setView={setView} userId={userId}
             isAdmin={isAdmin} closers={closers} onAssign={reassignOwner}
+            colVer={colVer} renameCol={renameCol} recolorCol={recolorCol} reorderCols={reorderCols} addCol={addCol} deleteCol={deleteCol}
             onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col,defSrc)=>setAddTarget({col,defSrc})} onDelete={deleteLead}/>}
         {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen(origin)} backLabel={SCREEN_LABEL[origin]||'Retour'} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
             onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} onManualRdv={setManualRdv} onManualRemoveRdv={removeManualRdv} onRdvOutcome={setRdvOutcome} onClearRdvOutcome={clearRdvOutcome} onCpfRdv={bookCpfRdv} isAdminView={isAdmin} closers={closers} rdvClosers={cqSources} onAssign={reassignOwner} calendiqReady={isAdmin ? cqSources.length>0 : !!(profile&&profile.calendiq_organizer_id)} calendiqOrganizer={profile&&profile.calendiq_organizer_id}/>}
@@ -4835,7 +5135,8 @@ function App({session, onLogout}){
 
       {/* OVERLAYS */}
       {addTarget && <AddLeadModal column={addTarget.col} defaultSource={addTarget.defSrc} onClose={()=>setAddTarget(null)} onAdd={addLead}/>}
-      {showSettings && <div className="backdrop" onClick={()=>setShowSettings(false)}><Settings theme={theme} setTheme={setTheme} density={density} setDensity={setDensity} onSimulate={simulate} onReset={resetData} onClose={()=>setShowSettings(false)}/></div>}
+      {showSettings && <div className="backdrop" onClick={()=>setShowSettings(false)}><Settings theme={theme} setTheme={setTheme} density={density} setDensity={setDensity} onSimulate={simulate} onReset={resetData} onClose={()=>setShowSettings(false)} isAdmin={isAdmin} onManageColumns={()=>{ setShowSettings(false); setShowColMgr(true); }}/></div>}
+      {showColMgr && <ColumnsManagerModal columns={colCfg} leads={leads} onClose={()=>setShowColMgr(false)} onRename={renameCol} onRecolor={recolorCol} onReorder={reorderCols} onAdd={addCol} onDelete={deleteCol}/>}
       {payTarget && <PaymentModal lead={payTarget.lead} onClose={()=>setPayTarget(null)} onSend={sendPayment}/>}
       {incoming && <Incoming lead={incoming} onTake={takeIncoming} onDismiss={()=>{setIncoming(null); localStorage.setItem('iqcrm_sarahDone',JSON.stringify(true));}}/>}
 
