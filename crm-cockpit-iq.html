@@ -270,6 +270,24 @@ input,textarea{font-family:inherit; color:inherit}
 .cm-confirm{position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:96; width:400px; max-width:92vw; background:var(--surface); border:1px solid var(--b1); border-radius:16px; box-shadow:var(--sh-pop); padding:22px}
 .cm-confirm h4{font-size:17px; font-weight:800; margin:0 0 5px}
 .cm-confirm p{color:var(--t2); font-size:13px; margin:0 0 14px}
+/* sélecteur de disposition (pastille résultat de call, cliquable) */
+.disp-wrap{position:relative; display:inline-flex}
+.disp-chip{display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; padding:3px 10px; border-radius:99px; white-space:nowrap; border:none; cursor:pointer; transition:filter var(--speed)}
+.disp-chip:hover{filter:brightness(1.12)}
+.disp-chip .cdot{width:6px; height:6px; border-radius:99px; background:currentColor}
+.disp-chip.empty{color:var(--t3); background:var(--surface-2); border:1px dashed var(--b2)}
+.disp-chip.empty:hover{color:var(--t1); border-color:var(--accent)}
+.disp-chip.empty svg{width:12px; height:12px}
+.recap-ck{font-size:11px; font-weight:700; color:var(--t3)}
+.disp-ov{position:fixed; inset:0; z-index:88}
+.disp-menu{position:fixed; z-index:89; width:200px; max-height:60vh; overflow-y:auto; background:var(--surface); border:1px solid var(--b1); border-radius:11px; box-shadow:var(--sh-pop); padding:6px; display:flex; flex-direction:column; gap:2px}
+.disp-item{display:flex; align-items:center; gap:9px; width:100%; padding:7px 9px; border-radius:8px; font-size:13px; font-weight:600; color:var(--t1); background:none; border:none; cursor:pointer; text-align:left; transition:background var(--speed)}
+.disp-item:hover,.disp-item.on{background:var(--surface-2)}
+.disp-item .disp-dot{width:9px; height:9px; border-radius:99px; flex:none}
+.disp-item .disp-lbl{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis}
+.disp-item .disp-check{display:inline-flex; color:var(--accent)} .disp-item .disp-check svg{width:14px; height:14px}
+.disp-item.clear{color:var(--t3); border-top:1px solid var(--b1); margin-top:3px; padding-top:9px}
+.disp-item.clear:hover{color:var(--danger)}
 /* tuile fantôme « + Ajouter une colonne » */
 .col-ghost{width:230px; background:transparent; border:1.5px dashed var(--b2); box-shadow:none; align-items:center; justify-content:center; padding:14px 10px}
 .col-ghost-btn{display:inline-flex; align-items:center; gap:7px; color:var(--t3); font-weight:700; font-size:13px; padding:9px 13px; border-radius:9px; background:none; border:none; cursor:pointer; transition:all var(--speed)}
@@ -1842,6 +1860,10 @@ async function updateActivite(id, contenu){
 async function deleteActivite(id){
   try{ await SB.from('activites').delete().eq('id',id); }catch(e){ console.warn('deleteActivite',e); }
 }
+// pose/retire la disposition (résultat) d'une entrée d'historique à la main (≠ IA recap)
+async function setActiviteResult(id, result){
+  try{ await SB.from('activites').update({ result: result||null }).eq('id',id); }catch(e){ console.warn('setActiviteResult',e); }
+}
 
 /* ============================================================= ICONS */
 const I = {
@@ -1966,16 +1988,41 @@ const DEFAULT_NEXT = {...NEXT_BY_COL}; // libellés d'action par défaut GELÉS 
 // une action « réelle » = décidée (manuelle ou recap), PAS le libellé d'étape par défaut. Sert à exclure le bruit de la page « À faire » et de la fiche.
 function isRealAction(nextAction, col){ if(!nextAction) return false; const s=String(nextAction).trim(); return s!=='' && s!=='À contacter' && s!==(NEXT_BY_COL[col]||''); }
 
-// Résultat de call standardisé (le VERDICT) — valable pour n'importe quel call (R1, R2…), jamais lié au numéro du call.
-const RESULT_META = {
-  interesse:     {label:'Intéressé',     color:'var(--warm)'},
-  a_closer:      {label:'À closer',      color:'var(--accent)'},
-  objection:     {label:'Objection',     color:'var(--warm)'},
-  close:         {label:'Closé',         color:'var(--ok)'},
-  pas_interesse: {label:'Pas intéressé', color:'var(--t4)'},
-  no_show:       {label:'No-show',       color:'var(--danger)'},
-};
-const RESULT_KEYS = Object.keys(RESULT_META);
+// Résultat de call standardisé (le VERDICT / la « disposition ») — valable pour n'importe quel call (R1, R2…), jamais lié au n° du call.
+// Dispositions par défaut = « SYSTÈME » : ids GELÉS (mapping IA recap + logique métier leadStatus : close->gagné,
+// pas_interesse->perdu, a_closer->closing, no_show->absence). Fallback si la table partagée crm_results est vide/indispo.
+const DEFAULT_RESULTS = [
+  {id:'interesse',     label:'Intéressé',     color:'var(--warm)'},
+  {id:'a_closer',      label:'À closer',      color:'var(--accent)'},
+  {id:'objection',     label:'Objection',     color:'var(--warm)'},
+  {id:'close',         label:'Closé',         color:'var(--ok)'},
+  {id:'pas_interesse', label:'Pas intéressé', color:'var(--t4)'},
+  {id:'no_show',       label:'No-show',       color:'var(--danger)'},
+].map((r,i)=>({...r, is_system:true, position:i}));
+const SYSTEM_RESULT_IDS = new Set(DEFAULT_RESULTS.map(r=>r.id));
+// miroirs LIVE (réécrits par applyResultConfig depuis crm_results) — lus par nom au runtime -> config dynamique sans rewiring
+let RESULT_META = Object.fromEntries(DEFAULT_RESULTS.map(r=>[r.id,{label:r.label,color:r.color}]));
+let RESULT_KEYS = DEFAULT_RESULTS.map(r=>r.id);
+let RESULT_LIST = DEFAULT_RESULTS.map(r=>({...r}));   // liste ordonnée [{id,label,color,is_system,position}] pour pickers + manager
+function resExists(id){ return !!RESULT_META[id]; }
+function normalizeResults(rows){
+  let arr;
+  try{
+    if(!rows || !rows.length) arr = DEFAULT_RESULTS.map(r=>({...r}));
+    else arr = rows.map(r=>({ id:String(r.id), label:(r.label==null||String(r.label).trim()==='')?String(r.id):String(r.label), color:r.color||'var(--t3)', is_system: SYSTEM_RESULT_IDS.has(String(r.id))||!!r.is_system, position:Number(r.position)||0 }));
+  }catch(e){ arr = DEFAULT_RESULTS.map(r=>({...r})); }
+  const have = new Set(arr.map(r=>r.id));
+  for(const d of DEFAULT_RESULTS){ if(!have.has(d.id)) arr.push({...d}); } // ré-injecte toute disposition système manquante
+  const defOrder = Object.fromEntries(DEFAULT_RESULTS.map((r,i)=>[r.id,i]));
+  arr.sort((a,b)=> (a.position-b.position) || ((defOrder[a.id]??999)-(defOrder[b.id]??999)) );
+  return arr;
+}
+function applyResultConfig(arr){
+  RESULT_LIST = arr.map(r=>({...r}));
+  RESULT_META = Object.fromEntries(arr.map(r=>[r.id,{label:r.label, color:r.color||'var(--t3)'}]));
+  RESULT_KEYS = arr.map(r=>r.id);
+}
+applyResultConfig(normalizeResults(null)); // init au parse (= défauts) : pastilles OK même sans backend
 const callKindLabel = k => k==='setting'?'Setting':k==='r1'?'R1':k==='r2'?'R2':k==='r3'?'R3':'';
 // quel call ce débrief concerne : la lecture de l'IA (call_type) D'ABORD — fiable en multi-RDV —,
 // le scalaire lead.rdvType (= dernier RDV booké) seulement en secours. Borné à l'enum DB {r1,r2,r3}.
@@ -3034,7 +3081,7 @@ function MoneyField({label, value, onSave, accent}){
   );
 }
 
-function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onToggleAction, onActions, onClaim, meId, onAddRdv, onCancelRdv, onManualRdv, onManualRemoveRdv, onRdvOutcome, onClearRdvOutcome, onCpfRdv, isAdminView, closers, rdvClosers, onAssign, calendiqReady, calendiqOrganizer}){
+function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDeleteNote, onSetResult, onEditField, onNote, onAdvanceStage, onToggleAction, onActions, onClaim, meId, onAddRdv, onCancelRdv, onManualRdv, onManualRemoveRdv, onRdvOutcome, onClearRdvOutcome, onCpfRdv, isAdminView, closers, rdvClosers, onAssign, calendiqReady, calendiqOrganizer}){
   const [moveOpen,setMoveOpen]=useState(false);
   const [noteOpen,setNoteOpen]=useState(false);
   const [noteMode,setNoteMode]=useState('note'); // 'note' = note écrite | 'nrp' = appel sans réponse
@@ -3209,7 +3256,7 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
               // HISTORIQUE UNIFIÉ : lead.timeline contient déjà CRM + HubSpot (activites.source). On masque les logs d'étape.
               const all=lead.timeline.filter(ev=>!(ev.title&&ev.title.indexOf('Étape :')===0));
               return (<div className="tl">
-                {all.map((ev,i)=><TlCard key={ev.id||i} ev={ev} onEditNote={onEditNote} onDeleteNote={onDeleteNote}/>)}
+                {all.map((ev,i)=><TlCard key={ev.id||i} ev={ev} onEditNote={onEditNote} onDeleteNote={onDeleteNote} onSetResult={onSetResult}/>)}
                 {all.length===0 && <div className="tl-empty">Aucune note pour l’instant.</div>}
               </div>);
             })()}
@@ -3578,7 +3625,35 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage, onSetR
 // Entrée d'historique "Récap IA" : accordéon repliable, rendu markdown structuré (via MdText).
 // carte d'historique unifiée : MÊME structure pour tous les types (note, NRP/appel, récap, paiement…).
 // En-tête toujours = chevron (si contenu) + icône + titre + heure + actions. Corps pliable si contenu.
-function TlCard({ ev, onEditNote, onDeleteNote }){
+// sélecteur de disposition (résultat de call) : pastille cliquable -> popover de la liste éditable + « Retirer »
+function DispositionPicker({ value, onPick }){
+  const [open,setOpen]=useState(false);
+  const [pos,setPos]=useState(null);   // menu en position:fixed calculée depuis la pastille -> échappe au clipping (carte + panneau scrollable)
+  const btnRef=useRef(null);
+  const rk = value && RESULT_META[value];
+  const toggle=()=>{ if(open){ setOpen(false); return; } const r=btnRef.current.getBoundingClientRect(); const W=200; setPos({top:Math.round(r.bottom+6), left:Math.round(Math.min(r.left, window.innerWidth-W-12))}); setOpen(true); };
+  return (
+    <span className="disp-wrap" onClick={e=>e.stopPropagation()}>
+      <button ref={btnRef} className={'disp-chip'+(rk?'':' empty')} onClick={toggle} title="Changer la disposition"
+        style={rk?{color:rk.color, background:'color-mix(in srgb, currentColor 14%, transparent)'}:undefined}>
+        {rk ? <><span className="cdot"></span>{rk.label}</> : <><I.plus style={{width:12,height:12}}/>Disposition</>}
+      </button>
+      {open && (<>
+        <div className="disp-ov" onClick={()=>setOpen(false)}></div>
+        <div className="disp-menu" style={pos?{top:pos.top, left:pos.left}:undefined}>
+          {RESULT_LIST.map(r=>(
+            <button key={r.id} className={'disp-item'+(value===r.id?' on':'')} onClick={()=>{ onPick(r.id); setOpen(false); }}>
+              <span className="disp-dot" style={{background:r.color}}></span><span className="disp-lbl">{r.label}</span>{value===r.id&&<span className="disp-check">{I.check({})}</span>}
+            </button>
+          ))}
+          {value && <button className="disp-item clear" onClick={()=>{ onPick(null); setOpen(false); }}>Retirer la disposition</button>}
+        </div>
+      </>)}
+    </span>
+  );
+}
+
+function TlCard({ ev, onEditNote, onDeleteNote, onSetResult }){
   const isRecap = ev.type === 'recap'; // par TYPE (aligné sur leadStatus) — pas par titre
   const hasBody = isRecap || !!ev.text || !!ev.granola;
   const [open,setOpen]=useState(false);
@@ -3621,10 +3696,13 @@ function TlCard({ ev, onEditNote, onDeleteNote }){
               </div>
             </div>
           ) : isRecap ? (<>
-            {(ev.result || ev.conclusion) && (()=>{ const rk=RESULT_META[ev.result]; const ck=ev.callKind; return (
+            {(ev.result || ev.conclusion || (canEdit && onSetResult)) && (()=>{ const rk=RESULT_META[ev.result]; const ck=ev.callKind; const editable=canEdit&&onSetResult; return (
               <div className="recap-concl" style={{marginBottom:11}}>
                 <div className="recap-concl-row">
-                  {rk && <span className="chip" style={{color:rk.color, background:'color-mix(in srgb, currentColor 14%, transparent)'}}><span className="cdot"></span>{ck?(callKindLabel(ck)+' · '):''}{rk.label}</span>}
+                  {ck && (ev.result||editable) && <span className="recap-ck">{callKindLabel(ck)} ·</span>}
+                  {editable
+                    ? <DispositionPicker value={ev.result} onPick={(k)=>onSetResult(ev.id,k)}/>
+                    : (rk && <span className="chip" style={{color:rk.color, background:'color-mix(in srgb, currentColor 14%, transparent)'}}><span className="cdot"></span>{rk.label}</span>)}
                   {ev.conclusion && <span className="recap-concl-tx">{ev.conclusion}</span>}
                 </div>
               </div>); })()}
@@ -3937,7 +4015,7 @@ function Agenda({ meetings, sources, loading, error, isAdmin, profile, onConnect
 }
 
 /* ============================================================= SETTINGS */
-function Settings({theme,setTheme,density,setDensity,onSimulate,onReset,onClose,isAdmin,onManageColumns}){
+function Settings({theme,setTheme,density,setDensity,onSimulate,onReset,onClose,isAdmin,onManageColumns,onManageResults}){
   return (
     <div className="side" onClick={e=>e.stopPropagation()}>
       <div className="side-head"><I.gear style={{width:18,height:18,color:'var(--t2)'}}/><h3>Réglages</h3><button className="x-btn" style={{position:'static'}} onClick={onClose}><I.x/></button></div>
@@ -3961,6 +4039,12 @@ function Settings({theme,setTheme,density,setDensity,onSimulate,onReset,onClose,
           <div className="set-row">
             <div className="lab"><b>Pipeline</b><span>Renommer, recolorer, réordonner, ajouter des colonnes</span></div>
             <button className="btn btn-soft" onClick={onManageColumns}><I.leads/>Gérer les colonnes</button>
+          </div>
+        )}
+        {isAdmin && (
+          <div className="set-row">
+            <div className="lab"><b>Dispositions de call</b><span>Renommer, recolorer, ajouter (pastilles R1 · …)</span></div>
+            <button className="btn btn-soft" onClick={onManageResults}><I.spark/>Gérer les dispositions</button>
           </div>
         )}
         <div className="set-row">
@@ -4057,6 +4141,51 @@ function ColumnsManagerModal({ columns, leads, onClose, onRename, onRecolor, onR
         </div>
       ); })()}
     </>
+  );
+}
+
+// Modale « Dispositions de call » : renommer (emoji ok) / recolorer / réordonner / ajouter / supprimer.
+// Pas de ré-affectation : supprimer une disposition la retire du vocabulaire ; les entrées qui l'avaient
+// n'affichent plus de pastille (rendu déjà gardé par RESULT_META[ev.result]). Dispositions système = verrou.
+function ResultsManagerModal({ results, onClose, onRename, onRecolor, onReorder, onAdd, onDelete }){
+  const [order,setOrder]=useState(()=>results.map(c=>c.id));
+  const [drag,setDrag]=useState(null);
+  const [over,setOver]=useState(null);
+  const [newLabel,setNewLabel]=useState('');
+  useEffect(()=>{ setOrder(prev=>{ const ids=results.map(c=>c.id); const kept=prev.filter(id=>ids.includes(id)); const added=ids.filter(id=>!kept.includes(id)); return [...kept,...added]; }); },[results]);
+  const byId=Object.fromEntries(results.map(c=>[c.id,c]));
+  const ordered=order.map(id=>byId[id]).filter(Boolean);
+  const onDrop=(targetId)=>{ if(!drag||drag===targetId){ setDrag(null); setOver(null); return; } const arr=order.filter(id=>id!==drag); const i=arr.indexOf(targetId); arr.splice(i,0,drag); setOrder(arr); onReorder(arr); setDrag(null); setOver(null); };
+  const addNew=()=>{ const v=newLabel.trim(); if(v){ onAdd(v); setNewLabel(''); } };
+  return (
+    <div className="backdrop" onClick={onClose}>
+      <div className="colmgr" onClick={e=>e.stopPropagation()}>
+        <div className="colmgr-head">
+          <div><div className="eyebrow">Calls</div><h3>Dispositions de call</h3></div>
+          <button className="x-btn" style={{position:'static'}} onClick={onClose}><I.x/></button>
+        </div>
+        <div className="colmgr-body">
+          {ordered.map(c=>(
+            <div key={c.id} className={'cm-row'+(over===c.id?' over':'')+(drag===c.id?' dragging':'')}
+              draggable onDragStart={()=>setDrag(c.id)} onDragEnd={()=>{setDrag(null);setOver(null);}}
+              onDragOver={e=>{e.preventDefault(); if(over!==c.id) setOver(c.id);}} onDrop={()=>onDrop(c.id)}>
+              <span className="cm-grip" title="Glisser pour réordonner"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></span>
+              <ColorSwatch color={c.color} onPick={(col)=>onRecolor(c.id,col)}/>
+              <input className="cm-label" defaultValue={c.label} key={c.id+'|'+c.label}
+                onKeyDown={e=>{ if(e.key==='Enter') e.target.blur(); else if(e.key==='Escape'){ e.target.value=c.label; e.target.blur(); } }}
+                onBlur={e=>{ const v=e.target.value.trim(); if(v && v!==c.label) onRename(c.id,v); else e.target.value=c.label; }}/>
+              {c.is_system
+                ? <span className="cm-lock" title="Disposition système (mapping IA + logique métier) — non supprimable"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>
+                : <button className="cm-del" title="Supprimer la disposition" onClick={()=>onDelete(c.id)}>{I.trash({})}</button>}
+            </div>
+          ))}
+        </div>
+        <div className="colmgr-add">
+          <input className="cm-newinp" placeholder="Nouvelle disposition (emoji ok)…" value={newLabel} onChange={e=>setNewLabel(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') addNew(); }}/>
+          <button className="btn btn-accent" disabled={!newLabel.trim()} onClick={addNew}><I.plus/>Ajouter</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -4510,6 +4639,12 @@ function App({session, onLogout}){
   useEffect(()=>{ setColVer(v=>v+1); },[colCfg]);
   const loadColumns=useCallback(()=>{ SB.from('crm_columns').select('*').order('position').then(({data})=>{ if(data&&data.length) setColCfg(normalize(data)); }).catch(()=>{}); },[]);
   useEffect(()=>{ loadColumns(); },[loadColumns]);
+  // ---- DISPOSITIONS DE CALL partagées (table crm_results, temps réel, édition admin) — pastilles R1·Objection… ----
+  const [resCfg,setResCfg]=useState(DEFAULT_RESULTS);
+  const resT=useRef(0);
+  React.useMemo(()=>{ applyResultConfig(resCfg); },[resCfg]); // miroirs RESULT_META/RESULT_KEYS/RESULT_LIST live avant rendu
+  const loadResults=useCallback(()=>{ SB.from('crm_results').select('*').order('position').then(({data})=>{ if(data&&data.length) setResCfg(normalizeResults(data)); }).catch(()=>{}); },[]);
+  useEffect(()=>{ loadResults(); },[loadResults]);
   const [screen,setScreen]=useState(()=>{ const s=persistedState('iqcrm_screen','leads'); return ['leads','fiche','agenda','team','console','todo'].includes(s)?s:'leads'; });
   // page d'où le lead a été ouvert -> le bouton retour de la fiche y revient (au lieu de « Mes leads » en dur)
   const [origin,setOrigin]=useState(()=>{ const s=persistedState('iqcrm_origin','leads'); return ['leads','agenda','team','console','todo'].includes(s)?s:'leads'; });
@@ -4523,6 +4658,7 @@ function App({session, onLogout}){
   const [payTarget,setPayTarget]=useState(null); // {lead}
   const [showSettings,setShowSettings]=useState(false);
   const [showColMgr,setShowColMgr]=useState(false);
+  const [showResMgr,setShowResMgr]=useState(false);
   const [addTarget,setAddTarget]=useState(null); // colonne où ajouter un lead manuellement
   const [incoming,setIncoming]=useState(null);
   const [toasts,setToasts]=useState([]);
@@ -4550,9 +4686,10 @@ function App({session, onLogout}){
       .on('postgres_changes',{event:'*',schema:'public',table:'activites'},()=>{ if(syncBusyRef.current) return; const sid=selIdRef.current; if(sid) loadTimelineFor(sid); })
       // colonnes : un admin a renommé/recoloré/ajouté/supprimé/réordonné -> tous les boards se rafraîchissent
       .on('postgres_changes',{event:'*',schema:'public',table:'crm_columns'},()=>{ clearTimeout(colT.current); colT.current=setTimeout(loadColumns,250); })
+      .on('postgres_changes',{event:'*',schema:'public',table:'crm_results'},()=>{ clearTimeout(resT.current); resT.current=setTimeout(loadResults,250); })
       .subscribe();
-    return ()=>{ SB.removeChannel(ch); clearTimeout(reloadT.current); clearTimeout(colT.current); };
-  },[reloadDebounced,loadTimelineFor,loadColumns]);
+    return ()=>{ SB.removeChannel(ch); clearTimeout(reloadT.current); clearTimeout(colT.current); clearTimeout(resT.current); };
+  },[reloadDebounced,loadTimelineFor,loadColumns,loadResults]);
   useEffect(()=>localStorage.setItem('iqcrm_screen',JSON.stringify(screen)),[screen]);
   useEffect(()=>{ selIdRef.current=selId; localStorage.setItem('iqcrm_sel',JSON.stringify(selId)); },[selId]);
   useEffect(()=>{ localStorage.setItem('iqcrm_origin',JSON.stringify(origin)); },[origin]);
@@ -4597,6 +4734,16 @@ function App({session, onLogout}){
     }
     setColCfg(cs=>cs.filter(c=>c.id!==id));
     const { error }=await SB.from('crm_columns').delete().eq('id',id); if(error) colWriteFail(); else toast('Colonne supprimée', moving.length?`${moving.length} lead(s) déplacé(s)`:null,'info'); },[colCfg,leads,patch,toast,colWriteFail,reload]);
+
+  // ---- DISPOSITIONS DE CALL (admin) : optimiste -> écriture crm_results -> rollback par re-fetch ----
+  const resWriteFail=useCallback(()=>{ toast('Modif disposition échouée','Vérifie ta connexion / tes droits','info'); loadResults(); },[toast,loadResults]);
+  const renameRes=useCallback((id,label)=>{ const v=String(label||'').trim(); if(!v) return; setResCfg(cs=>cs.map(c=>c.id===id?{...c,label:v}:c)); SB.from('crm_results').update({label:v,updated_by:userId}).eq('id',id).then(({error})=>{ if(error) resWriteFail(); }); },[userId,resWriteFail]);
+  const recolorRes=useCallback((id,color)=>{ if(!color) return; setResCfg(cs=>cs.map(c=>c.id===id?{...c,color}:c)); SB.from('crm_results').update({color,updated_by:userId}).eq('id',id).then(({error})=>{ if(error) resWriteFail(); }); },[userId,resWriteFail]);
+  const reorderRes=useCallback((orderedIds)=>{ setResCfg(cs=>{ const by=Object.fromEntries(cs.map(c=>[c.id,c])); return orderedIds.map((id,i)=>by[id]&&({...by[id],position:i})).filter(Boolean); }); Promise.all(orderedIds.map((id,i)=>SB.from('crm_results').update({position:i,updated_by:userId}).eq('id',id))).then(rs=>{ if(rs.some(r=>r&&r.error)) resWriteFail(); }); },[userId,resWriteFail]);
+  const addRes=useCallback((label,color)=>{ const v=String(label||'').trim()||'Nouvelle disposition'; const base=(deburr(v).replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,24))||'disp'; let id; do{ id=base+'_'+Math.random().toString(36).slice(2,6); }while(SYSTEM_RESULT_IDS.has(id)||resCfg.some(c=>c.id===id)); const pos=Math.max(-1,...resCfg.map(c=>c.position))+1; const row={id,label:v,color:color||'var(--cold)',position:pos,is_system:false}; setResCfg(cs=>[...cs,{...row}]); SB.from('crm_results').insert({...row,updated_by:userId}).then(({error})=>{ if(error) resWriteFail(); }); return id; },[resCfg,userId,resWriteFail]);
+  const deleteRes=useCallback(async(id)=>{ const r=resCfg.find(c=>c.id===id); if(!r||r.is_system) return; setResCfg(cs=>cs.filter(c=>c.id!==id)); const { error }=await SB.from('crm_results').delete().eq('id',id); if(error) resWriteFail(); else toast('Disposition supprimée',null,'info'); },[resCfg,toast,resWriteFail]);
+  // assigne/retire la disposition d'une entrée d'historique à la main (optimiste + écriture activites.result)
+  const editResult=useCallback((actId,result)=>{ if(!actId) return; if(sel) patch(sel.id,prev=>({timeline:prev.timeline.map(e=> e.id===actId?{...e,result:result||null}:e)})); setActiviteResult(actId,result); },[sel,patch]);
 
   // AUTO-NETTOYAGE (admin) : un lead rattaché à un closer SUPPRIMÉ (owner sans profil) est libéré (owner -> null)
   // pour qu'il se ré-attribue normalement. Tourne 1× par session, avec garde-fou : si la lecture des profils
@@ -5122,7 +5269,7 @@ function App({session, onLogout}){
             isAdmin={isAdmin} closers={closers} onAssign={reassignOwner}
             colVer={colVer} renameCol={renameCol} recolorCol={recolorCol} reorderCols={reorderCols} addCol={addCol} deleteCol={deleteCol}
             onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col,defSrc)=>setAddTarget({col,defSrc})} onDelete={deleteLead}/>}
-        {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen(origin)} backLabel={SCREEN_LABEL[origin]||'Retour'} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
+        {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen(origin)} backLabel={SCREEN_LABEL[origin]||'Retour'} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onSetResult={editResult} onEditField={editField} onNote={addNote}
             onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} onManualRdv={setManualRdv} onManualRemoveRdv={removeManualRdv} onRdvOutcome={setRdvOutcome} onClearRdvOutcome={clearRdvOutcome} onCpfRdv={bookCpfRdv} isAdminView={isAdmin} closers={closers} rdvClosers={cqSources} onAssign={reassignOwner} calendiqReady={isAdmin ? cqSources.length>0 : !!(profile&&profile.calendiq_organizer_id)} calendiqOrganizer={profile&&profile.calendiq_organizer_id}/>}
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen(origin)}>Retour ({SCREEN_LABEL[origin]||'Mes leads'})</button></div>}
         {screen==='agenda' && <Agenda meetings={cqMeetings} sources={cqSources} loading={cqLoading} error={cqError}
@@ -5135,8 +5282,9 @@ function App({session, onLogout}){
 
       {/* OVERLAYS */}
       {addTarget && <AddLeadModal column={addTarget.col} defaultSource={addTarget.defSrc} onClose={()=>setAddTarget(null)} onAdd={addLead}/>}
-      {showSettings && <div className="backdrop" onClick={()=>setShowSettings(false)}><Settings theme={theme} setTheme={setTheme} density={density} setDensity={setDensity} onSimulate={simulate} onReset={resetData} onClose={()=>setShowSettings(false)} isAdmin={isAdmin} onManageColumns={()=>{ setShowSettings(false); setShowColMgr(true); }}/></div>}
+      {showSettings && <div className="backdrop" onClick={()=>setShowSettings(false)}><Settings theme={theme} setTheme={setTheme} density={density} setDensity={setDensity} onSimulate={simulate} onReset={resetData} onClose={()=>setShowSettings(false)} isAdmin={isAdmin} onManageColumns={()=>{ setShowSettings(false); setShowColMgr(true); }} onManageResults={()=>{ setShowSettings(false); setShowResMgr(true); }}/></div>}
       {showColMgr && <ColumnsManagerModal columns={colCfg} leads={leads} onClose={()=>setShowColMgr(false)} onRename={renameCol} onRecolor={recolorCol} onReorder={reorderCols} onAdd={addCol} onDelete={deleteCol}/>}
+      {showResMgr && <ResultsManagerModal results={resCfg} onClose={()=>setShowResMgr(false)} onRename={renameRes} onRecolor={recolorRes} onReorder={reorderRes} onAdd={addRes} onDelete={deleteRes}/>}
       {payTarget && <PaymentModal lead={payTarget.lead} onClose={()=>setPayTarget(null)} onSend={sendPayment}/>}
       {incoming && <Incoming lead={incoming} onTake={takeIncoming} onDismiss={()=>{setIncoming(null); localStorage.setItem('iqcrm_sarahDone',JSON.stringify(true));}}/>}
 
