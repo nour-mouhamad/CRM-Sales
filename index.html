@@ -245,7 +245,7 @@ input,textarea{font-family:inherit; color:inherit}
 .cm-del-foot{display:flex; gap:7px; justify-content:flex-end}
 .cm-del-foot .btn{padding:6px 12px; font-size:12.5px}
 /* modale « Gérer les colonnes » */
-.colmgr{width:560px; max-width:94vw; max-height:86vh; display:flex; flex-direction:column; background:var(--surface); border:1px solid var(--b1); border-radius:18px; box-shadow:var(--sh-pop); overflow:hidden}
+.colmgr{position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:90; width:560px; max-width:94vw; max-height:86vh; display:flex; flex-direction:column; background:var(--surface); border:1px solid var(--b1); border-radius:18px; box-shadow:var(--sh-pop); overflow:hidden}
 .colmgr-head{display:flex; align-items:center; justify-content:space-between; padding:18px 20px 14px; border-bottom:1px solid var(--b1)}
 .colmgr-head h3{font-size:18px; font-weight:800; margin-top:2px}
 .colmgr-body{flex:1; overflow-y:auto; padding:12px 14px; display:flex; flex-direction:column; gap:6px}
@@ -267,7 +267,7 @@ input,textarea{font-family:inherit; color:inherit}
 .colmgr-add{display:flex; gap:9px; padding:14px 16px; border-top:1px solid var(--b1)}
 .cm-newinp{flex:1; font-size:14px; font-weight:600; color:var(--t1); background:var(--surface-2); border:1px solid var(--b2); border-radius:9px; padding:9px 12px; outline:none}
 .cm-newinp:focus{border-color:var(--accent)}
-.cm-confirm{width:400px; max-width:92vw; background:var(--surface); border:1px solid var(--b1); border-radius:16px; box-shadow:var(--sh-pop); padding:22px}
+.cm-confirm{position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:96; width:400px; max-width:92vw; background:var(--surface); border:1px solid var(--b1); border-radius:16px; box-shadow:var(--sh-pop); padding:22px}
 .cm-confirm h4{font-size:17px; font-weight:800; margin:0 0 5px}
 .cm-confirm p{color:var(--t2); font-size:13px; margin:0 0 14px}
 /* tuile fantôme « + Ajouter une colonne » */
@@ -4041,7 +4041,7 @@ function ColumnsManagerModal({ columns, leads, onClose, onRename, onRecolor, onR
         </div>
       </div>
       {delId && (()=>{ const c=byId[delId]; const n=counts[delId]||0; const opts=columns.filter(x=>x.id!==delId); return (
-        <div className="backdrop" style={{zIndex:60}} onClick={e=>{ e.stopPropagation(); setDelId(null); }}>
+        <div className="backdrop" style={{zIndex:95}} onClick={e=>{ e.stopPropagation(); setDelId(null); }}>
           <div className="cm-confirm" onClick={e=>e.stopPropagation()}>
             <h4>Supprimer « {c?c.label:''} »</h4>
             <p>{n} lead{n>1?'s':''} dans cette colonne. Où les déplacer ?</p>
