@@ -4742,9 +4742,6 @@ function App({session, onLogout}){
   const reorderRes=useCallback((orderedIds)=>{ setResCfg(cs=>{ const by=Object.fromEntries(cs.map(c=>[c.id,c])); return orderedIds.map((id,i)=>by[id]&&({...by[id],position:i})).filter(Boolean); }); Promise.all(orderedIds.map((id,i)=>SB.from('crm_results').update({position:i,updated_by:userId}).eq('id',id))).then(rs=>{ if(rs.some(r=>r&&r.error)) resWriteFail(); }); },[userId,resWriteFail]);
   const addRes=useCallback((label,color)=>{ const v=String(label||'').trim()||'Nouvelle disposition'; const base=(deburr(v).replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,24))||'disp'; let id; do{ id=base+'_'+Math.random().toString(36).slice(2,6); }while(SYSTEM_RESULT_IDS.has(id)||resCfg.some(c=>c.id===id)); const pos=Math.max(-1,...resCfg.map(c=>c.position))+1; const row={id,label:v,color:color||'var(--cold)',position:pos,is_system:false}; setResCfg(cs=>[...cs,{...row}]); SB.from('crm_results').insert({...row,updated_by:userId}).then(({error})=>{ if(error) resWriteFail(); }); return id; },[resCfg,userId,resWriteFail]);
   const deleteRes=useCallback(async(id)=>{ const r=resCfg.find(c=>c.id===id); if(!r||r.is_system) return; setResCfg(cs=>cs.filter(c=>c.id!==id)); const { error }=await SB.from('crm_results').delete().eq('id',id); if(error) resWriteFail(); else toast('Disposition supprimée',null,'info'); },[resCfg,toast,resWriteFail]);
-  // assigne/retire la disposition d'une entrée d'historique à la main (optimiste + écriture activites.result)
-  const editResult=useCallback((actId,result)=>{ if(!actId) return; if(sel) patch(sel.id,prev=>({timeline:prev.timeline.map(e=> e.id===actId?{...e,result:result||null}:e)})); setActiviteResult(actId,result); },[sel,patch]);
-
   // AUTO-NETTOYAGE (admin) : un lead rattaché à un closer SUPPRIMÉ (owner sans profil) est libéré (owner -> null)
   // pour qu'il se ré-attribue normalement. Tourne 1× par session, avec garde-fou : si la lecture des profils
   // échoue, on ne touche à RIEN (jamais de désassignation massive accidentelle).
@@ -4885,6 +4882,8 @@ function App({session, onLogout}){
     });
   },[leads,cqMeetings]);
   const sel = leadsCq.find(l=>l.id===selId);
+  // assigne/retire la disposition d'une entrée d'historique à la main (optimiste + écriture activites.result)
+  const editResult=useCallback((actId,result)=>{ if(!actId) return; if(sel) patch(sel.id,prev=>({timeline:prev.timeline.map(e=> e.id===actId?{...e,result:result||null}:e)})); setActiviteResult(actId,result); },[sel,patch]);
   // FILTRE SAISON GLOBAL : un seul réglage qui filtre TOUTES les vues liste (kanban, à faire, closers).
   // null = toutes · '__none' = sans saison · sinon code de saison. La fiche (sel) reste TOUJOURS sur leadsCq complet.
   const [seasonFilter,setSeasonFilter]=useState(()=>persistedState('iqcrm_season',null));
