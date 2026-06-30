@@ -342,9 +342,6 @@ input,textarea{font-family:inherit; color:inherit}
 .statf:hover .statf-pen, .statf:focus-visible .statf-pen{opacity:1}
 .statf-edit{cursor:default; gap:8px; border-color:var(--accent)}
 .statf-input{flex:1; min-width:0; background:transparent; border:none; outline:none; color:var(--t1); font-size:13.5px; font-weight:650; font-family:inherit; padding:0}
-.statf-cal{flex:none; position:relative; display:flex; align-items:center; cursor:pointer; color:var(--t3)}
-.statf-cal:hover{color:var(--t1)} .statf-cal svg{width:15px; height:15px}
-.statf-cal input{position:absolute; inset:0; width:100%; opacity:0; cursor:pointer}
 .statf-ic{flex:none; display:flex; align-items:center; border:none; background:transparent; cursor:pointer; color:var(--t2); padding:2px}
 .statf-ic:hover{color:var(--t1)} .statf-ic.ok{color:var(--accent)} .statf-ic svg{width:15px; height:15px}
 .statf-link{margin-top:8px; background:none; border:none; padding:0; color:var(--accent); font-size:11.5px; font-weight:600; cursor:pointer}
@@ -2669,7 +2666,7 @@ function ActionCard({ label, done, editing, onToggle, onEditStart, onEditCancel,
 /* Catégorie STATUT (en haut de la fiche) : badge du statut — AUTO par défaut (calculé : RDV daté, no-show,
    paiement, débrief, âge), SURCHARGEABLE en cliquant (édition inline texte + date, AUCUNE case à cocher).
    « Revenir au statut automatique » efface la surcharge. C'est un statut, pas une tâche. */
-function StatusField({ lead, editing, onEditStart, onCancel, onSave, onClear, onDate }){
+function StatusField({ lead, editing, onEditStart, onCancel, onSave, onClear }){
   const st=computeCardStatus(lead, Date.now());
   const [v,setV]=useState('');
   const inRef=React.useRef(null);
@@ -2683,9 +2680,6 @@ function StatusField({ lead, editing, onEditStart, onCancel, onSave, onClear, on
           <input ref={inRef} className="statf-input" value={v} placeholder="Statut personnalisé…"
             onChange={e=>setV(e.target.value)}
             onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); onSave(v.trim()); } if(e.key==='Escape'){ e.preventDefault(); onCancel(); } }}/>
-          <label className="statf-cal" title="Date / heure">{I.agenda({})}
-            <input type="datetime-local" value={lead.statusOverrideDue?toLocalInput(lead.statusOverrideDue):''} onChange={e=>onDate(e.target.value?new Date(e.target.value).toISOString():null)}/>
-          </label>
           <button className="statf-ic ok" title="Enregistrer (Entrée)" onClick={()=>onSave(v.trim())}>{I.check({})}</button>
           <button className="statf-ic" title="Annuler (Échap)" onClick={onCancel}>{I.x({})}</button>
         </div>
@@ -3194,8 +3188,7 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
             <StatusField lead={lead} editing={editStatus}
               onEditStart={()=>setEditStatus(true)} onCancel={()=>setEditStatus(false)}
               onSave={(v)=>{ onEditField('statusOverride','statusOverride', v||null); setEditStatus(false); }}
-              onClear={()=>{ onEditField('statusOverride','statusOverride', null); onEditField('statusOverrideDue','statusOverrideDue', null); setEditStatus(false); }}
-              onDate={(iso)=>onEditField('statusOverrideDue','statusOverrideDue', iso)}/>
+              onClear={()=>{ onEditField('statusOverride','statusOverride', null); onEditField('statusOverrideDue','statusOverrideDue', null); setEditStatus(false); }}/>
             {(()=>{ const srcInList=LEAD_SOURCES.some(o=>o.k===lead.source); return (<>
               <div className="field">
                 <span className="eyebrow">Source du lead</span>
