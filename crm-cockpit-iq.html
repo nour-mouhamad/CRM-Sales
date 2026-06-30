@@ -1884,10 +1884,6 @@ async function updateActivite(id, contenu){
 async function deleteActivite(id){
   try{ await SB.from('activites').delete().eq('id',id); }catch(e){ console.warn('deleteActivite',e); }
 }
-// pose/retire la disposition (résultat) d'une entrée d'historique à la main (≠ IA recap)
-async function setActiviteResult(id, result){
-  try{ await SB.from('activites').update({ result: result||null }).eq('id',id); }catch(e){ console.warn('setActiviteResult',e); }
-}
 
 /* ============================================================= ICONS */
 const I = {
@@ -2665,45 +2661,57 @@ function ActionCard({ label, done, editing, onToggle, onEditStart, onEditCancel,
   );
 }
 
-/* Prochaine étape de la fiche : par défaut le STATUT AUTO (calculé, daté) — cliquable pour le SURCHARGER.
-   Si une surcharge existe, on réutilise ActionCard (texte + date/heure) ; la corbeille = « revenir à l'auto ». */
-/* Catégorie STATUT (en haut de la fiche) : badge du statut — AUTO par défaut (calculé : RDV daté, no-show,
-   paiement, débrief, âge), SURCHARGEABLE en cliquant (édition inline texte + date, AUCUNE case à cocher).
-   « Revenir au statut automatique » efface la surcharge. C'est un statut, pas une tâche. */
-function StatusField({ lead, editing, onEditStart, onCancel, onSave, onClear }){
+/* Catégorie STATUT (en haut de la fiche) = ÉTIQUETTE UNIQUE du lead. AUTO par défaut (RDV daté, no-show,
+   paiement, âge). Au clic → menu des DISPOSITIONS (même picker fluide que les récaps : Intéressé · À closer ·
+   Objection · Closé · Pas intéressé · No-show, liste configurable) + « Personnalisé… » (texte libre) +
+   « Revenir au statut automatique ». Une disposition s'affiche préfixée du RDV courant et colorée (ex: « R2 Closé »). */
+function StatusField({ lead, onSetDisp, onCustom, onClear }){
   const st=computeCardStatus(lead, Date.now());
+  const [menu,setMenu]=useState(null);   // {top,left} | null
+  const [custom,setCustom]=useState(false);
   const [v,setV]=useState('');
-  const inRef=React.useRef(null);
-  React.useEffect(()=>{ if(editing){ setV(lead.statusOverride || ((st.amt?st.amt+' ':'')+(st.text||'')) || ''); requestAnimationFrame(()=>{ const el=inRef.current; if(el){ el.focus(); const n=el.value.length; el.setSelectionRange(n,n); } }); } },[editing]);
-  if(editing){
+  const pillRef=React.useRef(null), inRef=React.useRef(null);
+  const openMenu=()=>{ const r=pillRef.current.getBoundingClientRect(); const W=240; setMenu({top:Math.round(r.bottom+6), left:Math.round(Math.min(r.left, window.innerWidth-W-12))}); };
+  const startCustom=()=>{ setMenu(null); setV((lead.statusOverride && !RESULT_META[lead.statusOverride]) ? lead.statusOverride : ''); setCustom(true); requestAnimationFrame(()=>{ const el=inRef.current; if(el) el.focus(); }); };
+  if(custom){
     return (
       <div className="field">
         <span className="eyebrow">Statut</span>
         <div className="statf statf-edit">
-          <span className={'statf-dot '+st.urg}></span>
+          <span className="statf-dot today"></span>
           <input ref={inRef} className="statf-input" value={v} placeholder="Statut personnalisé…"
             onChange={e=>setV(e.target.value)}
-            onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); onSave(v.trim()); } if(e.key==='Escape'){ e.preventDefault(); onCancel(); } }}/>
-          <button className="statf-ic ok" title="Enregistrer (Entrée)" onClick={()=>onSave(v.trim())}>{I.check({})}</button>
-          <button className="statf-ic" title="Annuler (Échap)" onClick={onCancel}>{I.x({})}</button>
+            onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); onCustom(v.trim()); setCustom(false); } if(e.key==='Escape'){ e.preventDefault(); setCustom(false); } }}/>
+          <button className="statf-ic ok" title="Enregistrer (Entrée)" onClick={()=>{ onCustom(v.trim()); setCustom(false); }}>{I.check({})}</button>
+          <button className="statf-ic" title="Annuler (Échap)" onClick={()=>setCustom(false)}>{I.x({})}</button>
         </div>
-        {lead.statusOverride && <button className="statf-link" onClick={onClear}>↺ Revenir au statut automatique</button>}
       </div>
     );
   }
   return (
     <div className="field">
       <span className="eyebrow">Statut</span>
-      <div className={'statf'+(st.manual?' is-manual':'')+(st.money?(' statf-'+st.money):'')} onClick={onEditStart} role="button" tabIndex={0}
-        title={st.manual?'Statut manuel — cliquer pour modifier':'Statut automatique — cliquer pour surcharger'}
-        onKeyDown={e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); onEditStart(); } }}>
-        {st.money==='paid' ? <span className="statf-check">{I.check({})}</span> : <span className={'statf-dot '+st.urg}></span>}
+      <div ref={pillRef} className={'statf'+(st.manual?' is-manual':'')+(st.money?(' statf-'+st.money):'')} onClick={openMenu} role="button" tabIndex={0}
+        title="Statut du lead — cliquer pour changer la disposition"
+        onKeyDown={e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openMenu(); } }}>
+        {st.money==='paid' ? <span className="statf-check">{I.check({})}</span> : <span className={'statf-dot '+(st.color?'':st.urg)} style={st.color?{background:st.color}:undefined}></span>}
         {st.amt && <span className="statf-amt">{st.amt}</span>}
-        <span className="statf-tx">{st.text||'—'}</span>
+        <span className="statf-tx" style={st.color?{color:st.color}:undefined}>{st.text||'—'}</span>
         <span className="statf-tag">{st.manual?'manuel':'auto'}</span>
         <span className="statf-pen">{I.pencil({})}</span>
       </div>
-      {st.manual && <button className="statf-link" onClick={onClear}>↺ Revenir au statut automatique</button>}
+      {menu && (<>
+        <div className="disp-ov" onClick={()=>setMenu(null)}></div>
+        <div className="disp-menu" style={{top:menu.top, left:menu.left}}>
+          {RESULT_LIST.map(r=>(
+            <button key={r.id} className={'disp-item'+(lead.statusOverride===r.id?' on':'')} onClick={()=>{ onSetDisp(r.id); setMenu(null); }}>
+              <span className="disp-dot" style={{background:r.color}}></span><span className="disp-lbl">{r.label}</span>{lead.statusOverride===r.id&&<span className="disp-check">{I.check({})}</span>}
+            </button>
+          ))}
+          <button className="disp-item" onClick={startCustom}><span className="disp-dot" style={{background:'var(--t3)'}}></span><span className="disp-lbl">Personnalisé…</span></button>
+          {st.manual && <button className="disp-item clear" onClick={()=>{ onClear(); setMenu(null); }}>↺ Revenir au statut automatique</button>}
+        </div>
+      </>)}
     </div>
   );
 }
@@ -2746,9 +2754,9 @@ const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDrag
   const actionEl = (
     <div className={'card-action'+(cardStatus.money?(' '+cardStatus.money):'')}>
       {cardStatus.money==='paid' && <I.check style={{width:13,height:13,strokeWidth:2.4}}/>}
-      {!cardStatus.money && <span className={'live '+cardStatus.urg}></span>}
+      {!cardStatus.money && <span className={'live '+(cardStatus.color?'':cardStatus.urg)} style={cardStatus.color?{background:cardStatus.color}:undefined}></span>}
       {cardStatus.amt && <span className="amt">{cardStatus.amt}</span>}
-      <span className="ca-tx">{cardStatus.text}</span>
+      <span className="ca-tx" style={cardStatus.color?{color:cardStatus.color}:undefined}>{cardStatus.text}</span>
       {cardStatus.manual && <span className="ca-man">manuel</span>}
     </div>
   );
@@ -3139,7 +3147,7 @@ function MoneyField({label, value, onSave, accent}){
   );
 }
 
-function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDeleteNote, onSetResult, onEditField, onNote, onAdvanceStage, onActions, onClaim, meId, onAddRdv, onCancelRdv, onManualRdv, onManualRemoveRdv, onRdvOutcome, onClearRdvOutcome, isAdminView, closers, rdvClosers, onAssign, calendiqReady, calendiqOrganizer}){
+function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onActions, onClaim, meId, onAddRdv, onCancelRdv, onManualRdv, onManualRemoveRdv, onRdvOutcome, onClearRdvOutcome, isAdminView, closers, rdvClosers, onAssign, calendiqReady, calendiqOrganizer}){
   const [moveOpen,setMoveOpen]=useState(false);
   const [noteOpen,setNoteOpen]=useState(false);
   const [noteMode,setNoteMode]=useState('note'); // 'note' = note écrite | 'nrp' = appel sans réponse
@@ -3154,7 +3162,6 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
   const toggleMove=()=>{ if(moveOpen){ setMoveOpen(false); return; } const r=moveBtnRef.current.getBoundingClientRect(); setMovePos({top:r.bottom+4, left:r.left, width:r.width, maxH:Math.max(200, window.innerHeight-r.bottom-16)}); setMoveOpen(true); };
   const [editingField,setEditingField]=useState(null);
   const [editAct,setEditAct]=useState(null); // index extraAction en édition | null
-  const [editStatus,setEditStatus]=useState(false); // édition de la surcharge de statut (catégorie STATUT, en haut)
   const statusColor = COL_COLOR[lead.column];
 
   return (
@@ -3189,10 +3196,10 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
         <div className="panel">
           <div className="panel-head"><span className="eyebrow">Situation</span></div>
           <div className="panel-body">
-            <StatusField lead={lead} editing={editStatus}
-              onEditStart={()=>setEditStatus(true)} onCancel={()=>setEditStatus(false)}
-              onSave={(v)=>{ onEditField('statusOverride','statusOverride', v||null); setEditStatus(false); }}
-              onClear={()=>{ onEditField('statusOverride','statusOverride', null); onEditField('statusOverrideDue','statusOverrideDue', null); setEditStatus(false); }}/>
+            <StatusField lead={lead}
+              onSetDisp={(id)=>onEditField('statusOverride','statusOverride', id)}
+              onCustom={(t)=>onEditField('statusOverride','statusOverride', t||null)}
+              onClear={()=>{ onEditField('statusOverride','statusOverride', null); onEditField('statusOverrideDue','statusOverrideDue', null); }}/>
             {(()=>{ const srcInList=LEAD_SOURCES.some(o=>o.k===lead.source); return (<>
               <div className="field">
                 <span className="eyebrow">Source du lead</span>
@@ -3307,7 +3314,7 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
               // HISTORIQUE UNIFIÉ : lead.timeline contient déjà CRM + HubSpot (activites.source). On masque les logs d'étape.
               const all=lead.timeline.filter(ev=>!(ev.title&&ev.title.indexOf('Étape :')===0));
               return (<div className="tl">
-                {all.map((ev,i)=><TlCard key={ev.id||i} ev={ev} onEditNote={onEditNote} onDeleteNote={onDeleteNote} onSetResult={onSetResult}/>)}
+                {all.map((ev,i)=><TlCard key={ev.id||i} ev={ev} onEditNote={onEditNote} onDeleteNote={onDeleteNote}/>)}
                 {all.length===0 && <div className="tl-empty">Aucune note pour l’instant.</div>}
               </div>);
             })()}
@@ -3597,6 +3604,8 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage, onSetR
     const concl = (result && result.conclusion) || (res ? RESULT_META[res].label : null);
     const call_kind = callKind; // sélection manuelle (R1/R2) — prime sur la détection IA
     if(body || res) onNote('recap', 'Récap · '+((result&&result.call_type_label)||'Call'), body, {result:res, conclusion:concl, call_kind});
+    // la disposition IA devient l'ÉTIQUETTE UNIQUE du lead (plus de pastille par récap)
+    if(res) onEditField('statusOverride','statusOverride', res);
     // AUTO-TAG présence : un verdict (sauf no_show) ⇒ le prospect était présent. On pose le statut sur le BON RDV.
     // Le manuel prime (le handler ignore l'IA si un statut a déjà été posé à la main). Rien si verdict absent / aucune cible.
     if(res && onSetRdvOutcome){
@@ -3668,35 +3677,8 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage, onSetR
 // Entrée d'historique "Récap IA" : accordéon repliable, rendu markdown structuré (via MdText).
 // carte d'historique unifiée : MÊME structure pour tous les types (note, NRP/appel, récap, paiement…).
 // En-tête toujours = chevron (si contenu) + icône + titre + heure + actions. Corps pliable si contenu.
-// sélecteur de disposition (résultat de call) : pastille cliquable -> popover de la liste éditable + « Retirer »
-function DispositionPicker({ value, onPick }){
-  const [open,setOpen]=useState(false);
-  const [pos,setPos]=useState(null);   // menu en position:fixed calculée depuis la pastille -> échappe au clipping (carte + panneau scrollable)
-  const btnRef=useRef(null);
-  const rk = value && RESULT_META[value];
-  const toggle=()=>{ if(open){ setOpen(false); return; } const r=btnRef.current.getBoundingClientRect(); const W=200; setPos({top:Math.round(r.bottom+6), left:Math.round(Math.min(r.left, window.innerWidth-W-12))}); setOpen(true); };
-  return (
-    <span className="disp-wrap" onClick={e=>e.stopPropagation()}>
-      <button ref={btnRef} className={'disp-chip'+(rk?'':' empty')} onClick={toggle} title="Changer la disposition"
-        style={rk?{color:rk.color, background:'color-mix(in srgb, currentColor 14%, transparent)'}:undefined}>
-        {rk ? <><span className="cdot"></span>{rk.label}</> : <><I.plus style={{width:12,height:12}}/>Disposition</>}
-      </button>
-      {open && (<>
-        <div className="disp-ov" onClick={()=>setOpen(false)}></div>
-        <div className="disp-menu" style={pos?{top:pos.top, left:pos.left}:undefined}>
-          {RESULT_LIST.map(r=>(
-            <button key={r.id} className={'disp-item'+(value===r.id?' on':'')} onClick={()=>{ onPick(r.id); setOpen(false); }}>
-              <span className="disp-dot" style={{background:r.color}}></span><span className="disp-lbl">{r.label}</span>{value===r.id&&<span className="disp-check">{I.check({})}</span>}
-            </button>
-          ))}
-          {value && <button className="disp-item clear" onClick={()=>{ onPick(null); setOpen(false); }}>Retirer la disposition</button>}
-        </div>
-      </>)}
-    </span>
-  );
-}
 
-function TlCard({ ev, onEditNote, onDeleteNote, onSetResult }){
+function TlCard({ ev, onEditNote, onDeleteNote }){
   const isRecap = ev.type === 'recap'; // par TYPE (aligné sur leadStatus) — pas par titre
   const hasBody = isRecap || !!ev.text || !!ev.granola;
   const [open,setOpen]=useState(false);
@@ -3717,7 +3699,6 @@ function TlCard({ ev, onEditNote, onDeleteNote, onSetResult }){
         <span className="tl-recap-title">{ev.title}</span>
         <span className={'tl-src '+(ev._src==='hs'?'hs':'crm')}>{ev._src==='hs'?'HubSpot':'CRM'}</span>
         <span className="tl-recap-right">
-          {isRecap && ev.result && RESULT_META[ev.result] && (()=>{ const rk=RESULT_META[ev.result]; return <span className="chip sm" style={{color:rk.color, background:'color-mix(in srgb, currentColor 14%, transparent)'}}><span className="cdot"></span>{rk.label}</span>; })()}
           <span className="tl-when">{ev.when}</span>
           {ev.author && <span className="tl-author" title={'Par '+ev.author}>{ev.author}</span>}
           {ev.id && !ev.readOnly && <span className="tl-recap-actions">
@@ -3739,13 +3720,10 @@ function TlCard({ ev, onEditNote, onDeleteNote, onSetResult }){
               </div>
             </div>
           ) : isRecap ? (<>
-            {(ev.result || ev.conclusion || (canEdit && onSetResult)) && (()=>{ const rk=RESULT_META[ev.result]; const ck=ev.callKind; const editable=canEdit&&onSetResult; return (
+            {(ev.conclusion || ev.callKind) && (()=>{ const ck=ev.callKind; return (
               <div className="recap-concl" style={{marginBottom:11}}>
                 <div className="recap-concl-row">
-                  {ck && (ev.result||editable) && <span className="recap-ck">{callKindLabel(ck)} ·</span>}
-                  {editable
-                    ? <DispositionPicker value={ev.result} onPick={(k)=>onSetResult(ev.id,k)}/>
-                    : (rk && <span className="chip" style={{color:rk.color, background:'color-mix(in srgb, currentColor 14%, transparent)'}}><span className="cdot"></span>{rk.label}</span>)}
+                  {ck && <span className="recap-ck">{callKindLabel(ck)} ·</span>}
                   {ev.conclusion && <span className="recap-concl-tx">{ev.conclusion}</span>}
                 </div>
               </div>); })()}
@@ -4925,7 +4903,6 @@ function App({session, onLogout}){
   },[leads,cqMeetings]);
   const sel = leadsCq.find(l=>l.id===selId);
   // assigne/retire la disposition d'une entrée d'historique à la main (optimiste + écriture activites.result)
-  const editResult=useCallback((actId,result)=>{ if(!actId) return; if(sel) patch(sel.id,prev=>({timeline:prev.timeline.map(e=> e.id===actId?{...e,result:result||null}:e)})); setActiviteResult(actId,result); },[sel,patch]);
   // FILTRE SAISON GLOBAL : un seul réglage qui filtre TOUTES les vues liste (kanban, à faire, closers).
   // null = toutes · '__none' = sans saison · sinon code de saison. La fiche (sel) reste TOUJOURS sur leadsCq complet.
   const [seasonFilter,setSeasonFilter]=useState(()=>persistedState('iqcrm_season',null));
@@ -5293,7 +5270,7 @@ function App({session, onLogout}){
             isAdmin={isAdmin} closers={closers} onAssign={reassignOwner}
             colVer={colVer} renameCol={renameCol} recolorCol={recolorCol} reorderCols={reorderCols} addCol={addCol} deleteCol={deleteCol}
             onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col,defSrc)=>setAddTarget({col,defSrc})} onDelete={deleteLead}/>}
-        {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen(origin)} backLabel={SCREEN_LABEL[origin]||'Retour'} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onSetResult={editResult} onEditField={editField} onNote={addNote}
+        {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen(origin)} backLabel={SCREEN_LABEL[origin]||'Retour'} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
             onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} onManualRdv={setManualRdv} onManualRemoveRdv={removeManualRdv} onRdvOutcome={setRdvOutcome} onClearRdvOutcome={clearRdvOutcome} isAdminView={isAdmin} closers={closers} rdvClosers={cqSources} onAssign={reassignOwner} calendiqReady={isAdmin ? cqSources.length>0 : !!(profile&&profile.calendiq_organizer_id)} calendiqOrganizer={profile&&profile.calendiq_organizer_id}/>}
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen(origin)}>Retour ({SCREEN_LABEL[origin]||'Mes leads'})</button></div>}
         {screen==='agenda' && <Agenda meetings={cqMeetings} sources={cqSources} loading={cqLoading} error={cqError}
@@ -5330,7 +5307,9 @@ function leadStatus(l, now, opts){
   // recap : timeline si la fiche a été ouverte (plus frais), sinon _recap chargé en masse par TeamScreen.
   // ignoreRecap=true (pastille STATUT) → on force le statut FACTUEL généré, identique board ↔ fiche (le board n'a pas le recap).
   const recap=(opts&&opts.ignoreRecap) ? null : ((l.timeline||[]).find(t=>t.type==='recap') || l._recap || null);
-  const result = (recap && RESULT_META[recap.result]) ? recap.result : null;
+  // disposition du lead (étiquette unique) : pilotée par status_override quand c'est un id de disposition connu, sinon le recap.
+  const ovDisp = RESULT_META[l.statusOverride] ? l.statusOverride : null;
+  const result = ovDisp || ((recap && RESULT_META[recap.result]) ? recap.result : null);
   // la colonne TERMINALE prime sur un vieux verdict de call : un lead déplacé en Perdu avec un ancien
   // recap « close » est PERDU (sinon il gonflerait le CA à vie).
   const colWon=LB_WON.includes(col), colLost=LB_LOST.includes(col);
@@ -5407,6 +5386,8 @@ function statusUrg(s){
 }
 // urgence d'une échéance de surcharge manuelle (passée = rouge, aujourd'hui = orange)
 function dueUrg(due, now){ if(!due) return 'idle'; const t=new Date(due).getTime(); if(!t) return 'idle'; if(t<now-60000) return 'late'; if(sameDayTs(due, now)) return 'today'; return 'idle'; }
+// urgence (puce) d'une disposition choisie ; la couleur réelle vient de RESULT_META (inline)
+function dispUrg(id){ return id==='no_show'?'late':(id==='close'?'ok':(id==='pas_interesse'?'idle':'today')); }
 // libellé de repli ACTIONNABLE par colonne quand aucun fait RDV/paiement (l'urgence reste portée par la puce colorée).
 // On ne met QUE les colonnes où un libellé ajoute de l'info que l'entête ne donne pas (ex: ATC → « À recontacter »).
 const STATUS_FALLBACK = { atc:'À recontacter' };
@@ -5416,9 +5397,17 @@ const STATUS_FALLBACK = { atc:'À recontacter' };
 // Retour: { text, amt?, urg, manual, money? } — money ∈ 'money'|'paid' pilote la couleur (€/✓).
 function computeCardStatus(lead, now){
   now = now||Date.now();
-  if(lead.statusOverride){
+  const ov=lead.statusOverride;
+  if(ov){
+    // disposition connue (Closé, Objection…) : préfixée du RDV courant + couleur de la disposition → « R2 Closé ».
+    if(RESULT_META[ov]){
+      const s=leadStatus(lead, now, {ignoreRecap:true});
+      const r=(s.rdvLast||s.live||s.rdvNext); const tag=r?((r.type||'r1').toUpperCase()):null;
+      return { text:(tag?tag+' ':'')+RESULT_META[ov].label, urg:dispUrg(ov), color:RESULT_META[ov].color, manual:true, money:null };
+    }
+    // surcharge texte libre
     const d=lead.statusOverrideDue;
-    return { text: lead.statusOverride+(d?(' · '+rdvShort(d,true)):''), urg: dueUrg(d, now), manual:true, money:null };
+    return { text: ov+(d?(' · '+rdvShort(d,true)):''), urg: dueUrg(d, now), manual:true, money:null };
   }
   const col=lead.column;
   if(col==='encaisser'){
