@@ -3308,10 +3308,6 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
                 <span className="act-ic"><I.phone/></span>
                 <span className="act-tx"><b>Appeler</b><span className={lead.tel?'mono':''}>{lead.tel||'Pas de numéro'}</span></span>
               </button>
-              <button className="act" disabled title="Bientôt disponible">
-                <span className="act-ic"><I.mail/></span>
-                <span className="act-tx"><b>Envoyer un mail</b><span>Bientôt disponible</span></span>
-              </button>
               <button className="act" onClick={onPay} disabled={!lead.email} title={lead.email?'Envoyer un lien de paiement par email':'Aucun email — impossible'}>
                 <span className="act-ic"><I.euro/></span>
                 <span className="act-tx"><b>Envoyer lien paiement</b><span className="mono">1 400 · 1 250</span></span>
