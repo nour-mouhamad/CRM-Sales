@@ -335,6 +335,10 @@ input,textarea{font-family:inherit; color:inherit}
 .statf-dot{width:8px; height:8px; border-radius:99px; background:var(--accent); flex:none; transition:background .2s}
 .statf-dot.idle{background:var(--b3)} .statf-dot.late{background:var(--danger)} .statf-dot.ok{background:var(--ok)} .statf-dot.today{background:var(--accent)}
 .statf-tx{flex:1; min-width:0; font-size:13.5px; font-weight:650; color:var(--t1); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.statf-amt{flex:none; font-family:'JetBrains Mono',monospace; font-weight:700; font-size:13px; color:var(--t1)}
+.statf-check{flex:none; display:flex; color:var(--ok)} .statf-check svg{width:15px; height:15px; stroke-width:2.4}
+.statf.statf-money .statf-tx, .statf.statf-money .statf-amt{color:var(--accent)}
+.statf.statf-paid .statf-tx, .statf.statf-paid .statf-amt{color:var(--ok)}
 .statf-tag{flex:none; font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; font-weight:700; color:var(--t3)}
 .statf.is-manual .statf-tag{color:var(--accent)}
 .statf-pen{flex:none; display:flex; opacity:0; transition:opacity .14s; color:var(--t3)}
@@ -2670,7 +2674,7 @@ function StatusField({ lead, editing, onEditStart, onCancel, onSave, onClear }){
   const st=computeCardStatus(lead, Date.now());
   const [v,setV]=useState('');
   const inRef=React.useRef(null);
-  React.useEffect(()=>{ if(editing){ setV(lead.statusOverride||st.text||''); requestAnimationFrame(()=>{ const el=inRef.current; if(el){ el.focus(); const n=el.value.length; el.setSelectionRange(n,n); } }); } },[editing]);
+  React.useEffect(()=>{ if(editing){ setV(lead.statusOverride || ((st.amt?st.amt+' ':'')+(st.text||'')) || ''); requestAnimationFrame(()=>{ const el=inRef.current; if(el){ el.focus(); const n=el.value.length; el.setSelectionRange(n,n); } }); } },[editing]);
   if(editing){
     return (
       <div className="field">
@@ -2690,10 +2694,11 @@ function StatusField({ lead, editing, onEditStart, onCancel, onSave, onClear }){
   return (
     <div className="field">
       <span className="eyebrow">Statut</span>
-      <div className={'statf'+(st.manual?' is-manual':'')} onClick={onEditStart} role="button" tabIndex={0}
+      <div className={'statf'+(st.manual?' is-manual':'')+(st.money?(' statf-'+st.money):'')} onClick={onEditStart} role="button" tabIndex={0}
         title={st.manual?'Statut manuel — cliquer pour modifier':'Statut automatique — cliquer pour surcharger'}
         onKeyDown={e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); onEditStart(); } }}>
-        <span className={'statf-dot '+st.urg}></span>
+        {st.money==='paid' ? <span className="statf-check">{I.check({})}</span> : <span className={'statf-dot '+st.urg}></span>}
+        {st.amt && <span className="statf-amt">{st.amt}</span>}
         <span className="statf-tx">{st.text||'—'}</span>
         <span className="statf-tag">{st.manual?'manuel':'auto'}</span>
         <span className="statf-pen">{I.pencil({})}</span>
@@ -2738,16 +2743,15 @@ const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDrag
   // statut compact recalculé (RDV/paiement/relance, daté) ; surcharge manuelle prioritaire. Mémoïsé : 1 calcul par carte
   // et par minute (clock = bucket minute), pas à chaque render → board fluide même à ~950 cartes.
   const cardStatus = React.useMemo(()=>computeCardStatus(lead, clock?clock*60000:Date.now()), [lead, clock]);
-  let actionEl;
-  if(lead.statusOverride){
-    actionEl = <div className="card-action"><span className={'live '+cardStatus.urg}></span><span className="ca-tx">{cardStatus.text}</span><span className="ca-man">manuel</span></div>;
-  } else if(col==='encaisser'){
-    actionEl = <div className={'card-action '+(lead.paid?'paid':'money')}>{lead.paid?<I.check style={{width:13,height:13,strokeWidth:2.4}}/>:null}<span className="amt">{eur(lead.offer)}</span> {lead.paid?'payé':(lead.statut_paiement==='lien_envoye'?'lien envoyé — en attente':'à encaisser')}</div>;
-  } else if(col==='won'){
-    actionEl = <div className="card-action paid"><I.check style={{width:13,height:13,strokeWidth:2.4}}/><span className="amt">{eur(lead.offer)}</span> gagné</div>;
-  } else {
-    actionEl = <div className="card-action"><span className={'live '+cardStatus.urg}></span><span className="ca-tx">{cardStatus.text}</span></div>;
-  }
+  const actionEl = (
+    <div className={'card-action'+(cardStatus.money?(' '+cardStatus.money):'')}>
+      {cardStatus.money==='paid' && <I.check style={{width:13,height:13,strokeWidth:2.4}}/>}
+      {!cardStatus.money && <span className={'live '+cardStatus.urg}></span>}
+      {cardStatus.amt && <span className="amt">{cardStatus.amt}</span>}
+      <span className="ca-tx">{cardStatus.text}</span>
+      {cardStatus.manual && <span className="ca-man">manuel</span>}
+    </div>
+  );
   return (
     <div className={`card ${dragging?'dragging':''} ${dropPos?('drop-'+dropPos):''} ${selecting?'selecting':''} ${selected?'selected':''}`} draggable={!selecting}
          onDragStart={()=>onDragStart(lead.id)} onDragEnd={onDragEnd}
@@ -5320,11 +5324,12 @@ const LB_LOST=['lost','perdu','desabonne','desabo'], LB_WON=['won','paye'], LB_C
 const RDV_TODO_COLS=['contacter','perso','atc','contacte'];
 /* CERVEAU UNIFIÉ du cockpit : tout l'état d'un lead dérivé des FAITS (RDV fusionnés leadAllRdvs = même
    source que la fiche, verdicts rdv_meta, recap d'appel). Aucune donnée inventée — vide reste vide. */
-function leadStatus(l, now){
+function leadStatus(l, now, opts){
   now = now||Date.now();
   const col=l.column;
-  // recap : timeline si la fiche a été ouverte (plus frais), sinon _recap chargé en masse par TeamScreen
-  const recap=(l.timeline||[]).find(t=>t.type==='recap') || l._recap || null;
+  // recap : timeline si la fiche a été ouverte (plus frais), sinon _recap chargé en masse par TeamScreen.
+  // ignoreRecap=true (pastille STATUT) → on force le statut FACTUEL généré, identique board ↔ fiche (le board n'a pas le recap).
+  const recap=(opts&&opts.ignoreRecap) ? null : ((l.timeline||[]).find(t=>t.type==='recap') || l._recap || null);
   const result = (recap && RESULT_META[recap.result]) ? recap.result : null;
   // la colonne TERMINALE prime sur un vieux verdict de call : un lead déplacé en Perdu avec un ancien
   // recap « close » est PERDU (sinon il gonflerait le CA à vie).
@@ -5405,23 +5410,33 @@ function dueUrg(due, now){ if(!due) return 'idle'; const t=new Date(due).getTime
 // libellé de repli ACTIONNABLE par colonne quand aucun fait RDV/paiement (l'urgence reste portée par la puce colorée).
 // On ne met QUE les colonnes où un libellé ajoute de l'info que l'entête ne donne pas (ex: ATC → « À recontacter »).
 const STATUS_FALLBACK = { atc:'À recontacter' };
-// STATUT COMPACT d'une carte : surcharge manuelle prioritaire, sinon dérivé de leadStatus (avec date/heure).
-// Repli : libellé actionnable de la colonne (STATUS_FALLBACK), sinon âge du lead (date_creation, zéro réseau).
+// STATUT COMPACT d'une carte = SOURCE UNIQUE (board ET fiche, donc toujours cohérents).
+// Priorité : surcharge manuelle > affichage ARGENT (encaisser/won, formulation concise) > statut FACTUEL
+// (leadStatus en ignoreRecap → identique partout, indépendant du recap chargé ou non) > repli colonne/âge.
+// Retour: { text, amt?, urg, manual, money? } — money ∈ 'money'|'paid' pilote la couleur (€/✓).
 function computeCardStatus(lead, now){
   now = now||Date.now();
   if(lead.statusOverride){
     const d=lead.statusOverrideDue;
-    return { text: lead.statusOverride+(d?(' · '+rdvShort(d,true)):''), urg: dueUrg(d, now), manual:true };
+    return { text: lead.statusOverride+(d?(' · '+rdvShort(d,true)):''), urg: dueUrg(d, now), manual:true, money:null };
   }
-  const s=leadStatus(lead, now);
+  const col=lead.column;
+  if(col==='encaisser'){
+    const t = lead.paid ? 'payé' : (lead.statut_paiement==='lien_envoye' ? 'lien envoyé — en attente' : 'à encaisser');
+    return { text:t, amt:eur(lead.offer), urg:(lead.paid?'ok':'today'), manual:false, money:(lead.paid?'paid':'money') };
+  }
+  if(col==='won'){
+    return { text:'gagné', amt:eur(lead.offer), urg:'ok', manual:false, money:'paid' };
+  }
+  const s=leadStatus(lead, now, {ignoreRecap:true});
   let text=s.conclusion;
   if(!text || text==='Aucun RDV calé'){
-    if(STATUS_FALLBACK[lead.column]) text = STATUS_FALLBACK[lead.column];
+    if(STATUS_FALLBACK[col]) text = STATUS_FALLBACK[col];
     else { const created=lead.date_creation?new Date(lead.date_creation).getTime():0;
       if(created){ const dd=Math.max(0,Math.floor((now-created)/DAY_MS)); text = dd<=0?'Nouveau lead':('Créé il y a '+dd+' j'); }
       else text='À traiter'; }
   }
-  return { text, urg: statusUrg(s), manual:false };
+  return { text, urg: statusUrg(s), manual:false, money:null };
 }
 // tri par URGENCE manager (leads ACTIFS d'abord) : RDV du jour > no-show à recaler > débrief manquant > RDV à venir > closing > actifs > gagnés > perdus
 function leadAttn(s){
