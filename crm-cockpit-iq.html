@@ -5402,8 +5402,11 @@ function statusUrg(s){
 }
 // urgence d'une échéance de surcharge manuelle (passée = rouge, aujourd'hui = orange)
 function dueUrg(due, now){ if(!due) return 'idle'; const t=new Date(due).getTime(); if(!t) return 'idle'; if(t<now-60000) return 'late'; if(sameDayTs(due, now)) return 'today'; return 'idle'; }
+// libellé de repli ACTIONNABLE par colonne quand aucun fait RDV/paiement (l'urgence reste portée par la puce colorée).
+// On ne met QUE les colonnes où un libellé ajoute de l'info que l'entête ne donne pas (ex: ATC → « À recontacter »).
+const STATUS_FALLBACK = { atc:'À recontacter' };
 // STATUT COMPACT d'une carte : surcharge manuelle prioritaire, sinon dérivé de leadStatus (avec date/heure).
-// Repli léger sur l'âge du lead (date_creation, zéro réseau) quand aucune étape RDV/paiement n'existe.
+// Repli : libellé actionnable de la colonne (STATUS_FALLBACK), sinon âge du lead (date_creation, zéro réseau).
 function computeCardStatus(lead, now){
   now = now||Date.now();
   if(lead.statusOverride){
@@ -5413,9 +5416,10 @@ function computeCardStatus(lead, now){
   const s=leadStatus(lead, now);
   let text=s.conclusion;
   if(!text || text==='Aucun RDV calé'){
-    const created=lead.date_creation?new Date(lead.date_creation).getTime():0;
-    if(created){ const dd=Math.max(0,Math.floor((now-created)/DAY_MS)); text = dd<=0?'Nouveau lead':('Créé il y a '+dd+' j'); }
-    else text='À traiter';
+    if(STATUS_FALLBACK[lead.column]) text = STATUS_FALLBACK[lead.column];
+    else { const created=lead.date_creation?new Date(lead.date_creation).getTime():0;
+      if(created){ const dd=Math.max(0,Math.floor((now-created)/DAY_MS)); text = dd<=0?'Nouveau lead':('Créé il y a '+dd+' j'); }
+      else text='À traiter'; }
   }
   return { text, urg: statusUrg(s), manual:false };
 }
