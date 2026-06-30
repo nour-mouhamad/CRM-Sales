@@ -329,13 +329,26 @@ input,textarea{font-family:inherit; color:inherit}
 .card-action.confirmed{color:var(--ok)}
 .card-action.confirmed .live{background:var(--ok)}
 .card-action .amt{font-family:'JetBrains Mono',monospace; font-weight:700}
-/* fiche — prochaine étape : statut auto cliquable (surchargeable) */
-.ns-auto{display:flex; align-items:center; gap:9px; background:var(--surface-2); border:1px solid var(--b1); border-radius:11px; padding:11px 12px; cursor:pointer; transition:border-color .12s}
-.ns-auto:hover{border-color:var(--accent)}
-.ns-auto .live{width:7px; height:7px; border-radius:99px; background:var(--accent); flex:none}
-.ns-auto .live.idle{background:var(--b3)} .ns-auto .live.late{background:var(--danger)} .ns-auto .live.ok{background:var(--ok)} .ns-auto .live.today{background:var(--accent)}
-.ns-auto .ns-tx{flex:1; min-width:0; font-size:13px; font-weight:600; color:var(--t1)}
-.ns-auto .ns-tag{flex:none; font-size:9.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--t3); font-weight:700}
+/* fiche — catégorie STATUT : badge auto-calculé, surchargeable inline (sans case à cocher) */
+.statf{display:flex; align-items:center; gap:10px; background:var(--surface-2); border:1px solid var(--b1); border-radius:10px; padding:10px 12px; cursor:pointer; transition:border-color .14s, box-shadow .14s}
+.statf:hover{border-color:var(--accent)}
+.statf-dot{width:8px; height:8px; border-radius:99px; background:var(--accent); flex:none; transition:background .2s}
+.statf-dot.idle{background:var(--b3)} .statf-dot.late{background:var(--danger)} .statf-dot.ok{background:var(--ok)} .statf-dot.today{background:var(--accent)}
+.statf-tx{flex:1; min-width:0; font-size:13.5px; font-weight:650; color:var(--t1); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.statf-tag{flex:none; font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; font-weight:700; color:var(--t3)}
+.statf.is-manual .statf-tag{color:var(--accent)}
+.statf-pen{flex:none; display:flex; opacity:0; transition:opacity .14s; color:var(--t3)}
+.statf-pen svg{width:14px; height:14px}
+.statf:hover .statf-pen, .statf:focus-visible .statf-pen{opacity:1}
+.statf-edit{cursor:default; gap:8px; border-color:var(--accent)}
+.statf-input{flex:1; min-width:0; background:transparent; border:none; outline:none; color:var(--t1); font-size:13.5px; font-weight:650; font-family:inherit; padding:0}
+.statf-cal{flex:none; position:relative; display:flex; align-items:center; cursor:pointer; color:var(--t3)}
+.statf-cal:hover{color:var(--t1)} .statf-cal svg{width:15px; height:15px}
+.statf-cal input{position:absolute; inset:0; width:100%; opacity:0; cursor:pointer}
+.statf-ic{flex:none; display:flex; align-items:center; border:none; background:transparent; cursor:pointer; color:var(--t2); padding:2px}
+.statf-ic:hover{color:var(--t1)} .statf-ic.ok{color:var(--accent)} .statf-ic svg{width:15px; height:15px}
+.statf-link{margin-top:8px; background:none; border:none; padding:0; color:var(--accent); font-size:11.5px; font-weight:600; cursor:pointer}
+.statf-link:hover{text-decoration:underline}
 
 /* ============================== FICHE ============================== */
 .fiche{flex:1; min-height:0; overflow-y:auto; padding:0 26px 30px}
@@ -2653,23 +2666,45 @@ function ActionCard({ label, done, editing, onToggle, onEditStart, onEditCancel,
 
 /* Prochaine étape de la fiche : par défaut le STATUT AUTO (calculé, daté) — cliquable pour le SURCHARGER.
    Si une surcharge existe, on réutilise ActionCard (texte + date/heure) ; la corbeille = « revenir à l'auto ». */
-function NextStep({ lead, editing, onEditStart, onEditCancel, onSave, onClear, onDate }){
-  if(editing || lead.statusOverride){
-    return <ActionCard label={lead.statusOverride||''} editing={editing}
-      due={lead.statusOverrideDue} onDate={onDate}
-      onToggle={()=>{}} done={false}
-      onEditStart={onEditStart} onEditCancel={onEditCancel}
-      onEditSave={(v)=>onSave(v)} onDelete={onClear}
-      placeholder="Prochaine étape (surcharge)…"/>;
-  }
+/* Catégorie STATUT (en haut de la fiche) : badge du statut — AUTO par défaut (calculé : RDV daté, no-show,
+   paiement, débrief, âge), SURCHARGEABLE en cliquant (édition inline texte + date, AUCUNE case à cocher).
+   « Revenir au statut automatique » efface la surcharge. C'est un statut, pas une tâche. */
+function StatusField({ lead, editing, onEditStart, onCancel, onSave, onClear, onDate }){
   const st=computeCardStatus(lead, Date.now());
+  const [v,setV]=useState('');
+  const inRef=React.useRef(null);
+  React.useEffect(()=>{ if(editing){ setV(lead.statusOverride||st.text||''); requestAnimationFrame(()=>{ const el=inRef.current; if(el){ el.focus(); const n=el.value.length; el.setSelectionRange(n,n); } }); } },[editing]);
+  if(editing){
+    return (
+      <div className="field">
+        <span className="eyebrow">Statut</span>
+        <div className="statf statf-edit">
+          <span className={'statf-dot '+st.urg}></span>
+          <input ref={inRef} className="statf-input" value={v} placeholder="Statut personnalisé…"
+            onChange={e=>setV(e.target.value)}
+            onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); onSave(v.trim()); } if(e.key==='Escape'){ e.preventDefault(); onCancel(); } }}/>
+          <label className="statf-cal" title="Date / heure">{I.agenda({})}
+            <input type="datetime-local" value={lead.statusOverrideDue?toLocalInput(lead.statusOverrideDue):''} onChange={e=>onDate(e.target.value?new Date(e.target.value).toISOString():null)}/>
+          </label>
+          <button className="statf-ic ok" title="Enregistrer (Entrée)" onClick={()=>onSave(v.trim())}>{I.check({})}</button>
+          <button className="statf-ic" title="Annuler (Échap)" onClick={onCancel}>{I.x({})}</button>
+        </div>
+        {lead.statusOverride && <button className="statf-link" onClick={onClear}>↺ Revenir au statut automatique</button>}
+      </div>
+    );
+  }
   return (
-    <div className="ns-auto" onClick={onEditStart} role="button" tabIndex={0}
-      title="Statut calculé automatiquement — cliquer pour surcharger"
-      onKeyDown={e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); onEditStart(); } }}>
-      <span className={'live '+st.urg}></span>
-      <span className="ns-tx">{st.text||'—'}</span>
-      <span className="ns-tag">auto · surcharger</span>
+    <div className="field">
+      <span className="eyebrow">Statut</span>
+      <div className={'statf'+(st.manual?' is-manual':'')} onClick={onEditStart} role="button" tabIndex={0}
+        title={st.manual?'Statut manuel — cliquer pour modifier':'Statut automatique — cliquer pour surcharger'}
+        onKeyDown={e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); onEditStart(); } }}>
+        <span className={'statf-dot '+st.urg}></span>
+        <span className="statf-tx">{st.text||'—'}</span>
+        <span className="statf-tag">{st.manual?'manuel':'auto'}</span>
+        <span className="statf-pen">{I.pencil({})}</span>
+      </div>
+      {st.manual && <button className="statf-link" onClick={onClear}>↺ Revenir au statut automatique</button>}
     </div>
   );
 }
@@ -3120,7 +3155,8 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
   const [movePos,setMovePos]=useState(null);
   const toggleMove=()=>{ if(moveOpen){ setMoveOpen(false); return; } const r=moveBtnRef.current.getBoundingClientRect(); setMovePos({top:r.bottom+4, left:r.left, width:r.width, maxH:Math.max(200, window.innerHeight-r.bottom-16)}); setMoveOpen(true); };
   const [editingField,setEditingField]=useState(null);
-  const [editAct,setEditAct]=useState(null); // 'main' | index extraAction | null
+  const [editAct,setEditAct]=useState(null); // index extraAction en édition | null
+  const [editStatus,setEditStatus]=useState(false); // édition de la surcharge de statut (catégorie STATUT, en haut)
   const statusColor = COL_COLOR[lead.column];
 
   return (
@@ -3155,6 +3191,11 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
         <div className="panel">
           <div className="panel-head"><span className="eyebrow">Situation</span></div>
           <div className="panel-body">
+            <StatusField lead={lead} editing={editStatus}
+              onEditStart={()=>setEditStatus(true)} onCancel={()=>setEditStatus(false)}
+              onSave={(v)=>{ onEditField('statusOverride','statusOverride', v||null); setEditStatus(false); }}
+              onClear={()=>{ onEditField('statusOverride','statusOverride', null); onEditField('statusOverrideDue','statusOverrideDue', null); setEditStatus(false); }}
+              onDate={(iso)=>onEditField('statusOverrideDue','statusOverrideDue', iso)}/>
             {(()=>{ const srcInList=LEAD_SOURCES.some(o=>o.k===lead.source); return (<>
               <div className="field">
                 <span className="eyebrow">Source du lead</span>
@@ -3171,11 +3212,6 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
               <div className="field">
                 <span className="eyebrow">Action</span>
                 <div className="actlist">
-                  <NextStep lead={lead} editing={editAct==='main'}
-                    onEditStart={()=>setEditAct('main')} onEditCancel={()=>setEditAct(null)}
-                    onSave={(v)=>{ onEditField('statusOverride','statusOverride', v||null); setEditAct(null); }}
-                    onClear={()=>{ onEditField('statusOverride','statusOverride', null); onEditField('statusOverrideDue','statusOverrideDue', null); setEditAct(null); }}
-                    onDate={(iso)=>onEditField('statusOverrideDue','statusOverrideDue', iso)}/>
                   {(lead.extraActions||[]).map((a,i)=>(
                     <ActionCard key={i} label={a.label} done={a.done} editing={editAct===i}
                       due={a.due_at} onDate={(iso)=>onActions(lead.extraActions.map((x,j)=>j===i?{...x,due_at:iso}:x), true)}
