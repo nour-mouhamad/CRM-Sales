@@ -319,11 +319,23 @@ input,textarea{font-family:inherit; color:inherit}
 .card-action{margin-top:10px; display:flex; align-items:center; gap:7px; font-size:12px; color:var(--t2); background:var(--surface-2); border-radius:8px; padding:6px 9px; font-weight:600}
 .card-action .live{width:6px; height:6px; border-radius:99px; background:var(--accent); flex:none}
 .card-action .live.idle{background:var(--b3)}
+.card-action .live.today{background:var(--accent)}
+.card-action .live.late{background:var(--danger)}
+.card-action .live.ok{background:var(--ok)}
+.card-action .ca-tx{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.card-action .ca-man{flex:none; font-size:9px; letter-spacing:.05em; text-transform:uppercase; color:var(--accent); background:var(--accent-tint); padding:1px 5px; border-radius:5px; font-weight:700}
 .card-action.money{color:var(--accent)}
 .card-action.paid{color:var(--ok)}
 .card-action.confirmed{color:var(--ok)}
 .card-action.confirmed .live{background:var(--ok)}
 .card-action .amt{font-family:'JetBrains Mono',monospace; font-weight:700}
+/* fiche — prochaine étape : statut auto cliquable (surchargeable) */
+.ns-auto{display:flex; align-items:center; gap:9px; background:var(--surface-2); border:1px solid var(--b1); border-radius:11px; padding:11px 12px; cursor:pointer; transition:border-color .12s}
+.ns-auto:hover{border-color:var(--accent)}
+.ns-auto .live{width:7px; height:7px; border-radius:99px; background:var(--accent); flex:none}
+.ns-auto .live.idle{background:var(--b3)} .ns-auto .live.late{background:var(--danger)} .ns-auto .live.ok{background:var(--ok)} .ns-auto .live.today{background:var(--accent)}
+.ns-auto .ns-tx{flex:1; min-width:0; font-size:13px; font-weight:600; color:var(--t1)}
+.ns-auto .ns-tag{flex:none; font-size:9.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--t3); font-weight:700}
 
 /* ============================== FICHE ============================== */
 .fiche{flex:1; min-height:0; overflow-y:auto; padding:0 26px 30px}
@@ -1188,8 +1200,6 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .rdvcard-btn:hover{color:var(--t1); border-color:var(--b3)}
 .rdvcard-btn.del:hover{color:var(--danger); border-color:var(--danger)}
 .rdvcard-btn svg{width:15px; height:15px; stroke-width:2}
-.card-rdv{display:inline-flex; align-items:center; gap:5px; margin-top:8px; font-size:11px; font-weight:700; color:var(--accent); background:var(--accent-tint); border-radius:7px; padding:3px 8px}
-.card-rdv svg{width:12px; height:12px}
 
 /* liste de RDV (R1 + R2 …) + machine d'états présent/no-show */
 .rdvlist{display:flex; flex-direction:column; gap:9px}
@@ -1761,6 +1771,7 @@ function dbToLead(r, acts){
     offer:(r.montant==null||r.montant==='')?0:(Number(r.montant)||0), aPayer:(r.montant_a_payer==null?'':r.montant_a_payer), quiPaie:r.qui_paie||'', paid:r.statut_paiement==='paye', statut_paiement:r.statut_paiement||'aucun',
     cpf:(Number(r.cpf_dispo)||0), metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'', saison:r.saison||null,
     rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, rdvMeetLink:r.rdv_meet_link||null, rdvMeta, hubspot_deal_id:r.hubspot_deal_id||null, date_creation:r.date_creation||null, hsImport:r.hs_import||null, starred:!!r.starred,
+    statusOverride:r.status_override||null, statusOverrideDue:r.status_override_due||null,
     hsAll:(r.hs_sync && r.hs_sync.allProps && typeof r.hs_sync.allProps==='object')?r.hs_sync.allProps:null,
     timeline:actsToTimeline(acts2)
   };
@@ -1794,6 +1805,8 @@ async function saveLead(id, uiPatch){
   if('nextAction' in uiPatch) m.next_action=uiPatch.nextAction;
   if('actionDoneFor' in uiPatch) m.action_done_for=uiPatch.actionDoneFor;
   if('nextActionDue' in uiPatch) m.next_action_due=uiPatch.nextActionDue;
+  if('statusOverride' in uiPatch) m.status_override=(uiPatch.statusOverride&&String(uiPatch.statusOverride).trim())||null;
+  if('statusOverrideDue' in uiPatch) m.status_override_due=uiPatch.statusOverrideDue||null;
   if('extraActions' in uiPatch) m.extra_actions=uiPatch.extraActions;
   if('hiddenActions' in uiPatch) m.hidden_actions=Array.isArray(uiPatch.hiddenActions)?uiPatch.hiddenActions:[];
   if('starred' in uiPatch) m.starred=uiPatch.starred;
@@ -2638,6 +2651,29 @@ function ActionCard({ label, done, editing, onToggle, onEditStart, onEditCancel,
   );
 }
 
+/* Prochaine étape de la fiche : par défaut le STATUT AUTO (calculé, daté) — cliquable pour le SURCHARGER.
+   Si une surcharge existe, on réutilise ActionCard (texte + date/heure) ; la corbeille = « revenir à l'auto ». */
+function NextStep({ lead, editing, onEditStart, onEditCancel, onSave, onClear, onDate }){
+  if(editing || lead.statusOverride){
+    return <ActionCard label={lead.statusOverride||''} editing={editing}
+      due={lead.statusOverrideDue} onDate={onDate}
+      onToggle={()=>{}} done={false}
+      onEditStart={onEditStart} onEditCancel={onEditCancel}
+      onEditSave={(v)=>onSave(v)} onDelete={onClear}
+      placeholder="Prochaine étape (surcharge)…"/>;
+  }
+  const st=computeCardStatus(lead, Date.now());
+  return (
+    <div className="ns-auto" onClick={onEditStart} role="button" tabIndex={0}
+      title="Statut calculé automatiquement — cliquer pour surcharger"
+      onKeyDown={e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); onEditStart(); } }}>
+      <span className={'live '+st.urg}></span>
+      <span className="ns-tx">{st.text||'—'}</span>
+      <span className="ns-tag">auto · surcharger</span>
+    </div>
+  );
+}
+
 /* ============================================================= ATTRIBUTION CLOSER */
 // couleur déterministe par closer (même id -> toujours la même couleur ; sert badge + chips-légende)
 const CLOSER_COLORS=['#e8833a','#3a86e8','#36c08a','#c065d8','#e85a7a','#d9a441','#5ad0d8','#8a7de8'];
@@ -2665,18 +2701,23 @@ function CloserPicker({ closers, currentId, anchor, onPick, onClose }){
 }
 
 /* ============================================================= LEAD CARD */
-const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDragEnd, dragging, onCardDragOver, dropPos, onDelete, ownerName, ownerColor, closers, onAssign, isAdmin, selecting, selected, onToggleSelect, colVer}){
+const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDragEnd, dragging, onCardDragOver, dropPos, onDelete, ownerName, ownerColor, closers, onAssign, isAdmin, selecting, selected, onToggleSelect, colVer, clock}){
   const col = lead.column;
   const [menu,setMenu]=React.useState(null);
   const canAssign = isAdmin && closers && closers.length>0;
   const clickCard=(e)=>{ if(selecting){ onToggleSelect(lead.id, e.shiftKey); } else { onOpen(lead.id); } };
+  // statut compact recalculé (RDV/paiement/relance, daté) ; surcharge manuelle prioritaire. Mémoïsé : 1 calcul par carte
+  // et par minute (clock = bucket minute), pas à chaque render → board fluide même à ~950 cartes.
+  const cardStatus = React.useMemo(()=>computeCardStatus(lead, clock?clock*60000:Date.now()), [lead, clock]);
   let actionEl;
-  if(col==='encaisser'){
+  if(lead.statusOverride){
+    actionEl = <div className="card-action"><span className={'live '+cardStatus.urg}></span><span className="ca-tx">{cardStatus.text}</span><span className="ca-man">manuel</span></div>;
+  } else if(col==='encaisser'){
     actionEl = <div className={'card-action '+(lead.paid?'paid':'money')}>{lead.paid?<I.check style={{width:13,height:13,strokeWidth:2.4}}/>:null}<span className="amt">{eur(lead.offer)}</span> {lead.paid?'payé':(lead.statut_paiement==='lien_envoye'?'lien envoyé — en attente':'à encaisser')}</div>;
   } else if(col==='won'){
     actionEl = <div className="card-action paid"><I.check style={{width:13,height:13,strokeWidth:2.4}}/><span className="amt">{eur(lead.offer)}</span> gagné</div>;
   } else {
-    actionEl = <div className="card-action"><span className={`live ${lead.live?'':'idle'}`}></span>{lead.nextAction}</div>;
+    actionEl = <div className="card-action"><span className={'live '+cardStatus.urg}></span><span className="ca-tx">{cardStatus.text}</span></div>;
   }
   return (
     <div className={`card ${dragging?'dragging':''} ${dropPos?('drop-'+dropPos):''} ${selecting?'selecting':''} ${selected?'selected':''}`} draggable={!selecting}
@@ -2710,9 +2751,6 @@ const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDrag
         </div>
       </div>
       {actionEl}
-      {lead.calendiqRdv && new Date(lead.calendiqRdv.start_at).getTime()>=Date.now()-3600000 && (
-        <div className="card-rdv">{I.agenda({})}<span>{cqDayLabel(lead.calendiqRdv.start_at)} · {cqTime(lead.calendiqRdv.start_at)}</span></div>
-      )}
       {menu && <CloserPicker closers={closers} currentId={lead.owner} anchor={menu} onClose={()=>setMenu(null)} onPick={(cid)=>{ onAssign(lead.id, cid); setMenu(null); }}/>}
     </div>
   );
@@ -2803,6 +2841,10 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
   const [over, setOver] = useState(null); // {cardId, pos}
   // rendu progressif : nb max de cartes montées par colonne (monte par paliers — cf. effet plus bas)
   const [cap, setCap] = useState(40);
+  // horloge MINUTE (bucket) : fait vivre les pastilles de statut (« ajd 14h » → « en cours » → « à débriefer »)
+  // sans tick inutile — setClock avec la même valeur ne re-render pas. ~1 re-render/minute des cartes.
+  const [clock, setClock] = useState(()=>Math.floor(Date.now()/60000));
+  useEffect(()=>{ const id=setInterval(()=>setClock(Math.floor(Date.now()/60000)),30000); return ()=>clearInterval(id); },[]);
   // ATC est désormais une COLONNE à part entière -> retiré du filtre source
   const SRC_TABS=[{k:'all',label:'Tous'}, ...LEAD_SOURCES]; // « Tous » + sources réelles (source de vérité unique)
   const [src, setSrc] = useState(()=>{ const s=persistedState('iqcrm_src','all'); return SRC_TABS.some(o=>o.k===s)?s:'all'; }); // filtre par source (persiste)
@@ -3017,7 +3059,7 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
                       isAdmin={isAdmin} closers={closers} onAssign={assignCard}
                       ownerName={l.owner?((closerById.get(l.owner)||{}).name||null):null}
                       ownerColor={l.owner?closerColor(l.owner):null}
-                      selecting={selecting} selected={selectedIds.has(l.id)} onToggleSelect={toggleSelect} colVer={colVer}/>
+                      selecting={selecting} selected={selectedIds.has(l.id)} onToggleSelect={toggleSelect} colVer={colVer} clock={clock}/>
                   ))}
                 </div>
               </div>
@@ -3064,7 +3106,7 @@ function MoneyField({label, value, onSave, accent}){
   );
 }
 
-function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDeleteNote, onSetResult, onEditField, onNote, onAdvanceStage, onToggleAction, onActions, onClaim, meId, onAddRdv, onCancelRdv, onManualRdv, onManualRemoveRdv, onRdvOutcome, onClearRdvOutcome, isAdminView, closers, rdvClosers, onAssign, calendiqReady, calendiqOrganizer}){
+function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDeleteNote, onSetResult, onEditField, onNote, onAdvanceStage, onActions, onClaim, meId, onAddRdv, onCancelRdv, onManualRdv, onManualRemoveRdv, onRdvOutcome, onClearRdvOutcome, isAdminView, closers, rdvClosers, onAssign, calendiqReady, calendiqOrganizer}){
   const [moveOpen,setMoveOpen]=useState(false);
   const [noteOpen,setNoteOpen]=useState(false);
   const [noteMode,setNoteMode]=useState('note'); // 'note' = note écrite | 'nrp' = appel sans réponse
@@ -3080,7 +3122,6 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
   const [editingField,setEditingField]=useState(null);
   const [editAct,setEditAct]=useState(null); // 'main' | index extraAction | null
   const statusColor = COL_COLOR[lead.column];
-  const actionDone = !!lead.nextAction && lead.actionDoneFor===lead.nextAction;
 
   return (
     <div className="fiche">
@@ -3130,15 +3171,11 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
               <div className="field">
                 <span className="eyebrow">Action</span>
                 <div className="actlist">
-                  {(isRealAction(lead.nextAction, lead.column) || editAct==='main') && (
-                    <ActionCard label={lead.nextAction} done={actionDone} editing={editAct==='main'}
-                      due={lead.nextActionDue} onDate={(iso)=>onEditField('nextActionDue','nextActionDue', iso)}
-                      onToggle={()=>lead.nextAction && onToggleAction(!actionDone)}
-                      onEditStart={()=>setEditAct('main')} onEditCancel={()=>setEditAct(null)}
-                      onEditSave={(v)=>{ onEditField('nextAction','nextAction', v||null); setEditAct(null); }}
-                      onDelete={()=>{ onEditField('nextAction','nextAction', null); onEditField('nextActionDue','nextActionDue', null); setEditAct(null); }}
-                      placeholder="Définir une action"/>
-                  )}
+                  <NextStep lead={lead} editing={editAct==='main'}
+                    onEditStart={()=>setEditAct('main')} onEditCancel={()=>setEditAct(null)}
+                    onSave={(v)=>{ onEditField('statusOverride','statusOverride', v||null); setEditAct(null); }}
+                    onClear={()=>{ onEditField('statusOverride','statusOverride', null); onEditField('statusOverrideDue','statusOverrideDue', null); setEditAct(null); }}
+                    onDate={(iso)=>onEditField('statusOverrideDue','statusOverrideDue', iso)}/>
                   {(lead.extraActions||[]).map((a,i)=>(
                     <ActionCard key={i} label={a.label} done={a.done} editing={editAct===i}
                       due={a.due_at} onDate={(iso)=>onActions(lead.extraActions.map((x,j)=>j===i?{...x,due_at:iso}:x), true)}
@@ -4972,7 +5009,6 @@ function App({session, onLogout}){
   const deleteNote=(actId)=>{ if(sel) patch(sel.id,prev=>({timeline:prev.timeline.filter(e=> e.id!==actId)})); deleteActivite(actId); toast('Entrée supprimée',null,'info'); };
   // édition d'un champ de qualification (uiKey = champ local, saveKey = clé attendue par saveLead -> colonne DB)
   const editField=(uiKey,saveKey,value)=>{ if(!sel) return; patch(sel.id,{[uiKey]:value}); saveLead(sel.id,{[saveKey]:value}); };
-  const toggleAction=(checked)=>{ if(!sel) return; const v=checked?(sel.nextAction||null):null; patch(sel.id,{actionDoneFor:v}); saveLead(sel.id,{actionDoneFor:v}); };
   const setActions=(arr,persist)=>{ if(!sel) return; patch(sel.id,{extraActions:arr}); if(persist) saveLead(sel.id,{extraActions:arr}); };
   // versions PAR-LEAD (page « À faire » : agit sur n'importe quel lead, pas seulement la fiche ouverte). Retournent la promesse d'écriture (l'anti-flicker s'en sert pour purger une fois le write committé).
   const toggleActionFor=(lead,checked)=>{ const v=checked?(lead.nextAction||null):null; patch(lead.id,{actionDoneFor:v}); return saveLead(lead.id,{actionDoneFor:v}); };
@@ -5225,7 +5261,7 @@ function App({session, onLogout}){
             colVer={colVer} renameCol={renameCol} recolorCol={recolorCol} reorderCols={reorderCols} addCol={addCol} deleteCol={deleteCol}
             onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col,defSrc)=>setAddTarget({col,defSrc})} onDelete={deleteLead}/>}
         {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen(origin)} backLabel={SCREEN_LABEL[origin]||'Retour'} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onSetResult={editResult} onEditField={editField} onNote={addNote}
-            onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onToggleAction={toggleAction} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} onManualRdv={setManualRdv} onManualRemoveRdv={removeManualRdv} onRdvOutcome={setRdvOutcome} onClearRdvOutcome={clearRdvOutcome} isAdminView={isAdmin} closers={closers} rdvClosers={cqSources} onAssign={reassignOwner} calendiqReady={isAdmin ? cqSources.length>0 : !!(profile&&profile.calendiq_organizer_id)} calendiqOrganizer={profile&&profile.calendiq_organizer_id}/>}
+            onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} onManualRdv={setManualRdv} onManualRemoveRdv={removeManualRdv} onRdvOutcome={setRdvOutcome} onClearRdvOutcome={clearRdvOutcome} isAdminView={isAdmin} closers={closers} rdvClosers={cqSources} onAssign={reassignOwner} calendiqReady={isAdmin ? cqSources.length>0 : !!(profile&&profile.calendiq_organizer_id)} calendiqOrganizer={profile&&profile.calendiq_organizer_id}/>}
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen(origin)}>Retour ({SCREEN_LABEL[origin]||'Mes leads'})</button></div>}
         {screen==='agenda' && <Agenda meetings={cqMeetings} sources={cqSources} loading={cqLoading} error={cqError}
             isAdmin={isAdmin} profile={profile} onConnect={connectCalendiq} onDisconnect={disconnectCalendiq}
@@ -5324,6 +5360,35 @@ function leadStatus(l, now){
     conclusion, generated,
     rdvs, rdvNext, rdvLast, live, toDebrief, presents, noShows, presentsR1, presentsR2,
     upR1:(upKind==='r1'?1:0), upR2:((upKind&&upKind!=='r1')?1:0), noShowToFix, rdvToday, staleDays, now };
+}
+// niveau d'urgence de la puce de carte (couleur) dérivé du statut auto
+function statusUrg(s){
+  if(s.isWon) return 'ok';
+  if(s.isLost) return 'idle';
+  if(s.noShowToFix) return 'late';
+  if(s.live||s.rdvToday||(s.toDebrief&&s.toDebrief.length)||s.col==='encaisser') return 'today';
+  if(s.staleDays>=14) return 'late';
+  if(s.staleDays>=7) return 'today';
+  return 'idle';
+}
+// urgence d'une échéance de surcharge manuelle (passée = rouge, aujourd'hui = orange)
+function dueUrg(due, now){ if(!due) return 'idle'; const t=new Date(due).getTime(); if(!t) return 'idle'; if(t<now-60000) return 'late'; if(sameDayTs(due, now)) return 'today'; return 'idle'; }
+// STATUT COMPACT d'une carte : surcharge manuelle prioritaire, sinon dérivé de leadStatus (avec date/heure).
+// Repli léger sur l'âge du lead (date_creation, zéro réseau) quand aucune étape RDV/paiement n'existe.
+function computeCardStatus(lead, now){
+  now = now||Date.now();
+  if(lead.statusOverride){
+    const d=lead.statusOverrideDue;
+    return { text: lead.statusOverride+(d?(' · '+rdvShort(d,true)):''), urg: dueUrg(d, now), manual:true };
+  }
+  const s=leadStatus(lead, now);
+  let text=s.conclusion;
+  if(!text || text==='Aucun RDV calé'){
+    const created=lead.date_creation?new Date(lead.date_creation).getTime():0;
+    if(created){ const dd=Math.max(0,Math.floor((now-created)/DAY_MS)); text = dd<=0?'Nouveau lead':('Créé il y a '+dd+' j'); }
+    else text='À traiter';
+  }
+  return { text, urg: statusUrg(s), manual:false };
 }
 // tri par URGENCE manager (leads ACTIFS d'abord) : RDV du jour > no-show à recaler > débrief manquant > RDV à venir > closing > actifs > gagnés > perdus
 function leadAttn(s){
