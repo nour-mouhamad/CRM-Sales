@@ -350,6 +350,14 @@ input,textarea{font-family:inherit; color:inherit}
 .statf-ic:hover{color:var(--t1)} .statf-ic.ok{color:var(--accent)} .statf-ic svg{width:15px; height:15px}
 .statf-link{margin-top:8px; background:none; border:none; padding:0; color:var(--accent); font-size:11.5px; font-weight:600; cursor:pointer}
 .statf-link:hover{text-decoration:underline}
+/* bannière fraîcheur sync CalendIQ (péremption visible) */
+.sync-banner{display:flex; align-items:center; gap:10px; margin:0 0 14px; padding:10px 14px; border-radius:10px; background:var(--danger-tint); border:1px solid var(--danger); color:var(--danger); font-size:13px; font-weight:600}
+.sync-banner-dot{width:8px; height:8px; border-radius:99px; background:var(--danger); flex:none; animation:sbpulse 1.6s ease-in-out infinite}
+@keyframes sbpulse{0%,100%{opacity:1}50%{opacity:.35}}
+.sync-banner-tx{flex:1; min-width:0}
+.sync-banner-btn{flex:none; border:1px solid var(--danger); background:transparent; color:var(--danger); font-family:inherit; font-size:12px; font-weight:700; border-radius:8px; padding:6px 12px; cursor:pointer}
+.sync-banner-btn:hover:not(:disabled){background:var(--danger); color:#fff}
+.sync-banner-btn:disabled{opacity:.6; cursor:default}
 
 /* ============================== FICHE ============================== */
 .fiche{flex:1; min-height:0; overflow-y:auto; padding:0 26px 30px}
@@ -4630,6 +4638,32 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
 }
 
 const SCREEN_LABEL = { leads:'Mes leads', agenda:'Agenda', todo:'À faire', team:'Closers', console:'Synchro HubSpot' };
+
+/* Bannière de FRAÎCHEUR du sync CalendIQ : lit la ligne unique sync_health('calendiq') (écrite par calendiq-pull
+   à chaque run du cron 60s) + realtime. Si le dernier succès date de > 5 min => le sync est décroché => bannière
+   ROUGE + bouton Resynchroniser. Rend la péremption VISIBLE (fini le gel silencieux de 3 semaines). */
+function SyncBanner(){
+  const [h,setH]=React.useState(undefined);      // undefined=chargement, null=pas de ligne, objet=santé
+  const [now,setNow]=React.useState(()=>Date.now());
+  const [busy,setBusy]=React.useState(false);
+  const load=React.useCallback(async()=>{ try{ const { data }=await SB.from('sync_health').select('last_success_at,last_error,consecutive_failures').eq('id','calendiq').maybeSingle(); setH(data||null); }catch(_e){ /* garde l'état précédent */ } },[]);
+  React.useEffect(()=>{ load();
+    const ch=SB.channel('sync-health').on('postgres_changes',{event:'*',schema:'public',table:'sync_health'},load).subscribe();
+    const t=setInterval(()=>setNow(Date.now()),30000);
+    return ()=>{ SB.removeChannel(ch); clearInterval(t); };
+  },[load]);
+  if(!h || !h.last_success_at) return null;
+  const ageMin=Math.floor((now-new Date(h.last_success_at).getTime())/60000);
+  if(ageMin<5) return null; // frais (cron 60s) -> rien à signaler
+  const resync=async()=>{ setBusy(true); try{ await SB.functions.invoke('calendiq-pull',{ body:{ force:true, source:'resync' } }); }catch(_e){} await load(); setNow(Date.now()); setBusy(false); };
+  return (
+    <div className="sync-banner" role="alert">
+      <span className="sync-banner-dot"></span>
+      <span className="sync-banner-tx">Synchro CalendIQ en retard depuis <b>{ageMin} min</b> — les RDV peuvent ne pas être à jour.</span>
+      <button className="sync-banner-btn" onClick={resync} disabled={busy}>{busy?'Resync…':'Resynchroniser'}</button>
+    </div>
+  );
+}
 function App({session, onLogout}){
   const userEmail = session.user.email;
   const userId = session.user.id;
@@ -5266,6 +5300,7 @@ function App({session, onLogout}){
 
       {/* WORK */}
       <main className="work">
+        <SyncBanner/>
         {screen==='leads' && <Board leads={leadsView} search={search} setSearch={setSearch} view={view||'mine'} setView={setView} userId={userId}
             isAdmin={isAdmin} closers={closers} onAssign={reassignOwner}
             colVer={colVer} renameCol={renameCol} recolorCol={recolorCol} reorderCols={reorderCols} addCol={addCol} deleteCol={deleteCol}
