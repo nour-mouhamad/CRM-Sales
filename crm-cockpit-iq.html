@@ -4649,7 +4649,9 @@ function SyncBanner(){
   const load=React.useCallback(async()=>{ try{ const { data }=await SB.from('sync_health').select('last_success_at,last_error,consecutive_failures').eq('id','calendiq').maybeSingle(); setH(data||null); }catch(_e){ /* garde l'état précédent */ } },[]);
   React.useEffect(()=>{ load();
     const ch=SB.channel('sync-health').on('postgres_changes',{event:'*',schema:'public',table:'sync_health'},load).subscribe();
-    const t=setInterval(()=>setNow(Date.now()),30000);
+    // re-lecture périodique (robuste) : une bannière de fraîcheur ne doit JAMAIS se périmer elle-même si le realtime
+    // hoquette -> on relit sync_health toutes les 30s en plus du realtime. Sinon faux « en retard » quand l'onglet reste ouvert.
+    const t=setInterval(()=>{ setNow(Date.now()); load(); },30000);
     return ()=>{ SB.removeChannel(ch); clearInterval(t); };
   },[load]);
   if(!h || !h.last_success_at) return null;
