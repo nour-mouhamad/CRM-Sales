@@ -1748,16 +1748,22 @@ async function cqMeetingsFor(organizerId){
   const cols='id,title,start_at,duration_minutes,booker_name,booker_email,booker_phone,status,meet_link,payment_status';
   return cqGet('meetings?organizer_id=eq.'+encodeURIComponent(organizerId)+'&select='+cols+'&order=start_at.asc');
 }
-// crée un RDV dans CalendIQ via l'edge calendiq-book (session AUTHENTIFIÉE côté serveur) → retourne la ligne.
-// L'insert anon direct est mort : CalendIQ a verrouillé le RLS de sa table meetings (« new row violates RLS »).
+// crée un RDV via la RPC PUBLIQUE de CalendIQ (create_public_meeting, SECURITY DEFINER) — le MÊME chemin que
+// la page de booking publique. L'insert direct table est bloqué par le RLS CalendIQ, et une session CRM ne
+// peut écrire QUE sur son propre agenda ; la RPC, elle, est prévue pour réserver sur N'IMPORTE quel organizer.
 async function cqCreateMeeting(organizerId, m){
-  const { data, error } = await SB.functions.invoke('calendiq-book', { body:{ action:'create', organizer_id:organizerId, meeting:{
-    title:m.title, start_at:m.start_at, duration_minutes:m.duration_minutes,
-    booker_name:m.booker_name||'', booker_email:m.booker_email||null, booker_phone:m.booker_phone||null,
-    booker_timezone:m.booker_timezone||'Europe/Paris' } } });
-  if(error){ let t=''; try{ const b=await error.context.json(); t=b.error||''; }catch(e){} throw new Error(t||error.message||'Réservation impossible'); }
-  if(!data||data.error||!data.row) throw new Error((data&&data.error)||'Réservation impossible');
-  return data.row;
+  const r=await fetch(CALENDIQ.api+'/rest/v1/rpc/create_public_meeting',{ method:'POST',
+    headers:{ apikey:CALENDIQ.anon, Authorization:'Bearer '+CALENDIQ.anon, 'Content-Type':'application/json' },
+    body: JSON.stringify({ p_organizer_id:organizerId, p_title:m.title, p_description:m.description||null,
+      p_start_at:m.start_at, p_duration_minutes:m.duration_minutes, p_total_cost:0,
+      p_booker_name:m.booker_name||'', p_booker_email:m.booker_email||null, p_booker_phone:m.booker_phone||null,
+      p_booker_timezone:m.booker_timezone||'Europe/Paris', p_service_id:null, p_organization_id:null,
+      p_public_link_id:null, p_payment_status:'free', p_participants:[] }) });
+  if(!r.ok){ let t=''; try{ const j=await r.json(); t=j.message||j.hint||''; }catch(e){} throw new Error(t||('CalendIQ '+r.status)); }
+  const out=await r.json(); // la RPC renvoie l'UUID du meeting créé
+  const id=(typeof out==='string')?out:((out&&out.id)||null);
+  if(!id) throw new Error('Réservation refusée par CalendIQ');
+  return { id };
 }
 // appelle une edge function CalendIQ (même chemin que la page de booking publique, clé anon)
 async function cqInvoke(name, body){
