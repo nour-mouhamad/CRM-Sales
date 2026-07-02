@@ -4823,7 +4823,9 @@ function BootcampScreen({enrollments, leads, closers, onOpenLead, onUpsert, onAd
   const [q,setQ]=useState('');
   const leadById=useMemo(()=>{ const m=new Map(); for(const l of leads) m.set(l.id,l); return m; },[leads]);
   const seasonCounts=useMemo(()=>{ const m={}; for(const e of enrollments) m[e.saison]=(m[e.saison]||0)+1; return m; },[enrollments]);
-  const rows=useMemo(()=>enrollments.filter(e=>e.saison===season).map(e=>({...e,lead:leadById.get(e.lead_id)||null})),[enrollments,season,leadById]);
+  const rows=useMemo(()=>enrollments.filter(e=>e.saison===season)
+    .sort((a,b)=> String(a.created_at||'').localeCompare(String(b.created_at||'')) || String(a.id).localeCompare(String(b.id))) // ordre FIGÉ (jamais de saut de ligne au clic)
+    .map(e=>({...e,lead:leadById.get(e.lead_id)||null})),[enrollments,season,leadById]);
   const inscrits=rows.filter(bcActive), prospects=rows.filter(e=>e.statut==='prospect'), annules=rows.filter(e=>e.statut==='annule');
   // ----- KPI (inscrits + soldés uniquement) -----
   const caSigne=inscrits.reduce((s,e)=>s+(Number(e.prix)||0),0);
@@ -5174,8 +5176,13 @@ function App({session, onLogout}){
   // ===== BOOTCAMP : inscriptions par cohorte (table partagée bootcamp_enrollments, realtime) =====
   const [bcEnrollments,setBcEnrollments]=useState([]);
   const loadBc=useCallback(async()=>{
-    try{ const { data, error }=await SB.from('bootcamp_enrollments').select('*').order('created_at',{ascending:true}); if(error) throw error; setBcEnrollments(data||[]); }
-    catch(e){ console.warn('loadBc',e); }
+    // tri DÉTERMINISTE (created_at PUIS id) : des lignes insérées en lot partagent le même created_at ;
+    // sans départage, Postgres renvoie les ex-æquo dans un ordre variable (un UPDATE déplace le tuple)
+    // -> la ligne « sautait » dans le tableau à chaque clic. L'id fige l'ordre pour toujours.
+    try{ const { data, error }=await SB.from('bootcamp_enrollments').select('*').order('created_at',{ascending:true}).order('id',{ascending:true}); if(error) throw error;
+      const next=data||[];
+      setBcEnrollments(prev=> JSON.stringify(prev)===JSON.stringify(next) ? prev : next); // identité préservée si rien n'a changé -> zéro re-render parasite
+    }catch(e){ console.warn('loadBc',e); }
   },[]);
   useEffect(()=>{ loadBc();
     const ch=SB.channel('bc-live').on('postgres_changes',{event:'*',schema:'public',table:'bootcamp_enrollments'},loadBc).subscribe();
