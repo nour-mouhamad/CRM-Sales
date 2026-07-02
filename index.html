@@ -358,6 +358,58 @@ input,textarea{font-family:inherit; color:inherit}
 .sync-banner-btn{flex:none; border:1px solid var(--danger); background:transparent; color:var(--danger); font-family:inherit; font-size:12px; font-weight:700; border-radius:8px; padding:6px 12px; cursor:pointer}
 .sync-banner-btn:hover:not(:disabled){background:var(--danger); color:#fff}
 .sync-banner-btn:disabled{opacity:.6; cursor:default}
+/* ===== page BOOTCAMP ===== */
+.bc-screen{padding:26px 30px; overflow-y:auto; height:100%}
+.bc-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+.bc-head h1{font-size:22px; font-weight:800; letter-spacing:-.02em; margin:0}
+.bc-season{background:var(--surface); border:1px solid var(--b1); border-radius:9px; color:var(--t1); font-family:inherit; font-size:13px; font-weight:650; padding:8px 10px; cursor:pointer}
+.bc-kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:22px}
+.bc-kpi{background:var(--surface); border:1px solid var(--b1); border-radius:13px; padding:13px 15px; display:flex; flex-direction:column; gap:3px; min-width:0}
+.bc-kpi-n{font-size:19px; font-weight:800; letter-spacing:-.02em; color:var(--t1)}
+.bc-kpi-l{font-size:11px; font-weight:650; color:var(--t3)}
+.bc-kpi-sub{font-size:10.5px; color:var(--t3); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.bc-kpi.ok .bc-kpi-n{color:var(--ok)} .bc-kpi.warn .bc-kpi-n{color:var(--accent)}
+.bc-section{margin:18px 0 10px}
+.bc-table{background:var(--surface); border:1px solid var(--b1); border-radius:14px; overflow-x:auto}
+.bc-row{display:grid; grid-template-columns:minmax(140px,1.3fr) 96px 86px 86px 92px minmax(140px,1.1fr) 110px minmax(110px,.9fr) minmax(210px,1.2fr) minmax(120px,1fr) 34px; gap:8px; align-items:center; padding:9px 14px; border-bottom:1px solid var(--b1); min-width:1150px}
+.bc-row:last-child{border-bottom:none}
+.bc-hrow{font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; font-weight:700; color:var(--t3); background:var(--surface-2)}
+.bc-prow{grid-template-columns:minmax(160px,1.2fr) minmax(220px,1.6fr) minmax(160px,1.2fr) 200px 34px}
+.bc-name{background:none; border:none; padding:0; text-align:left; font-family:inherit; font-size:13px; font-weight:700; color:var(--t1); cursor:pointer}
+.bc-name:hover{color:var(--accent)}
+.bc-cell{background:none; border:none; padding:2px 4px; border-radius:6px; text-align:left; font-family:inherit; font-size:12.5px; color:var(--t1); cursor:pointer; min-height:22px}
+.bc-cell:hover{background:var(--surface-2)}
+.bc-tx{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%}
+.bc-ph{color:var(--t3); font-weight:500}
+.bc-in{width:100%; background:var(--bg); border:1px solid var(--accent); border-radius:6px; color:var(--t1); font-family:inherit; font-size:12.5px; padding:3px 6px; outline:none}
+.bc-statut,.bc-sel{background:var(--surface-2); border:1px solid var(--b1); border-radius:7px; color:var(--t1); font-family:inherit; font-size:12px; font-weight:650; padding:4px 6px; cursor:pointer; max-width:100%}
+.bc-reste{font-size:12.5px; font-weight:700}
+.bc-reste.due{color:var(--accent)} .bc-reste.ok{color:var(--ok)}
+.bc-fin{display:flex; flex-direction:column; gap:3px; min-width:0}
+.bc-orig{display:flex; gap:4px}
+.bc-onb{display:flex; gap:4px; flex-wrap:wrap}
+.bc-onb-chip{background:none; border:1px solid var(--b1); border-radius:6px; color:var(--t3); font-family:inherit; font-size:10.5px; font-weight:650; padding:3px 6px; cursor:pointer; transition:all var(--speed); white-space:nowrap}
+.bc-onb-chip:hover{color:var(--t1); border-color:var(--b2)}
+.bc-onb-chip.on{color:var(--ok); border-color:color-mix(in srgb, var(--ok) 55%, transparent); background:var(--ok-tint)}
+.bc-del{background:none; border:none; color:var(--t3); cursor:pointer; padding:4px; border-radius:6px; display:flex}
+.bc-del:hover{color:var(--danger); background:var(--danger-tint)}
+.bc-del svg{width:14px; height:14px}
+.bc-empty{padding:16px; font-size:12.5px; color:var(--t3)}
+.bc-crmstate{display:flex; align-items:center; gap:7px; font-size:12px; color:var(--t2); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.bc-crmstate .live{width:6px; height:6px; border-radius:99px; background:var(--b3); flex:none}
+.bc-crmstate .live.today{background:var(--accent)} .bc-crmstate .live.late{background:var(--danger)} .bc-crmstate .live.ok{background:var(--ok)}
+.bc-promote{font-size:11.5px; padding:6px 10px}
+.bc-results{display:flex; flex-direction:column; gap:6px; max-height:300px; overflow-y:auto}
+.bc-result{display:flex; flex-direction:column; gap:2px; text-align:left; background:var(--surface-2); border:1px solid var(--b1); border-radius:9px; padding:9px 12px; cursor:pointer; font-family:inherit; color:var(--t1); transition:border-color var(--speed)}
+.bc-result:hover{border-color:var(--accent)}
+.bc-result b{font-size:13px} .bc-result span{font-size:11.5px; color:var(--t3)}
+/* bloc bootcamp de la fiche */
+.bc-fiche-row{display:flex; align-items:center; gap:9px; padding:7px 0; border-bottom:1px solid var(--b1); flex-wrap:wrap}
+.bc-fiche-row:last-of-type{border-bottom:none}
+.bc-fiche-chip{display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700}
+.bc-fiche-chip .cdot{width:6px; height:6px; border-radius:99px; background:currentColor}
+.bc-fiche-sub{font-size:11.5px; color:var(--t3)}
+.bc-fiche-add{display:flex; gap:8px; align-items:center; margin-top:8px}
 
 /* ============================== FICHE ============================== */
 .fiche{flex:1; min-height:0; overflow-y:auto; padding:0 26px 30px}
@@ -2032,6 +2084,27 @@ const SEASONS = [
   {code:'BF',  label:'Builders Factory'},
 ];
 const SEASON_LABEL = Object.fromEntries(SEASONS.map(s=>[s.code,s.label]));
+
+/* ===== BOOTCAMP (suivi des inscriptions par cohorte — table bootcamp_enrollments) =====
+   Une inscription = UN objet rattaché à un lead pour UNE saison (jamais une copie du contact).
+   Rému : comm closer = 10% du prix signé ; prime setter = 50€ si le RDV était « set » (pas booké direct). */
+const BC_RATES = { closerPct:0.10, setterPrime:50 };
+const BC_STATUTS = [
+  {k:'prospect', label:'Prospect', color:'var(--t3)'},
+  {k:'inscrit',  label:'Inscrit',  color:'var(--accent)'},
+  {k:'solde',    label:'Soldé',    color:'var(--ok)'},
+  {k:'annule',   label:'Annulé',   color:'var(--danger)'},
+];
+const BC_STATUT_META = Object.fromEntries(BC_STATUTS.map(s=>[s.k,s]));
+const BC_FINANCEMENTS = ['Perso','CPF','OPCO','France Travail','Mixte'];
+const BC_ONBOARDING = [
+  {k:'mail1',      label:'Mail 1'},
+  {k:'inv_app',    label:'Invit App'},
+  {k:'inv_slack',  label:'Invit Slack'},
+  {k:'present_d1', label:'Présent D1'},
+];
+const bcReste = (e)=>Math.max(0,(Number(e.prix)||0)-(Number(e.deja_paye)||0));
+const bcActive = (e)=>e.statut==='inscrit'||e.statut==='solde';
 // libellé d'action par défaut quand un lead change de colonne
 let NEXT_BY_COL = {contacter:'À contacter', perso:'Contact perso à traiter', atc:'Sans réponse — à relancer', rdv1:'R1 à faire', contacte:'À qualifier', qualifie:'À closer', closing:'Closing en cours', encaisser:'Paiement à encaisser', won:'Gagné', lost:'Perdu', desabonne:'Désabonné'};
 const DEFAULT_NEXT = {...NEXT_BY_COL}; // libellés d'action par défaut GELÉS des colonnes système
@@ -3191,7 +3264,7 @@ function MoneyField({label, value, onSave, accent}){
   );
 }
 
-function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onActions, onClaim, meId, onAddRdv, onCancelRdv, onManualRdv, onManualRemoveRdv, onRdvOutcome, onClearRdvOutcome, isAdminView, closers, rdvClosers, onAssign, calendiqReady, calendiqOrganizer}){
+function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onActions, onClaim, meId, onAddRdv, onCancelRdv, onManualRdv, onManualRemoveRdv, onRdvOutcome, onClearRdvOutcome, isAdminView, closers, rdvClosers, onAssign, calendiqReady, calendiqOrganizer, bcList, onBcUpsert, onBcAdd}){
   const [moveOpen,setMoveOpen]=useState(false);
   const [noteOpen,setNoteOpen]=useState(false);
   const [noteMode,setNoteMode]=useState('note'); // 'note' = note écrite | 'nrp' = appel sans réponse
@@ -3296,6 +3369,25 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
                 {lead.hsImport&&lead.hsImport.deal&&(()=>{ const d=lead.hsImport.deal; const money=n=>(n||n===0)?(Number(n).toLocaleString('fr-FR')+' €'):null; const r=[['Montant HT',money(d.montant_ht)],['Montant TTC',money(d.montant_ttc)],['CPF',money(d.cpf)],['Fermé le',d.date_fermeture?fmtDay(d.date_fermeture):null],['Encaissé le',d.date_encaissement?fmtDay(d.date_encaissement):null]].filter(x=>x[1]); return r.length?(
                   <div className="hs-mini" style={{marginTop:10}}>{r.map((x,i)=><span key={i} className="hs-mini-kv"><span className="hs-mini-k">{x[0]}</span>{x[1]}</span>)}</div>
                 ):null; })()}
+              </div>
+              <div className="field">
+                <span className="eyebrow">Bootcamp</span>
+                {(bcList&&bcList.length>0)?bcList.map(e=>{ const m=BC_STATUT_META[e.statut]||BC_STATUT_META.prospect; return (
+                  <div key={e.id} className="bc-fiche-row">
+                    <span className="bc-fiche-chip" style={{color:m.color}}><span className="cdot"></span>{e.saison} · {m.label}</span>
+                    {isAdminView
+                      ? <BcMoney value={e.deja_paye} onSave={v=>onBcUpsert(e.id,{deja_paye:v==null?0:v})}/>
+                      : <span className="bc-cell mono">{eur(Number(e.deja_paye)||0)}</span>}
+                    <span className="bc-fiche-sub">payé{e.prix!=null?<> / <b className="mono">{eur(Number(e.prix))}</b></>:null}{bcReste(e)>0&&<> · reste <b className="mono" style={{color:'var(--accent)'}}>{eur(bcReste(e))}</b></>}</span>
+                  </div> ); }):<div className="bc-empty" style={{padding:'4px 0'}}>Pas d'inscription bootcamp</div>}
+                {isAdminView && onBcAdd && (
+                  <div className="bc-fiche-add">
+                    <select className="bc-sel" id={'bcadd-'+lead.id} defaultValue={lead.saison&&SEASONS.some(s=>s.code===lead.saison)?lead.saison:'S17'}>
+                      {SEASONS.map(s=><option key={s.code} value={s.code}>{s.label}</option>)}
+                    </select>
+                    <button className="action-add" style={{margin:0}} onClick={()=>{ const sel=document.getElementById('bcadd-'+lead.id); onBcAdd(lead.id, sel?sel.value:'S17', { closer_id:lead.owner||null, origine_rdv:(lead.source==='calendiq'?'direct':null) }); }}>+ Inscrire au bootcamp</button>
+                  </div>
+                )}
               </div>
               <div className="field">
                 <span className="eyebrow">Closer</span>
@@ -4689,7 +4781,151 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
   );
 }
 
-const SCREEN_LABEL = { leads:'Mes leads', agenda:'Agenda', todo:'À faire', team:'Closers', console:'Synchro HubSpot' };
+/* ============================================================= BOOTCAMP */
+// argent inline : clic -> input, Entrée/blur = save, Échap = annule
+function BcMoney({value,onSave,ph}){
+  const [ed,setEd]=useState(false); const [v,setV]=useState('');
+  if(ed) return <input className="bc-in mono" autoFocus value={v} onChange={e=>setV(e.target.value)}
+    onBlur={()=>{ setEd(false); const raw=String(v).replace(',','.').replace(/[^\d.]/g,''); if(v.trim()===''){ onSave(null); return; } const n=Number(raw); if(!Number.isNaN(n)) onSave(n); }}
+    onKeyDown={e=>{ if(e.key==='Enter') e.currentTarget.blur(); if(e.key==='Escape') setEd(false); }}/>;
+  return <button className="bc-cell mono" title="Cliquer pour modifier" onClick={()=>{ setV(value==null?'':String(value)); setEd(true); }}>{(value==null||value==='')?(ph||'—'):eur(Number(value))}</button>;
+}
+function BcText({value,onSave,ph}){
+  const [ed,setEd]=useState(false); const [v,setV]=useState('');
+  if(ed) return <input className="bc-in" autoFocus value={v} onChange={e=>setV(e.target.value)}
+    onBlur={()=>{ setEd(false); onSave(v.trim()||null); }}
+    onKeyDown={e=>{ if(e.key==='Enter') e.currentTarget.blur(); if(e.key==='Escape') setEd(false); }}/>;
+  return <button className="bc-cell bc-tx" title="Cliquer pour modifier" onClick={()=>{ setV(value||''); setEd(true); }}>{value||<span className="bc-ph">{ph||'—'}</span>}</button>;
+}
+// Page BOOTCAMP (admin) : suivi des inscriptions par cohorte — KPI live, inscrits, prospects, ajout anti-doublon.
+function BootcampScreen({enrollments, leads, closers, onOpenLead, onUpsert, onAdd, onRemove}){
+  const [season,setSeason]=useState(()=>{ const s=persistedState('iqcrm_bcseason','S17'); return SEASONS.some(x=>x.code===s)?s:'S17'; });
+  useEffect(()=>localStorage.setItem('iqcrm_bcseason',JSON.stringify(season)),[season]);
+  const [addOpen,setAddOpen]=useState(false);
+  const [q,setQ]=useState('');
+  const leadById=useMemo(()=>{ const m=new Map(); for(const l of leads) m.set(l.id,l); return m; },[leads]);
+  const seasonCounts=useMemo(()=>{ const m={}; for(const e of enrollments) m[e.saison]=(m[e.saison]||0)+1; return m; },[enrollments]);
+  const rows=useMemo(()=>enrollments.filter(e=>e.saison===season).map(e=>({...e,lead:leadById.get(e.lead_id)||null})),[enrollments,season,leadById]);
+  const inscrits=rows.filter(bcActive), prospects=rows.filter(e=>e.statut==='prospect'), annules=rows.filter(e=>e.statut==='annule');
+  // ----- KPI (inscrits + soldés uniquement) -----
+  const caSigne=inscrits.reduce((s,e)=>s+(Number(e.prix)||0),0);
+  const caPaye=inscrits.reduce((s,e)=>s+(Number(e.deja_paye)||0),0);
+  const reste=inscrits.reduce((s,e)=>s+bcReste(e),0);
+  const nbSet=inscrits.filter(e=>e.origine_rdv==='set').length;
+  const commRows=useMemo(()=>{ const m=new Map();
+    for(const e of inscrits){ const k=e.closer_id||''; m.set(k,(m.get(k)||0)+(Number(e.prix)||0)*BC_RATES.closerPct); }
+    return Array.from(m.entries()).filter(([,v])=>v>0).map(([k,v])=>({ name:k?(((closers||[]).find(c=>c.id===k)||{}).name||'?'):'(sans closer)', v }));
+  },[inscrits,closers]);
+  const commTotal=commRows.reduce((s,r)=>s+r.v,0);
+  const primesSetter=nbSet*BC_RATES.setterPrime;
+  // ----- ajout : recherche d'un lead EXISTANT (anti-doublon), exclut ceux déjà dans la saison -----
+  const already=useMemo(()=>new Set(rows.map(e=>e.lead_id)),[rows]);
+  const results=useMemo(()=>{ const s=deburr(q.trim()); if(!s) return [];
+    const out=[]; for(const l of leads){ if(already.has(l.id)) continue;
+      if(deburr(`${l.prenom} ${l.nom} ${l.email}`).includes(s) || normTel(l.tel).includes(s.replace(/\s/g,''))){ out.push(l); if(out.length>=8) break; } }
+    return out; },[q,leads,already]);
+  const doAdd=async(l)=>{ await onAdd(l.id, season, { closer_id:l.owner||null, origine_rdv:(l.source==='calendiq'?'direct':null) }); setQ(''); setAddOpen(false); };
+  const Chip=({e})=>{ const m=BC_STATUT_META[e.statut]||BC_STATUT_META.prospect; return (
+    <select className="bc-statut" value={e.statut} style={{color:m.color, borderColor:'color-mix(in srgb, '+m.color+' 45%, transparent)'}} onChange={ev=>onUpsert(e.id,{statut:ev.target.value})}>
+      {BC_STATUTS.map(s=><option key={s.k} value={s.k}>{s.label}</option>)}
+    </select> ); };
+  const OnbChips=({e})=>(
+    <div className="bc-onb">{BC_ONBOARDING.map(o=>{ const on=!!(e.onboarding&&e.onboarding[o.k]); return (
+      <button key={o.k} className={'bc-onb-chip'+(on?' on':'')} title={o.label}
+        onClick={()=>onUpsert(e.id,{onboarding:{...(e.onboarding||{}),[o.k]:!on}})}>{o.label}</button> ); })}</div> );
+  const name=(l)=>l?(`${l.prenom||''} ${l.nom||''}`.trim()||l.email||'Lead'):'(lead supprimé)';
+  return (
+    <div className="bc-screen">
+      <div className="bc-head">
+        <h1>Bootcamp</h1>
+        <select className="bc-season" value={season} onChange={e=>setSeason(e.target.value)}>
+          {SEASONS.map(s=><option key={s.code} value={s.code}>{s.label}{seasonCounts[s.code]?` (${seasonCounts[s.code]})`:''}</option>)}
+        </select>
+        <div style={{flex:1}}></div>
+        <button className="btn btn-accent" onClick={()=>setAddOpen(true)}>+ Ajouter au bootcamp</button>
+      </div>
+      <div className="bc-kpis">
+        <div className="bc-kpi"><span className="bc-kpi-n">{inscrits.length}</span><span className="bc-kpi-l">Inscrits</span></div>
+        <div className="bc-kpi"><span className="bc-kpi-n mono">{eur(caSigne)}</span><span className="bc-kpi-l">CA signé</span></div>
+        <div className="bc-kpi ok"><span className="bc-kpi-n mono">{eur(caPaye)}</span><span className="bc-kpi-l">CA encaissé</span></div>
+        <div className={'bc-kpi'+(reste>0?' warn':'')}><span className="bc-kpi-n mono">{eur(reste)}</span><span className="bc-kpi-l">Reste à encaisser</span></div>
+        <div className="bc-kpi" title={commRows.map(r=>`${r.name} : ${eur(Math.round(r.v))}`).join('\n')||'Aucune comm'}>
+          <span className="bc-kpi-n mono">{eur(Math.round(commTotal))}</span>
+          <span className="bc-kpi-l">Comm closers (10%)</span>
+          {commRows.length>0 && <span className="bc-kpi-sub">{commRows.map(r=>`${r.name.split(' ')[0]} ${eur(Math.round(r.v))}`).join(' · ')}</span>}
+        </div>
+        <div className="bc-kpi"><span className="bc-kpi-n mono">{eur(primesSetter)}</span><span className="bc-kpi-l">Primes setter ({nbSet} set{nbSet>1?'s':''} × 50€)</span></div>
+      </div>
+      <div className="bc-section"><span className="eyebrow">Inscrits · {inscrits.length}</span></div>
+      <div className="bc-table">
+        <div className="bc-row bc-hrow">
+          <span>Participant</span><span>Statut</span><span>Prix</span><span>Payé</span><span>Reste</span><span>Financement</span><span>Origine RDV</span><span>Closer</span><span>Onboarding</span><span>Commentaire</span><span></span>
+        </div>
+        {inscrits.length===0 && <div className="bc-empty">Aucun inscrit pour {SEASON_LABEL[season]||season}.</div>}
+        {inscrits.map(e=>(
+          <div key={e.id} className="bc-row">
+            <button className="bc-name" onClick={()=>e.lead&&onOpenLead(e.lead.id)} title="Ouvrir la fiche">{name(e.lead)}</button>
+            <Chip e={e}/>
+            <BcMoney value={e.prix} onSave={v=>onUpsert(e.id,{prix:v})}/>
+            <BcMoney value={e.deja_paye} onSave={v=>onUpsert(e.id,{deja_paye:v==null?0:v})}/>
+            <span className={'bc-reste mono'+(bcReste(e)>0?' due':' ok')}>{bcReste(e)>0?eur(bcReste(e)):'✓ soldé'}</span>
+            <span className="bc-fin">
+              <select className="bc-sel" value={e.financement_type||''} onChange={ev=>onUpsert(e.id,{financement_type:ev.target.value||null})}>
+                <option value="">—</option>{BC_FINANCEMENTS.map(f=><option key={f} value={f}>{f}</option>)}
+              </select>
+              <BcText value={e.financement_detail} onSave={v=>onUpsert(e.id,{financement_detail:v})} ph="détail…"/>
+            </span>
+            <span className="bc-orig">
+              {[{k:'set',l:'Set'},{k:'direct',l:'Direct'}].map(o=>(
+                <button key={o.k} className={'bc-onb-chip'+(e.origine_rdv===o.k?' on':'')} onClick={()=>onUpsert(e.id,{origine_rdv:e.origine_rdv===o.k?null:o.k})}>{o.l}</button>
+              ))}
+            </span>
+            <select className="bc-sel" value={e.closer_id||''} onChange={ev=>onUpsert(e.id,{closer_id:ev.target.value||null})}>
+              <option value="">—</option>{(closers||[]).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <OnbChips e={e}/>
+            <BcText value={e.commentaire} onSave={v=>onUpsert(e.id,{commentaire:v})} ph="note…"/>
+            <button className="bc-del" title="Retirer du bootcamp" onClick={()=>{ if(window.confirm('Retirer cette inscription ? (le lead n\'est pas supprimé)')) onRemove(e.id); }}>{I.trash({})}</button>
+          </div>
+        ))}
+      </div>
+      <div className="bc-section"><span className="eyebrow">Prospects · {prospects.length}</span></div>
+      <div className="bc-table">
+        {prospects.length===0 && <div className="bc-empty">Aucun prospect en attente.</div>}
+        {prospects.map(e=>{ const st=e.lead?computeCardStatus(e.lead, Date.now()):null; return (
+          <div key={e.id} className="bc-row bc-prow">
+            <button className="bc-name" onClick={()=>e.lead&&onOpenLead(e.lead.id)}>{name(e.lead)}</button>
+            <span className="bc-crmstate">{st?<><span className={'live '+(st.color?'':st.urg)} style={st.color?{background:st.color}:undefined}></span>{(st.amt?st.amt+' ':'')+st.text}</>:'—'}</span>
+            <BcText value={e.commentaire} onSave={v=>onUpsert(e.id,{commentaire:v})} ph="note…"/>
+            <button className="btn btn-accent bc-promote" onClick={()=>onUpsert(e.id,{statut:'inscrit'})}>1er versement → Inscrit</button>
+            <button className="bc-del" title="Retirer" onClick={()=>{ if(window.confirm('Retirer ce prospect du bootcamp ?')) onRemove(e.id); }}>{I.trash({})}</button>
+          </div> ); })}
+      </div>
+      {annules.length>0 && <div className="bc-section"><span className="eyebrow" style={{color:'var(--t3)'}}>Annulés · {annules.length} — {annules.map(e=>name(e.lead)).join(', ')}</span></div>}
+      {addOpen && (<>
+        <div className="backdrop" onClick={()=>{setAddOpen(false); setQ('');}}></div>
+        <div className="modal" onClick={e=>e.stopPropagation()}>
+          <button className="x-btn" onClick={()=>{setAddOpen(false); setQ('');}}><I.x/></button>
+          <div className="m-fixhead"><span className="eyebrow m-eye">Bootcamp · {SEASON_LABEL[season]||season}</span><div style={{fontSize:20,fontWeight:800,letterSpacing:'-.02em',marginTop:6}}>Ajouter un participant</div></div>
+          <div className="addlead-form">
+            <input placeholder="Rechercher un lead (nom, email, téléphone)…" value={q} autoFocus onChange={e=>setQ(e.target.value)}/>
+            <div className="bc-results">
+              {q.trim()&&results.length===0 && <div className="bc-empty">Aucun lead trouvé — vérifie qu'il existe dans « Mes leads » (anti-doublon : on n'ajoute jamais un contact en double).</div>}
+              {results.map(l=>(
+                <button key={l.id} className="bc-result" onClick={()=>doAdd(l)}>
+                  <b>{`${l.prenom||''} ${l.nom||''}`.trim()||l.email}</b>
+                  <span>{COL_LABEL[l.column]||l.column}{l.saison?(' · '+l.saison):''}{l.email?(' · '+l.email):''}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </>)}
+    </div>
+  );
+}
+
+const SCREEN_LABEL = { leads:'Mes leads', agenda:'Agenda', todo:'À faire', team:'Closers', console:'Synchro HubSpot', bootcamp:'Bootcamp' };
 
 /* Bannière de FRAÎCHEUR du sync CalendIQ : lit la ligne unique sync_health('calendiq') (écrite par calendiq-pull
    à chaque run du cron 60s) + realtime. Si le dernier succès date de > 5 min => le sync est décroché => bannière
@@ -4916,6 +5152,35 @@ function App({session, onLogout}){
       .subscribe();
     return ()=>{ SB.removeChannel(ch); clearTimeout(cqRtT.current); };
   },[loadCalendiq]);
+
+  // ===== BOOTCAMP : inscriptions par cohorte (table partagée bootcamp_enrollments, realtime) =====
+  const [bcEnrollments,setBcEnrollments]=useState([]);
+  const loadBc=useCallback(async()=>{
+    try{ const { data, error }=await SB.from('bootcamp_enrollments').select('*').order('created_at',{ascending:true}); if(error) throw error; setBcEnrollments(data||[]); }
+    catch(e){ console.warn('loadBc',e); }
+  },[]);
+  useEffect(()=>{ loadBc();
+    const ch=SB.channel('bc-live').on('postgres_changes',{event:'*',schema:'public',table:'bootcamp_enrollments'},loadBc).subscribe();
+    return ()=>{ SB.removeChannel(ch); };
+  },[loadBc]);
+  const bcUpsert=useCallback(async(id,patch)=>{
+    setBcEnrollments(list=>list.map(e=>e.id===id?{...e,...patch}:e)); // optimiste
+    const { error }=await SB.from('bootcamp_enrollments').update(patch).eq('id',id);
+    if(error){ toast('Échec enregistrement bootcamp', error.message, 'info'); loadBc(); }
+  },[toast,loadBc]);
+  const bcAdd=useCallback(async(leadId,saison,prefill)=>{
+    const row={ lead_id:leadId, saison, statut:'prospect', ...(prefill||{}) };
+    const { data, error }=await SB.from('bootcamp_enrollments').insert(row).select().single();
+    if(error){ toast('Ajout bootcamp impossible', /duplicate|unique/i.test(error.message)?'Déjà inscrit sur cette saison':error.message, 'info'); return null; }
+    setBcEnrollments(list=>list.some(e=>e.id===data.id)?list:[...list,data]);
+    toast('Ajouté au bootcamp', saison, 'ok');
+    return data;
+  },[toast]);
+  const bcRemove=useCallback(async(id)=>{
+    setBcEnrollments(list=>list.filter(e=>e.id!==id));
+    const { error }=await SB.from('bootcamp_enrollments').delete().eq('id',id);
+    if(error){ toast('Suppression impossible', error.message, 'info'); loadBc(); }
+  },[toast,loadBc]);
   // rafraîchit l'agenda tant qu'on le regarde (RDV pris/déplacés dans CalendIQ)
   // RDV pris dans CalendIQ (ex : rush post-webi) → visibles dans le CRM en quelques secondes, sur TOUS les écrans.
   // Polling 20 s tant que l'onglet est visible + refresh instantané au focus ; en pause si onglet caché.
@@ -5308,9 +5573,9 @@ function App({session, onLogout}){
   const navItems=[
     {id:'leads', label:'Mes leads', icon:I.leads, badge:rappelerCount},
     {id:'agenda', label:'Agenda', icon:I.agenda, soon:true},
-    ...(isAdmin?[{id:'todo', label:'À faire', icon:I.check},{id:'team', label:'Closers', icon:I.users},{id:'console', label:'Synchro HubSpot', icon:I.sync, badge:syncPending||null, badgeWarn:syncWarn}]:[]),
+    ...(isAdmin?[{id:'todo', label:'À faire', icon:I.check},{id:'bootcamp', label:'Bootcamp', icon:I.admission},{id:'team', label:'Closers', icon:I.users},{id:'console', label:'Synchro HubSpot', icon:I.sync, badge:syncPending||null, badgeWarn:syncWarn}]:[]),
   ];
-  useEffect(()=>{ if(!isAdmin && (screen==='team'||screen==='console'||screen==='todo')) setScreen('leads'); },[isAdmin,screen]);
+  useEffect(()=>{ if(!isAdmin && (screen==='team'||screen==='console'||screen==='todo'||screen==='bootcamp')) setScreen('leads'); },[isAdmin,screen]);
   const navActive = screen==='fiche'?origin:screen;
 
   // splash bref UNIQUEMENT pendant la requête profil (évite un flash board/nav) ; ne bloque jamais après réponse
@@ -5360,12 +5625,13 @@ function App({session, onLogout}){
             colVer={colVer} renameCol={renameCol} recolorCol={recolorCol} reorderCols={reorderCols} addCol={addCol} deleteCol={deleteCol}
             onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col,defSrc,defEng)=>setAddTarget({col,defSrc,defEng})} onDelete={deleteLead}/>}
         {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen(origin)} backLabel={SCREEN_LABEL[origin]||'Retour'} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
-            onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} onManualRdv={setManualRdv} onManualRemoveRdv={removeManualRdv} onRdvOutcome={setRdvOutcome} onClearRdvOutcome={clearRdvOutcome} isAdminView={isAdmin} closers={closers} rdvClosers={cqSources} onAssign={reassignOwner} calendiqReady={isAdmin ? cqSources.length>0 : !!(profile&&profile.calendiq_organizer_id)} calendiqOrganizer={profile&&profile.calendiq_organizer_id}/>}
+            onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} onManualRdv={setManualRdv} onManualRemoveRdv={removeManualRdv} onRdvOutcome={setRdvOutcome} onClearRdvOutcome={clearRdvOutcome} isAdminView={isAdmin} closers={closers} rdvClosers={cqSources} onAssign={reassignOwner} calendiqReady={isAdmin ? cqSources.length>0 : !!(profile&&profile.calendiq_organizer_id)} calendiqOrganizer={profile&&profile.calendiq_organizer_id} bcList={bcEnrollments.filter(e=>e.lead_id===sel.id)} onBcUpsert={bcUpsert} onBcAdd={isAdmin?bcAdd:null}/>}
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen(origin)}>Retour ({SCREEN_LABEL[origin]||'Mes leads'})</button></div>}
         {screen==='agenda' && <Agenda meetings={cqMeetings} sources={cqSources} loading={cqLoading} error={cqError}
             isAdmin={isAdmin} profile={profile} onConnect={connectCalendiq} onDisconnect={disconnectCalendiq}
             onRefresh={loadCalendiq} onOpenLead={openLead} meetingLeadId={meetingLeadId}/>}
         {screen==='todo' && isAdmin && <AFaire leads={leadsView} onOpenLead={openLead} onToggleAction={toggleActionFor} onToggleExtra={toggleExtraFor} onToggleStar={toggleStar} onReassign={reassignOwner} onHideAction={hideActionFor} onUnhideAction={unhideActionFor} seasonFilter={seasonFilter} setSeasonFilter={setSeasonFilter} seasonCounts={seasonCounts}/>}
+        {screen==='bootcamp' && isAdmin && <BootcampScreen enrollments={bcEnrollments} leads={leadsCq} closers={closers} onOpenLead={openLead} onUpsert={bcUpsert} onAdd={bcAdd} onRemove={bcRemove}/>}
         {screen==='team' && isAdmin && <TeamScreen userId={userId} toast={toast} leads={leadsView} onOpenLead={openLead} cqPending={cqLoading && !cqMeetings.length}/>}
         {screen==='console' && isAdmin && <Console toast={toast} onOpenLead={openLead} setSyncBusy={setSyncBusy} reloadLeads={reload}/>}
       </main>
