@@ -372,6 +372,7 @@ input,textarea{font-family:inherit; color:inherit}
 .bc-section{margin:18px 0 10px}
 .bc-table{background:var(--surface); border:1px solid var(--b1); border-radius:14px; overflow-x:auto}
 .bc-row{display:grid; grid-template-columns:minmax(140px,1.3fr) 96px 86px 86px 92px minmax(140px,1.1fr) 110px minmax(110px,.9fr) minmax(210px,1.2fr) minmax(120px,1fr) 34px; gap:8px; align-items:center; padding:9px 14px; border-bottom:1px solid var(--b1); min-width:1150px}
+.bc-row>*{min-width:0} /* sans ça, un contenu long (commentaire) élargit la ligne au-delà de l'entête -> barre coupée */
 .bc-row:last-child{border-bottom:none}
 .bc-hrow{font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; font-weight:700; color:var(--t3); background:var(--surface-2)}
 .bc-prow{grid-template-columns:minmax(160px,1.2fr) minmax(220px,1.6fr) minmax(160px,1.2fr) 200px 34px}
@@ -382,6 +383,9 @@ input,textarea{font-family:inherit; color:inherit}
 .bc-tx{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%}
 .bc-ph{color:var(--t3); font-weight:500}
 .bc-in{width:100%; background:var(--bg); border:1px solid var(--accent); border-radius:6px; color:var(--t1); font-family:inherit; font-size:12.5px; padding:3px 6px; outline:none}
+/* popover d'édition de texte (façon cellule de tableur : texte entier visible) */
+.bc-pop-ov{position:fixed; inset:0; z-index:119}
+.bc-pop{position:fixed; z-index:120; background:var(--surface); border:1.5px solid var(--accent); border-radius:10px; padding:9px 12px; color:var(--t1); font-family:inherit; font-size:12.5px; line-height:1.5; box-shadow:0 16px 40px rgba(0,0,0,.45); resize:none; outline:none; overflow-y:auto}
 .bc-statut,.bc-sel{background:var(--surface-2); border:1px solid var(--b1); border-radius:7px; color:var(--t1); font-family:inherit; font-size:12px; font-weight:650; padding:4px 6px; cursor:pointer; max-width:100%}
 .bc-reste{font-size:12.5px; font-weight:700}
 .bc-reste.due{color:var(--accent)} .bc-reste.ok{color:var(--ok)}
@@ -4790,12 +4794,26 @@ function BcMoney({value,onSave,ph}){
     onKeyDown={e=>{ if(e.key==='Enter') e.currentTarget.blur(); if(e.key==='Escape') setEd(false); }}/>;
   return <button className="bc-cell mono" title="Cliquer pour modifier" onClick={()=>{ setV(value==null?'':String(value)); setEd(true); }}>{(value==null||value==='')?(ph||'—'):eur(Number(value))}</button>;
 }
+// texte inline : clic -> POPOVER façon cellule de tableur (texte ENTIER visible, auto-grandit). Entrée=save, Échap=annule.
 function BcText({value,onSave,ph}){
-  const [ed,setEd]=useState(false); const [v,setV]=useState('');
-  if(ed) return <input className="bc-in" autoFocus value={v} onChange={e=>setV(e.target.value)}
-    onBlur={()=>{ setEd(false); onSave(v.trim()||null); }}
-    onKeyDown={e=>{ if(e.key==='Enter') e.currentTarget.blur(); if(e.key==='Escape') setEd(false); }}/>;
-  return <button className="bc-cell bc-tx" title="Cliquer pour modifier" onClick={()=>{ setV(value||''); setEd(true); }}>{value||<span className="bc-ph">{ph||'—'}</span>}</button>;
+  const [ed,setEd]=useState(null); // {top,left,width} | null
+  const [v,setV]=useState('');
+  const btnRef=React.useRef(null);
+  const grow=(el)=>{ if(!el) return; el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,220)+'px'; };
+  const open=()=>{ const r=btnRef.current.getBoundingClientRect(); const W=Math.max(300,Math.min(440,Math.round(r.width)+160));
+    setV(value||''); setEd({ top:Math.max(8,Math.round(r.top-6)), left:Math.round(Math.max(8,Math.min(r.left-8, window.innerWidth-W-16))), width:W }); };
+  const save=()=>{ setEd(null); onSave(v.trim()||null); };
+  return (<>
+    <button ref={btnRef} className="bc-cell bc-tx" title={value?value+'\n(cliquer pour voir/modifier)':'Cliquer pour ajouter'} onClick={open}>{value||<span className="bc-ph">{ph||'—'}</span>}</button>
+    {ed && (<>
+      <div className="bc-pop-ov" onClick={save}></div>
+      <textarea className="bc-pop" style={{top:ed.top,left:ed.left,width:ed.width}} autoFocus value={v} rows={1}
+        ref={grow}
+        onChange={e=>{ setV(e.target.value); grow(e.target); }}
+        onFocus={e=>{ const n=e.target.value.length; e.target.setSelectionRange(n,n); }}
+        onKeyDown={e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); save(); } if(e.key==='Escape'){ e.preventDefault(); setEd(null); } }}/>
+    </>)}
+  </>);
 }
 // Page BOOTCAMP (admin) : suivi des inscriptions par cohorte — KPI live, inscrits, prospects, ajout anti-doublon.
 function BootcampScreen({enrollments, leads, closers, onOpenLead, onUpsert, onAdd, onRemove}){
@@ -4897,7 +4915,7 @@ function BootcampScreen({enrollments, leads, closers, onOpenLead, onUpsert, onAd
             <button className="bc-name" onClick={()=>e.lead&&onOpenLead(e.lead.id)}>{name(e.lead)}</button>
             <span className="bc-crmstate">{st?<><span className={'live '+(st.color?'':st.urg)} style={st.color?{background:st.color}:undefined}></span>{(st.amt?st.amt+' ':'')+st.text}</>:'—'}</span>
             <BcText value={e.commentaire} onSave={v=>onUpsert(e.id,{commentaire:v})} ph="note…"/>
-            <button className="btn btn-accent bc-promote" onClick={()=>onUpsert(e.id,{statut:'inscrit'})}>1er versement → Inscrit</button>
+            <button className="btn btn-accent bc-promote" title="Passer ce prospect en inscrit" onClick={()=>onUpsert(e.id,{statut:'inscrit'})}>→ Inscrit</button>
             <button className="bc-del" title="Retirer" onClick={()=>{ if(window.confirm('Retirer ce prospect du bootcamp ?')) onRemove(e.id); }}>{I.trash({})}</button>
           </div> ); })}
       </div>
@@ -5286,7 +5304,7 @@ function App({session, onLogout}){
 
   // esc closes overlays
   useEffect(()=>{
-    const h=(e)=>{ if(e.key==='Escape'){ setPayTarget(null); setSlotTarget(null); setShowRappeler(false); setShowSettings(false); setIncoming(null); setAddTarget(null); } };
+    const h=(e)=>{ if(e.key==='Escape'){ setPayTarget(null); setShowSettings(false); setIncoming(null); setAddTarget(null); } };
     window.addEventListener('keydown',h); return ()=>window.removeEventListener('keydown',h);
   },[]);
 
