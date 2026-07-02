@@ -1748,16 +1748,16 @@ async function cqMeetingsFor(organizerId){
   const cols='id,title,start_at,duration_minutes,booker_name,booker_email,booker_phone,status,meet_link,payment_status';
   return cqGet('meetings?organizer_id=eq.'+encodeURIComponent(organizerId)+'&select='+cols+'&order=start_at.asc');
 }
-// crée un RDV dans CalendIQ (même insert anon que la page de booking publique) → retourne la ligne
+// crée un RDV dans CalendIQ via l'edge calendiq-book (session AUTHENTIFIÉE côté serveur) → retourne la ligne.
+// L'insert anon direct est mort : CalendIQ a verrouillé le RLS de sa table meetings (« new row violates RLS »).
 async function cqCreateMeeting(organizerId, m){
-  const body={ organizer_id:organizerId, title:m.title, start_at:m.start_at, duration_minutes:m.duration_minutes,
+  const { data, error } = await SB.functions.invoke('calendiq-book', { body:{ action:'create', organizer_id:organizerId, meeting:{
+    title:m.title, start_at:m.start_at, duration_minutes:m.duration_minutes,
     booker_name:m.booker_name||'', booker_email:m.booker_email||null, booker_phone:m.booker_phone||null,
-    booker_timezone:m.booker_timezone||'Europe/Paris', status:'confirmed' };
-  const r=await fetch(CALENDIQ.api+'/rest/v1/meetings',{ method:'POST',
-    headers:{ apikey:CALENDIQ.anon, Authorization:'Bearer '+CALENDIQ.anon, 'Content-Type':'application/json', Prefer:'return=representation' },
-    body: JSON.stringify(body) });
-  if(!r.ok){ let t=''; try{ const j=await r.json(); t=j.message||j.hint||''; }catch(e){} throw new Error(t||('CalendIQ '+r.status)); }
-  const rows=await r.json(); return Array.isArray(rows)?rows[0]:rows;
+    booker_timezone:m.booker_timezone||'Europe/Paris' } } });
+  if(error){ let t=''; try{ const b=await error.context.json(); t=b.error||''; }catch(e){} throw new Error(t||error.message||'Réservation impossible'); }
+  if(!data||data.error||!data.row) throw new Error((data&&data.error)||'Réservation impossible');
+  return data.row;
 }
 // appelle une edge function CalendIQ (même chemin que la page de booking publique, clé anon)
 async function cqInvoke(name, body){
@@ -1768,9 +1768,9 @@ async function cqInvoke(name, body){
   try{ return await r.json(); }catch(e){ return {}; }
 }
 async function cqUpdateMeeting(id, patch){
-  await fetch(CALENDIQ.api+'/rest/v1/meetings?id=eq.'+id,{ method:'PATCH',
-    headers:{ apikey:CALENDIQ.anon, Authorization:'Bearer '+CALENDIQ.anon, 'Content-Type':'application/json', Prefer:'return=minimal' },
-    body: JSON.stringify(patch) });
+  // PATCH via l'edge calendiq-book (session authentifiée) — l'écriture anon directe est bloquée par le RLS CalendIQ
+  const { error } = await SB.functions.invoke('calendiq-book', { body:{ action:'update', id, patch } });
+  if(error) throw new Error(error.message||'MAJ RDV impossible');
 }
 // crée un RDV CalendIQ COMPLET : insert + event Google (lien Meet) + email au prospect — comme la page de booking.
 // Renvoie { id, meet_link }. Les étapes Google/email sont best-effort (si l'organizer n'a pas connecté Google, pas de Meet).
