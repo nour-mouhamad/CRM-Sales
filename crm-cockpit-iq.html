@@ -1330,6 +1330,12 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .srcdd-item.active{color:var(--accent)}
 .srcdd-item .n{margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--t3)}
 .srcdd-item.active .n{color:var(--accent)}
+/* sous-filtre engagement webi (chips sous le sélecteur SOURCE quand Webinaire est actif) */
+.srceng{display:flex; gap:6px; margin-top:6px}
+.srceng-chip{flex:1; display:flex; align-items:center; justify-content:center; gap:5px; padding:6px 4px; border-radius:8px; border:1px solid var(--b1); background:none; color:var(--t2); font-size:11.5px; font-weight:650; cursor:pointer; transition:all var(--speed)}
+.srceng-chip:hover{color:var(--t1); border-color:var(--b2)}
+.srceng-chip.on{color:var(--accent); border-color:var(--accent); background:var(--accent-tint)}
+.srceng-chip .n{font-family:'JetBrains Mono',monospace; font-size:10px; opacity:.75}
 
 /* ---- confirmation d'appel (log seulement si l'appel a vraiment eu lieu) ---- */
 .callconfirm{position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:90; width:min(420px,92vw); background:var(--surface); border:1px solid var(--b1); border-radius:18px; padding:26px; text-align:center; box-shadow:0 24px 60px rgba(0,0,0,.42); animation:fade .2s ease}
@@ -1788,7 +1794,7 @@ function dbToLead(r, acts){
   }
   return {
     id:r.id, prenom:r.prenom||'', nom:r.nom||'', tel:r.telephone||'', email:r.email||'',
-    source:r.source, heat:r.heat||null, column:COL_DB2UI(r.colonne), owner:r.owner_closer_id||null,
+    source:r.source, webiEngagement:r.webi_engagement||null, heat:r.heat||null, column:COL_DB2UI(r.colonne), owner:r.owner_closer_id||null,
     nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, nextActionDue:r.next_action_due||null, extraActions:Array.isArray(r.extra_actions)?r.extra_actions:[], hiddenActions:Array.isArray(r.hidden_actions)?r.hidden_actions:[], live:false, noShow,
     offer:(r.montant==null||r.montant==='')?0:(Number(r.montant)||0), aPayer:(r.montant_a_payer==null?'':r.montant_a_payer), quiPaie:r.qui_paie||'', paid:r.statut_paiement==='paye', statut_paiement:r.statut_paiement||'aucun',
     cpf:(Number(r.cpf_dispo)||0), metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'', saison:r.saison||null,
@@ -1837,6 +1843,7 @@ async function saveLead(id, uiPatch){
   if('aPayer' in uiPatch) m.montant_a_payer=(uiPatch.aPayer===''||uiPatch.aPayer==null)?null:Number(uiPatch.aPayer);
   if('quiPaie' in uiPatch) m.qui_paie=uiPatch.quiPaie||null;
   if('source' in uiPatch) m.source=uiPatch.source||null;
+  if('webiEngagement' in uiPatch) m.webi_engagement=uiPatch.webiEngagement||null;
   if('owner' in uiPatch) m.owner_closer_id=uiPatch.owner;
   if('paid' in uiPatch) m.statut_paiement=uiPatch.paid?'paye':'aucun';
   if('statut_paiement' in uiPatch) m.statut_paiement=uiPatch.statut_paiement;
@@ -1869,6 +1876,7 @@ async function createLead(fields){
     email: (fields.email||'').trim()||null,
     telephone: (fields.telephone||'').trim()||null,
     source: (fields.source||'').trim()||'manuel',
+    webi_engagement: (fields.source==='webinaire' && fields.webiEngagement) ? fields.webiEngagement : null,
     colonne: COL_UI2DB(fields.column||'contacter'),
     date_creation: new Date().toISOString().slice(0,10),
   };
@@ -1937,33 +1945,47 @@ const initials = (l)=>{
   const a=((l.prenom||'').trim()[0]||''), b=((l.nom||'').trim()[0]||'');
   return ((a+b).toUpperCase()) || ((l.email||'?')[0].toUpperCase());
 };
-const srcLabel = {webi_inscrit:'Inscrit webi',webi_participe:'Participé webi',webinaire:'Webinaire','pub insta':'Pub Insta','référé':'Référé',brochure:'Brochure',MFF:'MFF'};
+/* TAXONOMIE (2026-07) : source = le CANAL (une valeur canonique) ; webi_engagement = l'axe orthogonal
+   'participe'/'inscrit'/null (null = legacy, présence inconnue). Plus JAMAIS d'engagement encodé dans la source. */
+const srcLabel = {webinaire:'Webinaire',calendiq:'RDV direct','pub insta':'Pub Insta','référé':'Référé',brochure:'Brochure'};
+const WEBI_ENG = { participe:'Participé', inscrit:'Inscrit' }; // libellés de l'engagement webi
+// libellé complet d'un lead : canal (+ engagement si webinaire) — utilisé par les badges de carte
+function srcFullLabel(source, eng){
+  const base = srcLabel[source] || (SOURCE_INFO[source]&&SOURCE_INFO[source].label) || source || '';
+  return (source==='webinaire' && WEBI_ENG[eng]) ? base+' · '+WEBI_ENG[eng] : base;
+}
 // Source d'un lead à contacter = opt-in sur le site (ou MFF). Conditionne l'angle d'ouverture.
 const SOURCE_INFO = {
-  webi_participe: {label:'Participé webi', via:'A ASSISTÉ au webinaire Vibe Coding (présent live)', angle:'Le plus chaud : il a vu la promesse en entier → ouvrir sur ce qu’il a retenu, créer le manque, closer vite (fenêtre 24h).'},
-  webi_inscrit:   {label:'Inscrit webi', via:'INSCRIT au webinaire (pas forcément venu)', angle:'Intention forte mais absent du live → re-vendre la promesse du webi avant de qualifier.'},
-  webinaire: {label:'Webinaire', via:'Inscrit au webinaire Vibe Coding', angle:'Il a vu la promesse en live → ouvrir sur ce qu’il a retenu, créer le manque.'},
+  webinaire: {label:'Webinaire', via:'Inscrit au webinaire Vibe Coding (présence non confirmée)', angle:'Vérifier s’il a assisté : si oui ouvrir sur ce qu’il a retenu, sinon re-vendre la promesse du webi.'},
   lead_gen:  {label:'Lead gen', via:'Lead entrant (formulaire / page)', angle:'Qualifier l’intention : pourquoi il s’est inscrit, créer le manque.'},
-  atc:       {label:'ATC', via:'Déjà tenté, sans réponse', angle:'Relancer : nouvel angle, autre créneau, garder court.'},
   mff:       {label:'MFF — MaFormation', via:'Vient de MaFormation (MFF)', angle:'Forte intention, ne connaît pas IQ → présenter IQ d’abord, jamais le prix.'},
+  calendiq:  {label:'RDV direct', via:'A réservé un RDV directement (CalendIQ)', angle:'Intention maximale : il a déjà pris RDV → préparer le call, pas de re-qualification lourde.'},
   manuel:    {label:'Ajout manuel', via:'Ajouté à la main dans le CRM', angle:'Qualifier l’intention pendant l’appel.'},
   brochure:  {label:'Brochure téléchargée', via:'A opt-in pour télécharger la brochure', angle:'Intéressé mais tiède → diagnostiquer son projet avant de pitcher.'},
   ressource: {label:'Ressource téléchargée', via:'A opt-in pour une ressource gratuite', angle:'Lead froid en découverte → qualifier l’intention, présenter IQ.'},
-  MFF: {label:'MFF — MaFormation', via:'Vient de MaFormation (MFF)', angle:'Forte intention, ne connaît pas IQ → présenter IQ d’ABORD, jamais le prix.'},
   'pub insta': {label:'Pub Insta', via:'A opt-in via une pub Instagram', angle:'Lead froid social → qualifier l’intention, créer le manque.'},
   'référé':   {label:'Référé', via:'Recommandé par un ancien élève', angle:'Confiance pré-établie → capitaliser sur la recommandation.'},
   perso:      {label:'Contact perso', via:'Contact personnel', angle:'Relation directe → approche personnalisée.'},
   autre:      {label:'Autre source', via:'Origine non renseignée (migré depuis HubSpot)', angle:'Qualifier l\'intention pendant l\'appel.'},
 };
+// fiche/angle différencié par (canal, engagement) : les nuances participé/inscrit vivent ICI, plus dans la source
+const SOURCE_INFO_WEBI = {
+  participe: {label:'Webinaire · Participé', via:'A ASSISTÉ au webinaire Vibe Coding (présent live)', angle:'Le plus chaud : il a vu la promesse en entier → ouvrir sur ce qu’il a retenu, créer le manque, closer vite (fenêtre 24h).'},
+  inscrit:   {label:'Webinaire · Inscrit', via:'INSCRIT au webinaire (pas forcément venu)', angle:'Intention forte mais absent du live → re-vendre la promesse du webi avant de qualifier.'},
+};
+function srcInfoFor(source, eng){
+  if(source==='webinaire' && SOURCE_INFO_WEBI[eng]) return SOURCE_INFO_WEBI[eng];
+  return SOURCE_INFO[source] || {label:source||'Entrée'};
+}
 
 // Sources réelles d'un lead = onglets du filtre « Lead à contacter » (hors « Tous »).
 // SOURCE DE VÉRITÉ UNIQUE partagée par le filtre colonne ET le formulaire d'ajout → toujours synchro.
+// CANAUX PURS : l'engagement webi (Participé/Inscrit) est un sous-filtre, pas une source.
 const LEAD_SOURCES = [
-  {k:'lead_gen',     label:'Lead gen'},
-  {k:'webi_participe',label:'Participé webi'},
-  {k:'webi_inscrit', label:'Inscrit webi'},
-  {k:'webinaire',    label:'Webinaire'},
-  {k:'mff',          label:'MFF'},
+  {k:'lead_gen',  label:'Lead gen'},
+  {k:'webinaire', label:'Webinaire'},
+  {k:'mff',       label:'MFF'},
+  {k:'calendiq',  label:'RDV direct'},
 ];
 
 // Colonnes = miroir du pipe HubSpot IQ Project (les stages d'entrée Lead gen/Webinaire/MFF
@@ -2238,7 +2260,7 @@ const tlTone = {paiement:'ok', noshow:'danger', recap:'accent', appel:'accent', 
 function Avatar({lead, size='sz-md', muted}){
   return <div className={`avatar ${size} ${muted?'muted':''}`}>{initials(lead)}</div>;
 }
-function Src({source}){ return <span className="src">{srcLabel[source]||source}</span>; }
+function Src({source, eng}){ return <span className="src">{srcFullLabel(source, eng)}</span>; }
 function fmtPhone(t){
   if(!t) return '';
   const d=String(t).replace(/[^\d+]/g,'');
@@ -2796,7 +2818,7 @@ const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDrag
             {lead.noShow && <span className="tag tag-noshow">No-show</span>}
             {lead.saison && <span className="tag tag-saison" title={SEASON_LABEL[lead.saison]||lead.saison}>{lead.saison}</span>}
           </div>
-          <div className="card-sub"><Src source={lead.source}/></div>
+          <div className="card-sub"><Src source={lead.source} eng={lead.webiEngagement}/></div>
         </div>
       </div>
       {actionEl}
@@ -2899,6 +2921,10 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
   const [src, setSrc] = useState(()=>{ const s=persistedState('iqcrm_src','all'); return SRC_TABS.some(o=>o.k===s)?s:'all'; }); // filtre par source (persiste)
   const [srcOpen, setSrcOpen] = useState(false); // menu du sélecteur ouvert
   useEffect(()=>localStorage.setItem('iqcrm_src',JSON.stringify(src)),[src]);
+  // sous-filtre ENGAGEMENT webi (Participé / Inscrit / tous) — actif seulement quand src='webinaire', persiste avec garde
+  const [srcEng, setSrcEng] = useState(()=>{ const s=persistedState('iqcrm_srceng','all'); return (s==='participe'||s==='inscrit')?s:'all'; });
+  useEffect(()=>localStorage.setItem('iqcrm_srceng',JSON.stringify(srcEng)),[srcEng]);
+  useEffect(()=>{ if(src!=='webinaire' && srcEng!=='all') setSrcEng('all'); },[src]); // quitter Webinaire réinitialise le sous-filtre
 
   // ---- attribution closer (admin) : filtre par owner + mode sélection multiple ----
   const [ownerFilter, setOwnerFilter] = useState(()=>persistedState('iqcrm_owner','all')); // 'all' | 'pool' | closerId
@@ -2926,11 +2952,14 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
   const exitSel = ()=>{ setSelecting(false); setSelectedIds(new Set()); lastSelRef.current=null; };
   const doBulkAssign = (cid)=>{ Array.from(selectedIds).forEach(id=>assignRef.current && assignRef.current(id,cid)); setBulkMenu(null); clearSel(); };
 
-  // compteurs par source — calculés sur la SEULE colonne « Lead à contacter »
+  // compteurs par source — calculés sur la SEULE colonne « Lead à contacter ».
+  // Clés dérivées de LEAD_SOURCES (source de vérité unique) + compteurs d'engagement webi pour les sous-chips.
   const srcCounts = useMemo(()=>{
     const base = leads.filter(l=>l.column==='contacter');
-    const c={all:base.length, lead_gen:0, webi_participe:0, webi_inscrit:0, webinaire:0, mff:0};
-    base.forEach(l=>{ if(c[l.source]!==undefined) c[l.source]++; });
+    const c={all:base.length, _wp:0, _wi:0};
+    for(const s of LEAD_SOURCES) c[s.k]=0;
+    base.forEach(l=>{ if(c[l.source]!==undefined) c[l.source]++;
+      if(l.source==='webinaire'){ if(l.webiEngagement==='participe') c._wp++; else if(l.webiEngagement==='inscrit') c._wi++; } });
     return c;
   },[leads]);
 
@@ -2990,7 +3019,7 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
 
   // items réellement affichés par colonne (filtre source appliqué) — partagé entre le rendu et la sélection par plage
   const displayedByCol={};
-  for(const c of COLUMNS){ const ci=byCol[c.id]||[]; displayedByCol[c.id]=(c.id==='contacter'&&src!=='all'&&!dq.trim())?ci.filter(l=>l.source===src):ci; }
+  for(const c of COLUMNS){ const ci=byCol[c.id]||[]; displayedByCol[c.id]=(c.id==='contacter'&&src!=='all'&&!dq.trim())?ci.filter(l=>l.source===src && (src!=='webinaire'||srcEng==='all'||l.webiEngagement===srcEng)):ci; }
   colItemsRef.current=displayedByCol;
 
   // ---- RENDU PROGRESSIF (anti-gel à l'ouverture) ----
@@ -3071,7 +3100,7 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
                 onDragLeave={e=>{ if(e.currentTarget===e.target){ setOverCol(null); setOver(null); } }}
                 onDrop={e=>dropOn(e,c.id)}>
                 <ColHead col={c} color={COL_COLOR[c.id]} isSystem={SYSTEM_IDS.has(c.id)} count={colItems.length} isAdmin={isAdmin}
-                  onAddLead={()=>onAddLead(c.id, (c.id==='contacter'&&src!=='all')?src:null)}
+                  onAddLead={()=>onAddLead(c.id, (c.id==='contacter'&&src!=='all')?src:null, (c.id==='contacter'&&src==='webinaire'&&srcEng!=='all')?srcEng:null)}
                   onRename={renameCol} onRecolor={recolorCol} onMove={moveCol} onDelete={deleteCol}
                   otherCols={COLUMNS.filter(x=>x.id!==c.id)}
                   canLeft={COLUMNS.findIndex(x=>x.id===c.id)>0} canRight={COLUMNS.findIndex(x=>x.id===c.id)<COLUMNS.length-1}/>
@@ -3093,6 +3122,13 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
                         ))}
                       </div>
                     </>)}
+                    {src==='webinaire' && (
+                      <div className="srceng">
+                        {[{k:'all',label:'Tous',n:srcCounts.webinaire||0},{k:'participe',label:'Participé',n:srcCounts._wp||0},{k:'inscrit',label:'Inscrit',n:srcCounts._wi||0}].map(o=>(
+                          <button key={o.k} className={'srceng-chip'+(srcEng===o.k?' on':'')} onClick={()=>setSrcEng(o.k)}>{o.label} <span className="n">{o.n}</span></button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ); })()}
                 <div className="col-body">
@@ -3211,11 +3247,19 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
             {(()=>{ const srcInList=LEAD_SOURCES.some(o=>o.k===lead.source); return (<>
               <div className="field">
                 <span className="eyebrow">Source du lead</span>
-                <select className={'addlead-sel src-sel'+(lead.source?'':' empty')} value={lead.source||''} onChange={e=>onEditField('source','source', e.target.value||null)}>
+                <select className={'addlead-sel src-sel'+(lead.source?'':' empty')} value={lead.source||''} onChange={e=>{ const v=e.target.value||null; onEditField('source','source', v); if(v!=='webinaire' && lead.webiEngagement) onEditField('webiEngagement','webiEngagement', null); }}>
                   {!lead.source && <option value="">— choisir la source —</option>}
                   {!srcInList && lead.source && <option value={lead.source}>{(SOURCE_INFO[lead.source]||{label:lead.source}).label}</option>}
                   {LEAD_SOURCES.map(o=><option key={o.k} value={o.k}>{o.label}</option>)}
                 </select>
+                {lead.source==='webinaire' && (
+                  <div className="srceng" style={{marginTop:8}}>
+                    {[{k:'participe',label:'Participé'},{k:'inscrit',label:'Inscrit'},{k:null,label:'—'}].map(o=>(
+                      <button key={String(o.k)} className={'srceng-chip'+((lead.webiEngagement||null)===o.k?' on':'')} title={o.k?null:'Présence inconnue'}
+                        onClick={()=>onEditField('webiEngagement','webiEngagement', o.k)}>{o.label}</button>
+                    ))}
+                  </div>
+                )}
               </div>
               <ManualRdvField lead={lead} calendiqRdvs={lead.rdvs||[]}
                 onCalModify={calendiqReady?openEditRdv:null}
@@ -3330,7 +3374,7 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
               // Parcours = origine (source + date de création) → étapes loguées (chaque move logue une étape dans la DB) → étape actuelle.
               // Toujours affiché, EN BAS de l'historique, pour TOUS les leads (même importés sans historique de moves).
               const steps=lead.timeline.filter(e=>e.title&&e.title.indexOf('Étape :')===0).slice().reverse();
-              const si=SOURCE_INFO[lead.source]||{label:lead.source||'Entrée'};
+              const si=srcInfoFor(lead.source, lead.webiEngagement);
               const fmtD=(d)=>{ try{ return new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}); }catch(e){ return ''; } };
               const items=[{ key:'origin', lbl:si.label, when:lead.date_creation?fmtD(lead.date_creation):'' }];
               steps.forEach((s,i)=>items.push({ key:s.id||('s'+i), lbl:s.title.replace('Étape : ',''), when:s.when }));
@@ -3567,7 +3611,7 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage, onSetR
     if(tx.length<20) return;
     setPhase('loading'); setErr('');
     try{
-      const out=await callFn('recap',{ transcript:tx, lead:{prenom:lead.prenom, nom:lead.nom, source:lead.source, column:lead.column} });
+      const out=await callFn('recap',{ transcript:tx, lead:{prenom:lead.prenom, nom:lead.nom, source:(lead.source==='webinaire'&&lead.webiEngagement)?('webinaire ('+lead.webiEngagement+')'):lead.source, column:lead.column} });
       if(!alive.current) return; // modale fermée pendant l'analyse -> on n'applique rien
       const F=out.fields||{};
       const filled=[], conflicts=[];
@@ -3761,11 +3805,11 @@ function TlCard({ ev, onEditNote, onDeleteNote }){
   );
 }
 
-function AddLeadModal({ column, defaultSource, onClose, onAdd }){
-  const [f,setF]=useState({prenom:'',nom:'',email:'',telephone:'',source:defaultSource||''});
+function AddLeadModal({ column, defaultSource, defaultEng, onClose, onAdd }){
+  const [f,setF]=useState({prenom:'',nom:'',email:'',telephone:'',source:defaultSource||'',webiEngagement:(defaultSource==='webinaire'&&(defaultEng==='participe'||defaultEng==='inscrit'))?defaultEng:null});
   const [saving,setSaving]=useState(false);
   const [err,setErr]=useState(null);
-  const set=(k)=>(e)=>setF(s=>({...s,[k]:e.target.value}));
+  const set=(k)=>(e)=>setF(s=>({...s,[k]:e.target.value, ...(k==='source'&&e.target.value!=='webinaire'?{webiEngagement:null}:{})}));
   const submit=async(e)=>{ e.preventDefault(); if(saving) return;
     if(!f.prenom.trim() && !f.nom.trim() && !f.email.trim()){ setErr('Renseigne au moins un nom ou un email.'); return; }
     setSaving(true); setErr(null);
@@ -3783,6 +3827,14 @@ function AddLeadModal({ column, defaultSource, onClose, onAdd }){
           <option value="">Source — non précisée</option>
           {LEAD_SOURCES.map(o=><option key={o.k} value={o.k}>{o.label}</option>)}
         </select>
+        {f.source==='webinaire' && (
+          <div className="srceng">
+            {[{k:'participe',label:'Participé'},{k:'inscrit',label:'Inscrit'},{k:null,label:'—'}].map(o=>(
+              <button type="button" key={String(o.k)} className={'srceng-chip'+((f.webiEngagement||null)===o.k?' on':'')} title={o.k?null:'Présence inconnue'}
+                onClick={()=>setF(s=>({...s,webiEngagement:o.k}))}>{o.label}</button>
+            ))}
+          </div>
+        )}
         {err && <div className="rdv-err">{err}</div>}
         <div className="addlead-foot">
           <button type="button" className="btn btn-ghost" onClick={onClose}>Annuler</button>
@@ -3901,7 +3953,7 @@ function Recherche({leads, onOpen}){
               <Avatar lead={l} size="sz-sm"/>
               <div className="sr-tx">
                 <b>{l.prenom} {l.nom}</b>
-                <span><Src source={l.source}/> · {l.metier} · <span className="mono">{l.tel}</span></span>
+                <span><Src source={l.source} eng={l.webiEngagement}/> · {l.metier} · <span className="mono">{l.tel}</span></span>
               </div>
               <span className="stage-chip">{COL_LABEL[l.column]}</span>
             </div>
@@ -4228,7 +4280,7 @@ function Incoming({lead, onTake, onDismiss}){
         <div className="incoming-tx">
           <span className="eyebrow">Nouveau lead · Sonnerie <span className="sonner"></span></span>
           <h4>{lead.prenom} {lead.nom}</h4>
-          <span className="sub"><Src source={lead.source}/> · <span className="mono">{eur(lead.cpf)}</span> dispo</span>
+          <span className="sub"><Src source={lead.source} eng={lead.webiEngagement}/> · <span className="mono">{eur(lead.cpf)}</span> dispo</span>
         </div>
         <button className="btn btn-accent incoming-take" onClick={onTake}>Je le prends</button>
       </div>
@@ -5306,7 +5358,7 @@ function App({session, onLogout}){
         {screen==='leads' && <Board leads={leadsView} search={search} setSearch={setSearch} view={view||'mine'} setView={setView} userId={userId}
             isAdmin={isAdmin} closers={closers} onAssign={reassignOwner}
             colVer={colVer} renameCol={renameCol} recolorCol={recolorCol} reorderCols={reorderCols} addCol={addCol} deleteCol={deleteCol}
-            onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col,defSrc)=>setAddTarget({col,defSrc})} onDelete={deleteLead}/>}
+            onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col,defSrc,defEng)=>setAddTarget({col,defSrc,defEng})} onDelete={deleteLead}/>}
         {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen(origin)} backLabel={SCREEN_LABEL[origin]||'Retour'} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
             onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} onManualRdv={setManualRdv} onManualRemoveRdv={removeManualRdv} onRdvOutcome={setRdvOutcome} onClearRdvOutcome={clearRdvOutcome} isAdminView={isAdmin} closers={closers} rdvClosers={cqSources} onAssign={reassignOwner} calendiqReady={isAdmin ? cqSources.length>0 : !!(profile&&profile.calendiq_organizer_id)} calendiqOrganizer={profile&&profile.calendiq_organizer_id}/>}
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen(origin)}>Retour ({SCREEN_LABEL[origin]||'Mes leads'})</button></div>}
@@ -5319,7 +5371,7 @@ function App({session, onLogout}){
       </main>
 
       {/* OVERLAYS */}
-      {addTarget && <AddLeadModal column={addTarget.col} defaultSource={addTarget.defSrc} onClose={()=>setAddTarget(null)} onAdd={addLead}/>}
+      {addTarget && <AddLeadModal column={addTarget.col} defaultSource={addTarget.defSrc} defaultEng={addTarget.defEng} onClose={()=>setAddTarget(null)} onAdd={addLead}/>}
       {showSettings && <div className="backdrop" onClick={()=>setShowSettings(false)}><Settings theme={theme} setTheme={setTheme} density={density} setDensity={setDensity} onSimulate={simulate} onReset={resetData} onClose={()=>setShowSettings(false)} isAdmin={isAdmin} onManageColumns={()=>{ setShowSettings(false); setShowColMgr(true); }} onManageResults={()=>{ setShowSettings(false); setShowResMgr(true); }}/></div>}
       {showColMgr && <ColumnsManagerModal columns={colCfg} leads={leads} onClose={()=>setShowColMgr(false)} onRename={renameCol} onRecolor={recolorCol} onReorder={reorderCols} onAdd={addCol} onDelete={deleteCol}/>}
       {showResMgr && <ResultsManagerModal results={resCfg} onClose={()=>setShowResMgr(false)} onRename={renameRes} onRecolor={recolorRes} onReorder={reorderRes} onAdd={addRes} onDelete={deleteRes}/>}
