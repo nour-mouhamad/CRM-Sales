@@ -3615,7 +3615,7 @@ function MoneyField({label, value, onSave, accent}){
   );
 }
 
-function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onActions, onClaim, meId, onAddRdv, onCancelRdv, onManualRdv, onManualRemoveRdv, onRdvOutcome, onClearRdvOutcome, isAdminView, closers, rdvClosers, onAssign, calendiqReady, calendiqOrganizer, bcList, onBcUpsert, onBcAdd, onPartAdd, onPartUpsert, onPartRemove, onPayAdd, onPayRemove}){
+function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onActions, onClaim, meId, onAddRdv, onCancelRdv, onManualRdv, onManualRemoveRdv, onRdvOutcome, onClearRdvOutcome, isAdminView, closers, rdvClosers, onAssign, calendiqReady, calendiqOrganizer, bcList, onBcUpsert, onBcAdd, onPartAdd, onPartUpsert, onPartRemove, onPayAdd, onPayRemove, onSetSeason}){
   const [moveOpen,setMoveOpen]=useState(false);
   const [noteOpen,setNoteOpen]=useState(false);
   const [noteMode,setNoteMode]=useState('note'); // 'note' = note écrite | 'nrp' = appel sans réponse
@@ -3705,25 +3705,6 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
                 <button className="action-add" onClick={()=>{ const n=(lead.extraActions||[]).length; onActions([...(lead.extraActions||[]), {label:'',done:false,id:(window.crypto&&crypto.randomUUID?crypto.randomUUID():'x'+Date.now().toString(36)+Math.random().toString(36).slice(2))}], false); setEditAct(n); }}>+ Ajouter une action</button>
               </div>
               <PaymentBlock lead={lead} pay={lead._pay} onEditField={onEditField} onPartAdd={onPartAdd} onPartUpsert={onPartUpsert} onPartRemove={onPartRemove} onPayAdd={onPayAdd} onPayRemove={onPayRemove}/>
-              <div className="field">
-                <span className="eyebrow">Bootcamp</span>
-                {(bcList&&bcList.length>0)?bcList.map(e=>{ const m=BC_STATUT_META[e.statut]||BC_STATUT_META.prospect; return (
-                  <div key={e.id} className="bc-fiche-row">
-                    <span className="bc-fiche-chip" style={{color:m.color}}><span className="cdot"></span>{e.saison} · {m.label}</span>
-                    {isAdminView
-                      ? <BcMoney value={e.deja_paye} onSave={v=>onBcUpsert(e.id,{deja_paye:v==null?0:v})}/>
-                      : <span className="bc-cell mono">{eur(Number(e.deja_paye)||0)}</span>}
-                    <span className="bc-fiche-sub">payé{e.prix!=null?<> / <b className="mono">{eur(Number(e.prix))}</b></>:null}{bcReste(e)>0&&<> · reste <b className="mono" style={{color:'var(--accent)'}}>{eur(bcReste(e))}</b></>}</span>
-                  </div> ); }):<div className="bc-empty" style={{padding:'4px 0'}}>Pas d'inscription bootcamp</div>}
-                {isAdminView && onBcAdd && (
-                  <div className="bc-fiche-add">
-                    <select className="bc-sel" id={'bcadd-'+lead.id} defaultValue={lead.saison&&SEASONS.some(s=>s.code===lead.saison)?lead.saison:'S17'}>
-                      {SEASONS.map(s=><option key={s.code} value={s.code}>{s.label}</option>)}
-                    </select>
-                    <button className="action-add" style={{margin:0}} onClick={()=>{ const sel=document.getElementById('bcadd-'+lead.id); onBcAdd(lead.id, sel?sel.value:'S17', { closer_id:lead.owner||null, origine_rdv:(lead.source==='calendiq'?'direct':null) }); }}>+ Inscrire au bootcamp</button>
-                  </div>
-                )}
-              </div>
               <div className="field">
                 <span className="eyebrow">Closer</span>
                 {isAdminView ? (
@@ -3849,7 +3830,7 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
               </div>
               <div className="seasonsel">
                 <span className="movesel-lbl">Saison</span>
-                <select className={'season-select'+(lead.saison?' set':'')} value={lead.saison||''} onChange={e=>onEditField('saison','saison', e.target.value||null)} title="Cohorte bootcamp du lead">
+                <select className={'season-select'+(lead.saison?' set':'')} value={lead.saison||''} onChange={e=>onSetSeason(lead.id, e.target.value||null)} title="Cohorte bootcamp — choisir une saison inscrit le lead en prospect dans la page Bootcamp">
                   <option value="">Aucune</option>
                   {SEASONS.map(s=><option key={s.code} value={s.code}>{s.label}</option>)}
                 </select>
@@ -5673,6 +5654,21 @@ function App({session, onLogout}){
     const { error }=await SB.from('bootcamp_enrollments').delete().eq('id',id);
     if(error){ toast('Suppression impossible', error.message, 'info'); loadBc(); }
   },[toast,loadBc]);
+  // SAISON (fiche > Actions) = commande unique bootcamp : choisir une saison inscrit le lead en PROSPECT ;
+  // changer de saison DÉPLACE le prospect (pas de doublon) ; « Aucune » retire le prospect. Un inscrit/soldé (payé) est TOUJOURS protégé.
+  const setLeadSeason=useCallback(async(leadId, saison)=>{
+    patch(leadId,{saison}); saveLead(leadId,{saison});                     // tag saison du lead (comme avant)
+    const enrs=bcEnrollments.filter(e=>e.lead_id===leadId);
+    if(saison){
+      if(enrs.some(e=>e.saison===saison)) return;                          // déjà présent sur cette saison
+      const movable=enrs.find(e=>e.statut==='prospect');                   // prospect auto sur une autre saison -> déplacer
+      if(movable){ bcUpsert(movable.id,{saison}); return; }
+      const l=leads.find(x=>x.id===leadId);                                // sinon créer un prospect
+      bcAdd(leadId, saison, { closer_id:(l&&l.owner)||null, origine_rdv:(l&&l.source==='calendiq')?'direct':null });
+    } else {
+      enrs.filter(e=>e.statut==='prospect').forEach(e=>bcRemove(e.id));    // « Aucune » -> retirer les prospects, garder les payés
+    }
+  },[bcEnrollments, leads, patch, saveLead, bcAdd, bcUpsert, bcRemove]);
 
   // ═══ REGISTRE FINANCIER : paiements (versements reçus) + financement_parts (canal pay-live) ═══
   const [paiements,setPaiements]=useState([]);
@@ -6211,7 +6207,7 @@ function App({session, onLogout}){
             colVer={colVer} renameCol={renameCol} recolorCol={recolorCol} reorderCols={reorderCols} addCol={addCol} deleteCol={deleteCol}
             onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col,defSrc,defEng)=>setAddTarget({col,defSrc,defEng})} onDelete={deleteLead}/>}
         {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen(origin)} backLabel={SCREEN_LABEL[origin]||'Retour'} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
-            onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} onManualRdv={setManualRdv} onManualRemoveRdv={removeManualRdv} onRdvOutcome={setRdvOutcome} onClearRdvOutcome={clearRdvOutcome} isAdminView={isAdmin} closers={closers} rdvClosers={cqSources} onAssign={reassignOwner} calendiqReady={isAdmin ? cqSources.length>0 : !!(profile&&profile.calendiq_organizer_id)} calendiqOrganizer={profile&&profile.calendiq_organizer_id} bcList={bcEnrollments.filter(e=>e.lead_id===sel.id)} onBcUpsert={bcUpsert} onBcAdd={isAdmin?bcAdd:null} onPartAdd={partAdd} onPartUpsert={partUpsert} onPartRemove={partRemove} onPayAdd={payAdd} onPayRemove={payRemove}/>}
+            onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} onManualRdv={setManualRdv} onManualRemoveRdv={removeManualRdv} onRdvOutcome={setRdvOutcome} onClearRdvOutcome={clearRdvOutcome} isAdminView={isAdmin} closers={closers} rdvClosers={cqSources} onAssign={reassignOwner} calendiqReady={isAdmin ? cqSources.length>0 : !!(profile&&profile.calendiq_organizer_id)} calendiqOrganizer={profile&&profile.calendiq_organizer_id} bcList={bcEnrollments.filter(e=>e.lead_id===sel.id)} onBcUpsert={bcUpsert} onBcAdd={isAdmin?bcAdd:null} onPartAdd={partAdd} onPartUpsert={partUpsert} onPartRemove={partRemove} onPayAdd={payAdd} onPayRemove={payRemove} onSetSeason={setLeadSeason}/>}
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen(origin)}>Retour ({SCREEN_LABEL[origin]||'Mes leads'})</button></div>}
         {screen==='agenda' && <Agenda meetings={cqMeetings} sources={cqSources} loading={cqLoading} error={cqError}
             isAdmin={isAdmin} profile={profile} onConnect={connectCalendiq} onDisconnect={disconnectCalendiq}
