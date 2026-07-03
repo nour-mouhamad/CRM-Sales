@@ -419,12 +419,6 @@ input,textarea{font-family:inherit; color:inherit}
 .rc-act.eur:hover{color:var(--accent); border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
 .rc-act svg{width:14px; height:14px}
 .rc-empty{padding:26px 16px; font-size:13.5px; color:var(--t3); text-align:center}
-/* densité compacte */
-.rc-screen.dense .rc-hrow,.rc-screen.dense .rc-row{padding:7px 18px; gap:12px}
-.rc-screen.dense .rc-name{font-size:13px}
-.rc-screen.dense .rc-reste{font-size:14px}
-.rc-screen.dense .rc-money-sub{display:none}
-.rc-screen.dense .rc-sais{padding:0 5px}
 .bc-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
 .bc-head h1{font-size:22px; font-weight:800; letter-spacing:-.02em; margin:0}
 .bc-season{background:var(--surface); border:1px solid var(--b1); border-radius:9px; color:var(--t1); font-family:inherit; font-size:13px; font-weight:650; padding:8px 10px; cursor:pointer}
@@ -5143,11 +5137,9 @@ function RcDate({ value, overdue, onSave }){
 function RecouvScreen({ leads, recouv, paiements, closers, onOpenLead, onSet }){
   const [filt,setFilt]=useState('tous');            // tous | retard | semaine
   const [seas,setSeas]=useState('all');
-  const [dense,setDense]=useState(()=>persistedState('iqcrm_rcdense',false));
-  const [cols,setCols]=useState(()=>{ const d=persistedState('iqcrm_rccols',null); return (d&&typeof d==='object')?{detail:true,financement:true,derniere:false,...d}:{detail:true,financement:true,derniere:false}; });
+  const [cols,setCols]=useState(()=>{ const d=persistedState('iqcrm_rccols',null); return (d&&typeof d==='object')?{financement:true,derniere:false,...d}:{financement:true,derniere:false}; });
   const [colsOpen,setColsOpen]=useState(false);
   const [sort,setSort]=useState('relance');         // relance | reste | nom
-  useEffect(()=>localStorage.setItem('iqcrm_rcdense',JSON.stringify(dense)),[dense]);
   useEffect(()=>localStorage.setItem('iqcrm_rccols',JSON.stringify(cols)),[cols]);
   const today=todayISO();
   const in7=(()=>{ const d=new Date(); d.setDate(d.getDate()+7); return d.toISOString().slice(0,10); })();
@@ -5172,7 +5164,7 @@ function RecouvScreen({ leads, recouv, paiements, closers, onOpenLead, onSet }){
   const bump7=()=>{ const d=new Date(); d.setDate(d.getDate()+7); return d.toISOString().slice(0,10); };
   const arrow=k=>sort===k?' ↓':'';
   return (
-    <div className={'rc-screen'+(dense?' dense':'')}>
+    <div className="rc-screen">
       <div className="rc-head"><h1>Recouvrement</h1><div style={{flex:1}}></div>
         <select className="bc-season" value={seas} onChange={e=>setSeas(e.target.value)}>
           <option value="all">Toutes saisons</option>{seasons.map(s=><option key={s} value={s}>{SEASON_LABEL[s]||s}</option>)}
@@ -5191,12 +5183,11 @@ function RecouvScreen({ leads, recouv, paiements, closers, onOpenLead, onSet }){
             <button key={k} className={'rc-fchip'+(filt===k?' on':'')} onClick={()=>setFilt(k)}>{l}</button>))}
         </div>
         <div style={{flex:1}}></div>
-        <button className="rc-tool" onClick={()=>setDense(d=>!d)} title="Changer la densité d'affichage">{dense?'Confort':'Compact'}</button>
         <div className="rc-colswrap">
           <button className="rc-tool" onClick={()=>setColsOpen(o=>!o)}>Colonnes ▾</button>
           {colsOpen && <><div className="rc-ov" onClick={()=>setColsOpen(false)}></div>
             <div className="rc-colsmenu">
-              {[['detail','Détail payé / facturé'],['financement','Financement'],['derniere','Dernière relance']].map(([k,lbl])=>(
+              {[['financement','Financement'],['derniere','Dernière relance']].map(([k,lbl])=>(
                 <label key={k} className="rc-colitem"><input type="checkbox" checked={!!cols[k]} onChange={e=>setCols(c=>({...c,[k]:e.target.checked}))}/>{lbl}</label>))}
             </div></>}
         </div>
@@ -5220,7 +5211,6 @@ function RecouvScreen({ leads, recouv, paiements, closers, onOpenLead, onSet }){
             </div>
             <div className="rc-w-money rc-c-money">
               <span className="rc-reste mono">{eur(p.reste)}</span>
-              {cols.detail && <span className="rc-money-sub mono">payé {eur(p.paye)} / {eur(p.facture)}</span>}
             </div>
             {cols.financement && <div className="rc-w-fin rc-c-fin">{(p.parts||[]).length?p.parts.map(f=><span key={f.id} className={'rc-badge s-'+f.statut}>{PART_TYPE_LABEL[f.type]||f.type}</span>):<span className="rc-dim">—</span>}</div>}
             <div className="rc-w-rel"><RcDate value={rc&&rc.relance_next} overdue={overdue} onSave={v=>onSet(l.id,{relance_next:v})}/></div>
