@@ -360,6 +360,42 @@ input,textarea{font-family:inherit; color:inherit}
 .sync-banner-btn:disabled{opacity:.6; cursor:default}
 /* ===== page BOOTCAMP ===== */
 .bc-screen{padding:26px 30px; overflow-y:auto; height:100%}
+/* ── page Recouvrement (le sheet impayés, vivant) ── */
+.rc-screen{padding:26px 30px; overflow-y:auto; height:100%}
+.rc-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
+.rc-head h1{font-size:22px; font-weight:800; letter-spacing:-.02em; margin:0}
+.rc-kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:16px}
+.rc-kpi{background:var(--surface); border:1px solid var(--b1); border-radius:13px; padding:13px 15px; display:flex; flex-direction:column; gap:3px}
+.rc-kpi-n{font-size:19px; font-weight:800; letter-spacing:-.02em; color:var(--t1)}
+.rc-kpi-l{font-size:11px; font-weight:650; color:var(--t3)}
+.rc-kpi.warn .rc-kpi-n{color:var(--accent)} .rc-kpi.ok .rc-kpi-n{color:var(--ok)}
+.rc-filters{display:flex; gap:7px; margin-bottom:12px}
+.rc-fchip{background:var(--surface); border:1px solid var(--b1); border-radius:8px; color:var(--t2); font-family:inherit; font-size:12.5px; font-weight:650; padding:6px 12px; cursor:pointer}
+.rc-fchip.on{background:var(--accent); color:var(--on-accent); border-color:var(--accent)}
+.rc-table{background:var(--surface); border:1px solid var(--b1); border-radius:14px; overflow-x:auto}
+.rc-row{display:grid; grid-template-columns:minmax(150px,1.3fr) 60px 84px 84px 92px minmax(150px,1.2fr) 96px 150px minmax(120px,1fr) 66px; gap:8px; align-items:center; padding:9px 14px; border-bottom:1px solid var(--b1); min-width:1120px}
+.rc-row>*{min-width:0}
+.rc-row:last-child{border-bottom:none}
+.rc-hrow{font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; font-weight:700; color:var(--t3); background:var(--surface-2)}
+.rc-late{box-shadow:inset 3px 0 0 var(--danger)}
+.rc-name{background:none; border:none; padding:0; text-align:left; font-family:inherit; font-size:13px; font-weight:700; color:var(--t1); cursor:pointer}
+.rc-name:hover{color:var(--accent)}
+.rc-sais{font-size:11.5px; color:var(--t2)}
+.rc-dim{color:var(--t3)} .rc-ok{color:var(--ok); font-size:12.5px} .rc-reste{color:var(--accent); font-size:13.5px; font-weight:800}
+.rc-fin{display:flex; gap:4px; flex-wrap:wrap}
+.rc-badge{font-size:10px; font-weight:700; padding:2px 6px; border-radius:5px; background:var(--surface-2); border:1px solid var(--b1); color:var(--t2); white-space:nowrap}
+.rc-badge.s-recu{color:var(--ok); border-color:color-mix(in srgb,var(--ok) 45%,transparent)}
+.rc-date{font-size:11.5px}
+.rc-datein{background:var(--bg); border:1px solid var(--b1); border-radius:7px; color:var(--t1); font-family:inherit; font-size:11.5px; padding:4px 6px}
+.rc-datein.late{border-color:var(--danger); color:var(--danger)}
+.rc-note{background:none; border:none; text-align:left; font-family:inherit; font-size:11.5px; color:var(--t1); cursor:pointer; padding:3px 5px; border-radius:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%}
+.rc-note:hover{background:var(--surface-2)}
+.rc-acts{display:flex; gap:4px}
+.rc-act{width:26px; height:26px; display:grid; place-items:center; border:1px solid var(--b1); border-radius:7px; background:var(--surface-2); color:var(--t2); cursor:pointer}
+.rc-act:hover{color:var(--ok); border-color:color-mix(in srgb,var(--ok) 45%,transparent)}
+.rc-act.eur:hover{color:var(--accent); border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+.rc-act svg{width:14px; height:14px}
+.rc-empty{padding:22px 16px; font-size:13px; color:var(--t3); text-align:center}
 .bc-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
 .bc-head h1{font-size:22px; font-weight:800; letter-spacing:-.02em; margin:0}
 .bc-season{background:var(--surface); border:1px solid var(--b1); border-radius:9px; color:var(--t1); font-family:inherit; font-size:13px; font-weight:650; padding:8px 10px; cursor:pointer}
@@ -2927,6 +2963,7 @@ function ActionWhenField({ due, anchorRect, onDate, onClose }){
    Facturé = leads.montant (référence). Payé = Σ versements reçus. Reste = calculé, jamais saisi.
    Une part = un payeur/canal (CPF, reste à charge, entreprise, OPCO, FT…) que le closer saisit. */
 const PART_TYPES = [['cpf','CPF'],['cpf_2','CPF n°2'],['perso','Reste à charge'],['entreprise','Entreprise'],['opco','OPCO'],['france_travail','France Travail'],['autre','Autre']];
+const PART_TYPE_LABEL = Object.fromEntries(PART_TYPES);
 const PART_STATUTS = [['attente','En attente'],['en_cours','En cours'],['recu','Reçu']];
 const PAY_MOYENS = ['cpf','stripe','virement','klarna','opco','entreprise','france_travail','autre'];
 const parseMoney = s => { const n=Number(String(s).replace(/\s/g,'').replace(',','.').replace(/[^\d.]/g,'')); return Number.isFinite(n)?n:null; };
@@ -5081,6 +5118,94 @@ function BcText({value,onSave,ph}){
   </>);
 }
 // Page BOOTCAMP (admin) : suivi des inscriptions par cohorte — KPI live, inscrits, prospects, ajout anti-doublon.
+/* ═══ RECOUVREMENT (admin) — le Google Sheet des impayés, mais vivant : liste auto de tout lead reste>0,
+   triée par date de relance (retard en haut, rouge), reste calculé du registre, soldé = disparaît. ═══ */
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function RecouvScreen({ leads, recouv, paiements, closers, onOpenLead, onSet }){
+  const [filt,setFilt]=useState('tous');            // tous | retard | semaine
+  const [seas,setSeas]=useState('all');
+  const today=todayISO();
+  const in7=(()=>{ const d=new Date(); d.setDate(d.getDate()+7); return d.toISOString().slice(0,10); })();
+  // base : DÉBITEUR RÉEL = reste>0 ET (en attente d'encaissement OU partiellement payé OU explicitement suivi).
+  // Sinon un « Closed Won » legacy (payé, mais sans versement loggé dans le registre) apparaîtrait à tort comme débiteur.
+  const base=useMemo(()=>leads.filter(l=>{ const p=l._pay; if(!p||p.reste<=0) return false; return l.column==='encaisser' || p.paye>0 || recouv.has(l.id); }).map(l=>({ l, p:l._pay, rc:recouv.get(l.id)||null })),[leads,recouv]);
+  const seasons=useMemo(()=>{ const s=new Set(); base.forEach(x=>{ if(x.l.saison) s.add(x.l.saison); }); return [...s].sort().reverse(); },[base]);
+  const rows=useMemo(()=>{
+    let r=base;
+    if(seas!=='all') r=r.filter(x=>x.l.saison===seas);
+    if(filt==='retard') r=r.filter(x=>x.rc&&x.rc.relance_next&&x.rc.relance_next<today);
+    else if(filt==='semaine') r=r.filter(x=>x.rc&&x.rc.relance_next&&x.rc.relance_next<=in7);
+    return r.slice().sort((a,b)=>{ const ra=a.rc&&a.rc.relance_next, rb=b.rc&&b.rc.relance_next;
+      if(ra&&rb) return ra<rb?-1:ra>rb?1:0; if(ra&&!rb) return -1; if(!ra&&rb) return 1; return b.p.reste-a.p.reste; });
+  },[base,seas,filt,today,in7]);
+  // KPIs
+  const totalDu=base.reduce((s,x)=>s+x.p.reste,0);
+  const enRetard=base.filter(x=>x.rc&&x.rc.relance_next&&x.rc.relance_next<today);
+  const duRetard=enRetard.reduce((s,x)=>s+x.p.reste,0);
+  const encMois=useMemo(()=>{ const m=today.slice(0,7); return (paiements||[]).filter(p=>String(p.date_paiement||'').slice(0,7)===m).reduce((s,p)=>s+(Number(p.montant)||0),0); },[paiements,today]);
+  const sansSuivi=base.filter(x=>!x.rc||!x.rc.relance_next).length;
+  const name=l=>`${l.prenom||''} ${l.nom||''}`.trim()||l.email||'Lead';
+  const bump7=()=>{ const d=new Date(); d.setDate(d.getDate()+7); return d.toISOString().slice(0,10); };
+  return (
+    <div className="rc-screen">
+      <div className="rc-head"><h1>Recouvrement</h1><div style={{flex:1}}></div>
+        <select className="bc-season" value={seas} onChange={e=>setSeas(e.target.value)}>
+          <option value="all">Toutes saisons</option>{seasons.map(s=><option key={s} value={s}>{SEASON_LABEL[s]||s}</option>)}
+        </select>
+      </div>
+      <div className="rc-kpis">
+        <div className="rc-kpi"><span className="rc-kpi-n mono">{eur(totalDu)}</span><span className="rc-kpi-l">Total dû</span></div>
+        <div className={'rc-kpi'+(duRetard>0?' warn':'')}><span className="rc-kpi-n mono">{eur(duRetard)}</span><span className="rc-kpi-l">En retard · {enRetard.length}</span></div>
+        <div className="rc-kpi"><span className="rc-kpi-n mono">{base.length}</span><span className="rc-kpi-l">Dossiers en attente</span></div>
+        <div className="rc-kpi ok"><span className="rc-kpi-n mono">{eur(encMois)}</span><span className="rc-kpi-l">Encaissé ce mois</span></div>
+        {sansSuivi>0 && <div className="rc-kpi"><span className="rc-kpi-n mono">{sansSuivi}</span><span className="rc-kpi-l">Sans date de relance</span></div>}
+      </div>
+      <div className="rc-filters">
+        {[['tous','Tous'],['retard','En retard'],['semaine','Cette semaine']].map(([k,l])=>(
+          <button key={k} className={'rc-fchip'+(filt===k?' on':'')} onClick={()=>setFilt(k)}>{l}</button>
+        ))}
+      </div>
+      <div className="rc-table">
+        <div className="rc-row rc-hrow">
+          <span>Participant</span><span>Saison</span><span>Facturé</span><span>Payé</span><span>Reste</span><span>Financement</span><span>Dern. relance</span><span>À relancer</span><span>Suivi</span><span></span>
+        </div>
+        {rows.length===0 && <div className="rc-empty">Rien à recouvrer{filt!=='tous'?' dans ce filtre':''}. 🎉</div>}
+        {rows.map(({l,p,rc})=>{ const overdue=rc&&rc.relance_next&&rc.relance_next<today;
+          return (
+          <div key={l.id} className={'rc-row'+(overdue?' rc-late':'')}>
+            <button className="rc-name" onClick={()=>onOpenLead(l.id)} title="Ouvrir la fiche">{name(l)}</button>
+            <span className="rc-sais">{l.saison||'—'}</span>
+            <span className="mono rc-dim">{eur(p.facture)}</span>
+            <span className="mono rc-ok">{eur(p.paye)}</span>
+            <span className="mono rc-reste">{eur(p.reste)}</span>
+            <span className="rc-fin">{(p.parts||[]).length?p.parts.map(f=><span key={f.id} className={'rc-badge s-'+f.statut}>{PART_TYPE_LABEL[f.type]||f.type}</span>):<span className="rc-dim">—</span>}</span>
+            <span className="rc-date rc-dim">{rc&&rc.relance_last?fmtDay(rc.relance_last):'—'}</span>
+            <input className={'rc-datein'+(overdue?' late':'')} type="date" value={(rc&&rc.relance_next)||''} onChange={e=>onSet(l.id,{relance_next:e.target.value||null})}/>
+            <RcNote value={rc&&rc.note} onSave={v=>onSet(l.id,{note:v})}/>
+            <span className="rc-acts">
+              <button className="rc-act" title="Marquer relancé aujourd'hui (repousse la prochaine relance à +7 j)" onClick={()=>onSet(l.id,{relance_last:today, relance_next:bump7()})}>{I.check({})}</button>
+              <button className="rc-act eur" title="Enregistrer un versement (fiche)" onClick={()=>onOpenLead(l.id)}>{I.euro({})}</button>
+            </span>
+          </div>
+        ); })}
+      </div>
+    </div>
+  );
+}
+// note de suivi éditable inline (clic -> textarea popover, comme le commentaire bootcamp)
+function RcNote({ value, onSave }){
+  const [ed,setEd]=useState(null); const [v,setV]=useState(''); const btn=React.useRef(null);
+  const open=()=>{ const r=btn.current.getBoundingClientRect(); setV(value||''); setEd({top:Math.min(r.bottom+4,window.innerHeight-160), left:Math.max(8,Math.min(r.left-8,window.innerWidth-360))}); };
+  const save=()=>{ setEd(null); onSave(v.trim()||null); };
+  return (<>
+    <button ref={btn} className="rc-note" title={value||'Ajouter un suivi'} onClick={open}>{value||<span className="rc-dim">note…</span>}</button>
+    {ed && (<><div className="bc-pop-ov" onClick={save}></div>
+      <textarea className="bc-pop" style={{top:ed.top,left:ed.left,width:340}} autoFocus value={v} rows={4}
+        onChange={e=>setV(e.target.value)}
+        onKeyDown={e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); save(); } if(e.key==='Escape'){ e.preventDefault(); setEd(null); } }}/></>)}
+  </>);
+}
+
 function BootcampScreen({enrollments, leads, payByLead, closers, onOpenLead, onUpsert, onAdd, onRemove}){
   // payé/reste RÉELS = registre financier (versements), plus le deja_paye manuel legacy
   const payOf = React.useCallback(lid=>{ const p=payByLead&&payByLead.get(lid); return p?(p.paye||0):0; },[payByLead]);
@@ -5215,7 +5340,7 @@ function BootcampScreen({enrollments, leads, payByLead, closers, onOpenLead, onU
   );
 }
 
-const SCREEN_LABEL = { leads:'Mes leads', agenda:'Agenda', todo:'À faire', team:'Closers', console:'Synchro HubSpot', bootcamp:'Bootcamp' };
+const SCREEN_LABEL = { leads:'Mes leads', agenda:'Agenda', todo:'À faire', team:'Closers', console:'Synchro HubSpot', bootcamp:'Bootcamp', recouvrement:'Recouvrement' };
 
 /* Bannière de FRAÎCHEUR du sync CalendIQ : lit la ligne unique sync_health('calendiq') (écrite par calendiq-pull
    à chaque run du cron 60s) + realtime. Si le dernier succès date de > 5 min => le sync est décroché => bannière
@@ -5546,6 +5671,23 @@ function App({session, onLogout}){
       if(f.statut!=='recu' && f.date_prevue){ if(!e.prochaine||f.date_prevue<e.prochaine) e.prochaine=f.date_prevue; if(f.date_prevue<today) e.retard=true; } }
     return m;
   },[paiements,fparts]);
+  // ═══ RECOUVREMENT : suivi de relance par lead (relance_next/last/note) — canal recouv-live ═══
+  const [recouv,setRecouv]=useState(new Map());
+  const loadRecouv=useCallback(async()=>{
+    try{ const { data, error }=await SB.from('recouvrement').select('*'); if(error) throw error;
+      const m=new Map(); (data||[]).forEach(r=>m.set(r.lead_id,r));
+      setRecouv(prev=>{ const a=JSON.stringify([...prev.entries()].sort()); const b=JSON.stringify([...m.entries()].sort()); return a===b?prev:m; });
+    }catch(e){ console.warn('loadRecouv',e); }
+  },[]);
+  useEffect(()=>{ loadRecouv();
+    const ch=SB.channel('recouv-live').on('postgres_changes',{event:'*',schema:'public',table:'recouvrement'},loadRecouv).subscribe();
+    return ()=>{ SB.removeChannel(ch); };
+  },[loadRecouv]);
+  const recouvSet=useCallback(async(leadId,patch)=>{
+    setRecouv(prev=>{ const m=new Map(prev); m.set(leadId,{...(prev.get(leadId)||{lead_id:leadId}),...patch}); return m; }); // optimiste
+    const { error }=await SB.from('recouvrement').upsert({ lead_id:leadId, ...patch }, { onConflict:'lead_id' });
+    if(error){ toast('Suivi non enregistré', error.message,'info'); loadRecouv(); }
+  },[toast,loadRecouv]);
   // rafraîchit l'agenda tant qu'on le regarde (RDV pris/déplacés dans CalendIQ)
   // RDV pris dans CalendIQ (ex : rush post-webi) → visibles dans le CRM en quelques secondes, sur TOUS les écrans.
   // Polling 20 s tant que l'onglet est visible + refresh instantané au focus ; en pause si onglet caché.
@@ -5946,12 +6088,17 @@ function App({session, onLogout}){
     return ()=>{ CONSOLE_CACHE.subs.delete(recompute); clearInterval(timer); window.removeEventListener('focus',tick); document.removeEventListener('visibilitychange',tick); };
   },[isAdmin]);
 
+  // badge nav Recouvrement = nb de relances EN RETARD (reste>0 + échéance dépassée)
+  const recouvDue = useMemo(()=>{ const today=new Date().toISOString().slice(0,10); let n=0;
+    for(const l of leadsPay){ const p=l._pay; if(p&&p.reste>0){ const r=recouv.get(l.id); if(r&&r.relance_next&&r.relance_next<today) n++; } }
+    return n;
+  },[leadsPay,recouv]);
   const navItems=[
     {id:'leads', label:'Mes leads', icon:I.leads, badge:rappelerCount},
     {id:'agenda', label:'Agenda', icon:I.agenda, soon:true},
-    ...(isAdmin?[{id:'todo', label:'À faire', icon:I.check},{id:'bootcamp', label:'Bootcamp', icon:I.admission},{id:'team', label:'Closers', icon:I.users},{id:'console', label:'Synchro HubSpot', icon:I.sync, badge:syncPending||null, badgeWarn:syncWarn}]:[]),
+    ...(isAdmin?[{id:'todo', label:'À faire', icon:I.check},{id:'bootcamp', label:'Bootcamp', icon:I.admission},{id:'recouvrement', label:'Recouvrement', icon:I.euro, badge:recouvDue||null, badgeWarn:true},{id:'team', label:'Closers', icon:I.users},{id:'console', label:'Synchro HubSpot', icon:I.sync, badge:syncPending||null, badgeWarn:syncWarn}]:[]),
   ];
-  useEffect(()=>{ if(!isAdmin && (screen==='team'||screen==='console'||screen==='todo'||screen==='bootcamp')) setScreen('leads'); },[isAdmin,screen]);
+  useEffect(()=>{ if(!isAdmin && (screen==='team'||screen==='console'||screen==='todo'||screen==='bootcamp'||screen==='recouvrement')) setScreen('leads'); },[isAdmin,screen]);
   const navActive = screen==='fiche'?origin:screen;
 
   // splash bref UNIQUEMENT pendant la requête profil (évite un flash board/nav) ; ne bloque jamais après réponse
@@ -6008,6 +6155,7 @@ function App({session, onLogout}){
             onRefresh={loadCalendiq} onOpenLead={openLead} meetingLeadId={meetingLeadId}/>}
         {screen==='todo' && isAdmin && <AFaire leads={leadsView} onOpenLead={openLead} onToggleAction={toggleActionFor} onToggleExtra={toggleExtraFor} onToggleStar={toggleStar} onReassign={reassignOwner} onHideAction={hideActionFor} onUnhideAction={unhideActionFor} seasonFilter={seasonFilter} setSeasonFilter={setSeasonFilter} seasonCounts={seasonCounts}/>}
         {screen==='bootcamp' && isAdmin && <BootcampScreen enrollments={bcEnrollments} leads={leadsCq} payByLead={payByLead} closers={closers} onOpenLead={openLead} onUpsert={bcUpsert} onAdd={bcAdd} onRemove={bcRemove}/>}
+        {screen==='recouvrement' && isAdmin && <RecouvScreen leads={leadsPay} recouv={recouv} paiements={paiements} closers={closers} onOpenLead={openLead} onSet={recouvSet}/>}
         {screen==='team' && isAdmin && <TeamScreen userId={userId} toast={toast} leads={leadsView} onOpenLead={openLead} cqPending={cqLoading && !cqMeetings.length}/>}
         {screen==='console' && isAdmin && <Console toast={toast} onOpenLead={openLead} setSyncBusy={setSyncBusy} reloadLeads={reload}/>}
       </main>
