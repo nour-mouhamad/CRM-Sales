@@ -864,6 +864,17 @@ input,textarea{font-family:inherit; color:inherit}
 .role-badge.admin{background:var(--accent-tint); color:var(--accent)}
 .cl-lead{display:flex; align-items:center; gap:10px; row-gap:4px; flex-wrap:wrap; width:100%; text-align:left; padding:9px 34px 9px 10px; border-radius:9px; cursor:pointer; position:relative; transition:background var(--speed) var(--ease)}
 .cl-lead:hover{background:var(--surface)}
+.cl-lead-wrap{display:flex; align-items:center; gap:6px}
+.cl-lead-wrap .cl-lead{flex:1; min-width:0}
+.cl-lead-acts{display:flex; gap:5px; flex:none; opacity:0; transition:opacity var(--speed)}
+.cl-lead-wrap:hover .cl-lead-acts{opacity:1}
+.cl-act{display:inline-flex; align-items:center; gap:4px; font-family:inherit; font-size:11px; font-weight:650; color:var(--t2); background:var(--surface-2); border:1px solid var(--b1); border-radius:7px; padding:5px 9px; cursor:pointer; white-space:nowrap}
+.cl-act:hover{color:var(--t1); border-color:var(--b2)}
+.cl-act.del{color:var(--t3); padding:5px 7px} .cl-act.del:hover{color:var(--danger); border-color:color-mix(in srgb,var(--danger) 45%,transparent)}
+.cl-act svg{width:13px; height:13px}
+.mgr-som-toggle{display:flex; align-items:center; gap:9px; background:none; border:none; cursor:pointer; padding:0; font-family:inherit}
+.mgr-som-toggle .mgr-som-chev{color:var(--t3); font-size:12px}
+.mgr-som-toggle:hover .eyebrow{color:var(--t1)}
 .cl-lead-name{font-size:13.5px; font-weight:700; width:150px; flex:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .chip{font-size:11px; font-weight:700; padding:2px 9px; border-radius:99px; white-space:nowrap; flex:none; display:inline-flex; align-items:center; gap:5px}
 .chip .cdot{width:6px; height:6px; border-radius:99px; background:currentColor}
@@ -1968,7 +1979,7 @@ function dbToLead(r, acts){
   return {
     id:r.id, prenom:r.prenom||'', nom:r.nom||'', tel:r.telephone||'', email:r.email||'',
     source:r.source, webiEngagement:r.webi_engagement||null, heat:r.heat||null, column:COL_DB2UI(r.colonne), owner:r.owner_closer_id||null,
-    nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, nextActionDue:r.next_action_due||null, extraActions:Array.isArray(r.extra_actions)?r.extra_actions:[], hiddenActions:Array.isArray(r.hidden_actions)?r.hidden_actions:[], live:false, noShow,
+    nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, nextActionDue:r.next_action_due||null, extraActions:Array.isArray(r.extra_actions)?r.extra_actions:[], hiddenActions:Array.isArray(r.hidden_actions)?r.hidden_actions:[], cockpitState:r.cockpit_state||null, live:false, noShow,
     offer:(r.montant==null||r.montant==='')?0:(Number(r.montant)||0), aPayer:(r.montant_a_payer==null?'':r.montant_a_payer), quiPaie:r.qui_paie||'', paid:r.statut_paiement==='paye', statut_paiement:r.statut_paiement||'aucun',
     cpf:(Number(r.cpf_dispo)||0), metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'', saison:r.saison||null,
     rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, rdvMeetLink:r.rdv_meet_link||null, rdvMeta, hubspot_deal_id:r.hubspot_deal_id||null, date_creation:r.date_creation||null, hsImport:r.hs_import||null, starred:!!r.starred,
@@ -2006,6 +2017,7 @@ async function saveLead(id, uiPatch){
   if('nextAction' in uiPatch) m.next_action=uiPatch.nextAction;
   if('actionDoneFor' in uiPatch) m.action_done_for=uiPatch.actionDoneFor;
   if('nextActionDue' in uiPatch) m.next_action_due=uiPatch.nextActionDue;
+  if('cockpitState' in uiPatch) m.cockpit_state=uiPatch.cockpitState||null;
   if('statusOverride' in uiPatch) m.status_override=(uiPatch.statusOverride&&String(uiPatch.statusOverride).trim())||null;
   if('statusOverrideDue' in uiPatch) m.status_override_due=uiPatch.statusOverrideDue||null;
   if('extraActions' in uiPatch) m.extra_actions=uiPatch.extraActions;
@@ -5944,6 +5956,8 @@ function App({session, onLogout}){
   const hideActionFor=(lead,hideId)=>{ const cur=Array.isArray(lead.hiddenActions)?lead.hiddenActions:[]; if(cur.includes(hideId)) return Promise.resolve(); const arr=[...cur,hideId]; patch(lead.id,{hiddenActions:arr}); return saveLead(lead.id,{hiddenActions:arr}); };
   const unhideActionFor=(lead,hideId)=>{ const cur=Array.isArray(lead.hiddenActions)?lead.hiddenActions:[]; const arr=cur.filter(x=>x!==hideId); patch(lead.id,{hiddenActions:arr}); return saveLead(lead.id,{hiddenActions:arr}); };
   const reassignOwner=(id,closerId)=>{ patch(id,{owner:closerId||null}); saveLead(id,{owner:closerId||null}); };
+  // cockpit : vivant / sommeil (override manuel de l'auto-classement 21j) / archive (retiré du cockpit)
+  const setCockpitState=(id,st)=>{ patch(id,{cockpitState:st}); saveLead(id,{cockpitState:st}); };
   // appropriation du lead par le closer connecté (toggle) — owner_closer_id = id de l'utilisateur auth
   // 3 états : libre -> je m'approprie ; à moi -> je libère ; à un autre closer -> bloqué (pas de vol)
   const claimLead=()=>{ if(!sel) return; const uid=session.user.id; if(sel.owner && sel.owner!==uid){ toast('Lead déjà approprié','Par un autre closer','info'); return; } const next=sel.owner?null:uid; patch(sel.id,{owner:next}); saveLead(sel.id,{owner:next}); toast(next?'Lead approprié':'Lead libéré', `${sel.prenom||''} ${sel.nom||''}`.trim()||null, next?'ok':'info'); };
@@ -6205,7 +6219,7 @@ function App({session, onLogout}){
         {screen==='todo' && isAdmin && <AFaire leads={leadsView} onOpenLead={openLead} onToggleAction={toggleActionFor} onToggleExtra={toggleExtraFor} onToggleStar={toggleStar} onReassign={reassignOwner} onHideAction={hideActionFor} onUnhideAction={unhideActionFor} seasonFilter={seasonFilter} setSeasonFilter={setSeasonFilter} seasonCounts={seasonCounts}/>}
         {screen==='bootcamp' && isAdmin && <BootcampScreen enrollments={bcEnrollments} leads={leadsCq} payByLead={payByLead} closers={closers} onOpenLead={openLead} onUpsert={bcUpsert} onAdd={bcAdd} onRemove={bcRemove}/>}
         {screen==='recouvrement' && isAdmin && <RecouvScreen leads={leadsPay} recouv={recouv} paiements={paiements} closers={closers} onOpenLead={openLead} onSet={recouvSet}/>}
-        {screen==='team' && isAdmin && <TeamScreen userId={userId} toast={toast} leads={leadsView} onOpenLead={openLead} cqPending={cqLoading && !cqMeetings.length}/>}
+        {screen==='team' && isAdmin && <TeamScreen userId={userId} toast={toast} leads={leadsView} onOpenLead={openLead} onSetCockpit={setCockpitState} cqPending={cqLoading && !cqMeetings.length}/>}
         {screen==='console' && isAdmin && <Console toast={toast} onOpenLead={openLead} setSyncBusy={setSyncBusy} reloadLeads={reload}/>}
       </main>
 
@@ -6388,22 +6402,30 @@ function RdvChip({ rdv, now }){
   return <span className="chip-rdv" title={cqDayLabel(rdv.start_at)+' '+cqTime(rdv.start_at)}>{I.agenda({})}{T} · {rdvShort(rdv.start_at,true)}</span>;
 }
 
-function ManagerLeadRow({ lead, onOpenLead, owner }){
+function ManagerLeadRow({ lead, onOpenLead, owner, onSetCockpit, bucket }){
   const s=leadStatus(lead);
   const todo = !s.rdvUpcoming && !s.live && !s.toDebrief.length && !s.noShowToFix && !s.isWon && !s.isLost && RDV_TODO_COLS.includes(s.col);
   return (
-    <button className="cl-lead" onClick={()=>onOpenLead(lead.id)}>
-      {owner!=null && <span className="cl-owner">{owner}</span>}
-      <span className="cl-lead-name">{lead.prenom} {lead.nom}</span>
-      <span className="chip" style={{color:s.color, background:'color-mix(in srgb, currentColor 12%, transparent)'}}><span className="cdot"></span>{s.label}</span>
-      {s.rdvs.map(r=><RdvChip key={r.id} rdv={r} now={s.now}/>)}
-      {s.result && (()=>{ const rk=RESULT_META[s.result]; return <span className="chip" style={{color:rk.color, background:'color-mix(in srgb, currentColor 14%, transparent)'}}><span className="cdot"></span>{s.callKind?(callKindLabel(s.callKind)+' · '):''}{rk.label}</span>; })()}
-      {todo && <span className="chip-rdv todo">{I.clock({})}RDV à caler</span>}
-      {s.staleDays>=7 && <span className={'chip-rdv '+(s.staleDays>=14?'bad':'deb')} title="Aucun signal (RDV, débrief, verdict) depuis ce nombre de jours">{I.clock({})}{s.staleDays} j sans suivi</span>}
-      {s.montant>0 && <span className="cl-amt">{eur(s.montant)}</span>}
-      {s.conclusion && <span className={'cl-concl'+(s.generated?' gen':'')}>{s.generated?s.conclusion:('« '+s.conclusion+' »')}</span>}
-      <span className="cl-arrow">{I.chev({})}</span>
-    </button>
+    <div className="cl-lead-wrap">
+      <button className="cl-lead" onClick={()=>onOpenLead(lead.id)}>
+        {owner!=null && <span className="cl-owner">{owner}</span>}
+        <span className="cl-lead-name">{lead.prenom} {lead.nom}</span>
+        <span className="chip" style={{color:s.color, background:'color-mix(in srgb, currentColor 12%, transparent)'}}><span className="cdot"></span>{s.label}</span>
+        {s.rdvs.map(r=><RdvChip key={r.id} rdv={r} now={s.now}/>)}
+        {s.result && (()=>{ const rk=RESULT_META[s.result]; return <span className="chip" style={{color:rk.color, background:'color-mix(in srgb, currentColor 14%, transparent)'}}><span className="cdot"></span>{s.callKind?(callKindLabel(s.callKind)+' · '):''}{rk.label}</span>; })()}
+        {todo && <span className="chip-rdv todo">{I.clock({})}RDV à caler</span>}
+        {s.staleDays>=7 && <span className={'chip-rdv '+(s.staleDays>=14?'bad':'deb')} title="Aucun signal (RDV, débrief, verdict) depuis ce nombre de jours">{I.clock({})}{s.staleDays} j sans suivi</span>}
+        {s.montant>0 && <span className="cl-amt">{eur(s.montant)}</span>}
+        {s.conclusion && <span className={'cl-concl'+(s.generated?' gen':'')}>{s.generated?s.conclusion:('« '+s.conclusion+' »')}</span>}
+        <span className="cl-arrow">{I.chev({})}</span>
+      </button>
+      {onSetCockpit && <div className="cl-lead-acts">
+        {bucket==='sommeil'
+          ? <button className="cl-act" title="Remettre en vivant" onClick={()=>onSetCockpit(lead.id,'vivant')}>☀ Vivant</button>
+          : <button className="cl-act" title="Mettre en sommeil" onClick={()=>onSetCockpit(lead.id,'sommeil')}>☾ Sommeil</button>}
+        <button className="cl-act del" title="Retirer du cockpit (reste dans Mes leads)" onClick={()=>onSetCockpit(lead.id,'archive')}>{I.trash({})}</button>
+      </div>}
+    </div>
   );
 }
 
@@ -6474,7 +6496,19 @@ function CloserCard({ rank, name, leads, maxCa, onOpenLead, defaultOpen, closerI
   );
 }
 
-function TeamScreen({ userId, toast, leads, onOpenLead, cqPending }){
+// classement cockpit d'un lead OUVERT : vivant / sommeil (auto 21j, sauf override manuel cockpitState) / archive (retiré)
+function cockpitBucket(l, s){
+  if(s.isWon || s.isLost || l.column==='won' || l.column==='encaisser') return 'closed'; // clos/signé -> hors suivi closer
+  const cs=l.cockpitState;
+  if(cs==='archive') return 'archive';
+  if(cs==='vivant') return 'vivant';
+  if(cs==='sommeil') return 'sommeil';
+  const autoVivant = s.rdvUpcoming || s.live || s.noShowToFix || s.toDebrief.length>0
+    || s.isClosing || l.column==='qualifie'
+    || (s.staleDays>=0 && s.staleDays<21);           // activité < 21 j
+  return autoVivant ? 'vivant' : 'sommeil';
+}
+function TeamScreen({ userId, toast, leads, onOpenLead, onSetCockpit, cqPending }){
   const [profiles,setProfiles]=useState([]);
   const [invites,setInvites]=useState([]);
   const [busy,setBusy]=useState(false);
@@ -6581,23 +6615,23 @@ function TeamScreen({ userId, toast, leads, onOpenLead, cqPending }){
 
   // ----- feed « À traiter aujourd'hui » : ce qui exige une action MAINTENANT, tous closers confondus -----
   const [feedSel,setFeedSel]=useState(null); // null = auto (1re catégorie non vide) · 'none' = replié · sinon clé
-  const feed = useMemo(()=>{
-    const rows=ranked.flatMap(c=>c.leads.map(l=>({ l, closer:c.name, s:leadStatus(l,clock) })));
+  const [sommeilOpen,setSommeilOpen]=useState(false);
+  const { feed, sommeilRows, vivantCount } = useMemo(()=>{
+    const rows=ranked.flatMap(c=>c.leads.map(l=>({ l, closer:c.name, s:leadStatus(l,clock), bucket:cockpitBucket(l, leadStatus(l,clock)) })));
+    const vivants=rows.filter(r=>r.bucket==='vivant'); const sommeil=rows.filter(r=>r.bucket==='sommeil');
     const byAttn=(a,b)=>leadAttn(a.s)-leadAttn(b.s);
-    return {
-      today:   rows.filter(r=>r.s.live||r.s.rdvToday).sort((a,b)=>new Date((a.s.live||a.s.rdvNext).start_at)-new Date((b.s.live||b.s.rdvNext).start_at)),
-      toFix:   rows.filter(r=>r.s.noShowToFix).sort(byAttn),
-      debrief: rows.filter(r=>r.s.toDebrief.length>0).sort(byAttn),
-      // « sans suivi » suspendu tant que le miroir CalendIQ n'a pas répondu (sinon on accuserait à tort
-      // un lead dont le RDV n'est simplement pas encore chargé)
-      stale:   cqPending?[]:rows.filter(r=>r.s.staleDays>=7).sort((a,b)=>b.s.staleDays-a.s.staleDays),
-    };
-  },[ranked,clock,cqPending]);
+    const today   = vivants.filter(r=>r.s.live||r.s.rdvToday).sort((a,b)=>new Date((a.s.live||a.s.rdvNext).start_at)-new Date((b.s.live||b.s.rdvNext).start_at));
+    const toFix   = vivants.filter(r=>r.s.noShowToFix).sort(byAttn);
+    const debrief = vivants.filter(r=>r.s.toDebrief.length>0).sort(byAttn);
+    const urgent  = new Set([...today,...toFix,...debrief].map(r=>r.l.id));
+    const relancer= vivants.filter(r=>!urgent.has(r.l.id)).sort(byAttn);   // vivants sans action urgente = à relancer
+    return { feed:{today,toFix,debrief,relancer}, sommeilRows:sommeil.sort((a,b)=>b.s.staleDays-a.s.staleDays), vivantCount:vivants.length };
+  },[ranked,clock]);
   const FEED_CATS=[
-    {key:'today',   label:'RDV aujourd’hui',    cls:'acc',  icon:I.agenda},
-    {key:'toFix',   label:'No-show à recaler',  cls:'bad',  icon:I.noshow},
-    {key:'debrief', label:'RDV à débriefer',    cls:'warn', icon:I.clock},
-    {key:'stale',   label:'Sans suivi 7 j+',    cls:'warn', icon:I.clock},
+    {key:'today',    label:'RDV aujourd’hui',    cls:'acc',  icon:I.agenda},
+    {key:'toFix',    label:'No-show à recaler',  cls:'bad',  icon:I.noshow},
+    {key:'debrief',  label:'RDV à débriefer',    cls:'warn', icon:I.clock},
+    {key:'relancer', label:'À relancer',         cls:'acc',  icon:I.euro},
   ];
   const feedActive = feedSel==='none' ? null : (feedSel || (FEED_CATS.find(c=>feed[c.key].length)||{}).key || null);
   const feedTotal = FEED_CATS.reduce((t,c)=>t+feed[c.key].length,0);
@@ -6609,7 +6643,7 @@ function TeamScreen({ userId, toast, leads, onOpenLead, cqPending }){
       </div>
 
       <div className="mgr-kpis">
-        <div className="kpi"><span className="kpi-ic">{I.leads({})}</span><div className="kpi-n">{team.n}</div><div className="kpi-l">Leads suivis</div></div>
+        <div className="kpi"><span className="kpi-ic">{I.leads({})}</span><div className="kpi-n">{vivantCount}</div><div className="kpi-l">Leads vivants</div></div>
         <div className="kpi accent"><span className="kpi-ic">{I.agenda({})}</span><div className="kpi-n">{team.upR1}</div><div className="kpi-l">R1 à venir</div></div>
         <div className="kpi accent"><span className="kpi-ic">{I.agenda({})}</span><div className="kpi-n">{team.upR2}</div><div className="kpi-l">R2 à venir</div></div>
         <div className={'kpi'+(team.noShows?' danger':'')}><span className="kpi-ic">{I.noshow({})}</span><div className="kpi-n">{team.noShows}</div><div className="kpi-l">No-show</div></div>
@@ -6632,12 +6666,17 @@ function TeamScreen({ userId, toast, leads, onOpenLead, cqPending }){
       </div>
       {cqPending && <div className="feed-empty">Chargement des RDV CalendIQ…</div>}
       {feedTotal===0 && !cqPending
-        ? <div className="feed-empty">Rien à traiter — tous les RDV sont suivis.</div>
+        ? <div className="feed-empty">Rien à traiter — aucun lead vivant en attente.</div>
         : (feedActive && feed[feedActive].length>0 && (
           <div className="feed-list">
-            {feed[feedActive].map(r=><ManagerLeadRow key={r.l.id} lead={r.l} owner={r.closer} onOpenLead={onOpenLead}/>)}
+            {feed[feedActive].map(r=><ManagerLeadRow key={r.l.id} lead={r.l} owner={r.closer} onOpenLead={onOpenLead} onSetCockpit={onSetCockpit} bucket="vivant"/>)}
           </div>
         ))}
+
+      <div className="mgr-sec"><button className="mgr-som-toggle" onClick={()=>setSommeilOpen(o=>!o)}><span className="eyebrow">En sommeil</span><span className="mgr-count">{sommeilRows.length}</span><span className="mgr-som-chev">{sommeilOpen?'▾':'▸'}</span></button></div>
+      {sommeilOpen && (sommeilRows.length
+        ? <div className="feed-list">{sommeilRows.map(r=><ManagerLeadRow key={r.l.id} lead={r.l} owner={r.closer} onOpenLead={onOpenLead} onSetCockpit={onSetCockpit} bucket="sommeil"/>)}</div>
+        : <div className="feed-empty">Aucun lead en sommeil.</div>)}
 
       <div className="mgr-sec"><span className="eyebrow">Performance · classement</span><span className="mgr-count">{ranked.length}</span></div>
       <div className="lb-list">
