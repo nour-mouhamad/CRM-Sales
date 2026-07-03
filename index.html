@@ -4838,9 +4838,11 @@ function BootcampScreen({enrollments, leads, closers, onOpenLead, onUpsert, onAd
   const caPaye=inscrits.reduce((s,e)=>s+(Number(e.deja_paye)||0),0);
   const reste=inscrits.reduce((s,e)=>s+bcReste(e),0);
   const nbSet=inscrits.filter(e=>e.origine_rdv==='set').length;
+  // Comm closer = 10% du prix, UNIQUEMENT si un closer est associé au lead. Un lead closé par Maxime (owner)
+  // n'a pas de closer_id -> zéro commission (pas de « sans closer » dans le total : ce serait un fantôme).
   const commRows=useMemo(()=>{ const m=new Map();
-    for(const e of inscrits){ const k=e.closer_id||''; m.set(k,(m.get(k)||0)+(Number(e.prix)||0)*BC_RATES.closerPct); }
-    return Array.from(m.entries()).filter(([,v])=>v>0).map(([k,v])=>({ name:k?(((closers||[]).find(c=>c.id===k)||{}).name||'?'):'(sans closer)', v }));
+    for(const e of inscrits){ if(!e.closer_id) continue; m.set(e.closer_id,(m.get(e.closer_id)||0)+(Number(e.prix)||0)*BC_RATES.closerPct); }
+    return Array.from(m.entries()).filter(([,v])=>v>0).map(([k,v])=>({ name:((closers||[]).find(c=>c.id===k)||{}).name||'?', v }));
   },[inscrits,closers]);
   const commTotal=commRows.reduce((s,r)=>s+r.v,0);
   const primesSetter=nbSet*BC_RATES.setterPrime;
