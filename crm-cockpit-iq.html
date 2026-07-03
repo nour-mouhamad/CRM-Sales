@@ -5138,6 +5138,8 @@ function App({session, onLogout}){
   const [cqSources,setCqSources]=useState([]);     // [{id,name,organizer,slug}]
   const [cqLoading,setCqLoading]=useState(false);
   const [cqError,setCqError]=useState(null);
+  // RDV fraîchement bookés, pas encore confirmés par le miroir : {id -> {_ts, row}} — cf garde dans loadCalendiq
+  const cqPendingRef=useRef(new Map());
   const loadCalendiq=useCallback(async()=>{
     let sources=[];
     try{
@@ -5163,6 +5165,13 @@ function App({session, onLogout}){
         .in('organizer_id', orgIds);
       if(error) throw error;
       const next=(data||[]).map(m=>{ const c=byOrg[m.organizer_id]||{}; return {...m,_closerName:c.name||'Closer',_closerId:c.id||null}; });
+      // GARDE anti-écrasement : un RDV fraîchement booké survit aux relectures d'un miroir encore périmé
+      // (pull throttlé 25s / webhook muet) — sans ça l'injection optimiste était wipée ~1s après le booking.
+      { const nowMs=Date.now();
+        for(const [pid,pv] of cqPendingRef.current){
+          if(next.some(m=>m.id===pid) || nowMs-pv._ts>600000) cqPendingRef.current.delete(pid); // confirmé par le miroir (ou expiré) -> la vérité prend le relais
+          else next.push(pv.row);
+        } }
       setCqMeetings(prev=> cqSameData(prev,next)?prev:next); setCqError(null); // poll sans changement = même tableau -> leadsCq/board intacts
     }catch(e){ setCqError(e.message||'lecture impossible'); }
     finally{ setCqLoading(false); }
@@ -5428,7 +5437,7 @@ function App({session, onLogout}){
     const booked=await cqBookMeeting(orgId, { title:'IQ Project × '+(sel.prenom||name), description:null, start_at:startIso, duration_minutes:durationMin,
       booker_name:name, booker_email:sel.email||null, booker_phone:sel.tel||null, booker_timezone:'Europe/Paris' });
     // 2) reprogrammation : annule l'ancien RDV via CalendIQ (supprime event Google + email d'annulation)
-    if(replaceMeetingId){ try{ await cqInvoke('cancel-meeting',{ meeting_id:replaceMeetingId }); }catch(e){ console.warn('cancel old',e); } setCqMeetings(ms=>ms.filter(m=>m.id!==replaceMeetingId)); }
+    if(replaceMeetingId){ try{ await cqInvoke('cancel-meeting',{ meeting_id:replaceMeetingId }); }catch(e){ console.warn('cancel old',e); } cqPendingRef.current.delete(replaceMeetingId); setCqMeetings(ms=>ms.filter(m=>m.id!==replaceMeetingId)); }
     // admin : caler sur l'agenda d'un closer = attribuer le lead à ce closer. closer : auto-claim au R1 sur lead libre (inchangé).
     const bookedCloser = (cqSources||[]).find(s=>s.organizer===orgId) || null;
     const adminAssign = (isAdmin && bookedCloser) ? bookedCloser.id : null;
@@ -5449,11 +5458,13 @@ function App({session, onLogout}){
     const p = matchable
       ? { rdvMeta:nextMeta, ...ownerPatch, ...stagePatch }
       : { rdv_at:startIso, rdvType:type, rdvMeetLink:booked.meet_link||null, rdvMeta:nextMeta, ...ownerPatch, ...stagePatch };
-    // reflet immédiat : on injecte le meeting fraîchement booké dans la liste CalendIQ (sans attendre le refetch ~20 s)
-    setCqMeetings(ms=>[ ...ms.filter(x=>x.id!==booked.id),
-      { id:booked.id, organizer_id:orgId, title:'IQ Project × '+(sel.prenom||name), start_at:startIso, duration_minutes:durationMin,
+    // reflet IMMÉDIAT : injecte le meeting fraîchement booké + l'enregistre en « pending » pour qu'il
+    // survive aux relectures du miroir tant que celui-ci ne l'a pas confirmé (cf garde dans loadCalendiq)
+    const injected={ id:booked.id, organizer_id:orgId, title:'IQ Project × '+(sel.prenom||name), start_at:startIso, duration_minutes:durationMin,
         booker_name:name, booker_email:sel.email||null, booker_phone:sel.tel||null, status:'confirmed',
-        meet_link:booked.meet_link||null, _closerId:bookedCloser?bookedCloser.id:userId, _closerName:bookedCloser?bookedCloser.name:((profile&&profile.name)||'Moi') } ]);
+        meet_link:booked.meet_link||null, _closerId:bookedCloser?bookedCloser.id:userId, _closerName:bookedCloser?bookedCloser.name:((profile&&profile.name)||'Moi') };
+    cqPendingRef.current.set(booked.id, { _ts:Date.now(), row:injected });
+    setCqMeetings(ms=>[ ...ms.filter(x=>x.id!==booked.id), injected ]);
     patch(sel.id,p);
     saveLead(sel.id,p);
     if(tgt){ const stTitle='Étape : '+(COL_LABEL[tgt]||tgt); addActivite(sel.id,'note',stTitle,null).catch(()=>null); patch(sel.id,prev=>({timeline:[{type:'note',when:'à l’instant',title:stTitle,text:''},...prev.timeline]})); }
@@ -5461,7 +5472,8 @@ function App({session, onLogout}){
     const title='RDV CalendIQ '+verb+' — '+(type||'r1').toUpperCase()+' · '+fmtRdv(startIso);
     const actP=addActivite(sel.id,'rdv',title,null).catch(()=>null);
     patch(sel.id,prev=>({timeline:[{type:'rdv',when:'à l’instant',title,text:''},...prev.timeline]}));
-    loadCalendiq();
+    // resync FORCÉ du miroir (bypass throttle 25s) puis relecture — le webhook CalendIQ n'émet pas de façon fiable
+    SB.functions.invoke('calendiq-pull',{ body:{ force:true, source:'book-front' } }).catch(()=>{}).then(()=>loadCalendiq());
     const assignSuffix = adminAssign ? (' — attribué à '+(bookedCloser.name||'closer')) : (claim?' — lead approprié':'');
     if(booked.meet_link) toast((type||'r1').toUpperCase()+' '+verb+' + Meet'+assignSuffix, fmtRdv(startIso),'ok');
     else toast((type||'r1').toUpperCase()+' '+verb+' (sans Meet)', booked.meetError?('CalendIQ : '+booked.meetError):'Connecte Google dans CalendIQ pour le lien Meet','info');
@@ -5472,6 +5484,7 @@ function App({session, onLogout}){
     if(!sel) return;
     try{ await cqInvoke('cancel-meeting',{ meeting_id:meetingId }); }
     catch(e){ toast('Annulation impossible', e.message, 'info'); return; }
+    cqPendingRef.current.delete(meetingId); // un RDV annulé ne doit pas être ressuscité par la garde pending
     setCqMeetings(ms=>ms.filter(m=>m.id!==meetingId));
     const cBase=sel.rdvMeta||{}; const cNext={...cBase}; delete cNext[meetingId]; // pas d'orphelin dans rdv_meta
     patch(sel.id,{ rdv_at:null, rdvType:null, rdvMeetLink:null, rdvMeta:cNext, calendiqRdv:null });
