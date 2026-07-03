@@ -360,42 +360,71 @@ input,textarea{font-family:inherit; color:inherit}
 .sync-banner-btn:disabled{opacity:.6; cursor:default}
 /* ===== page BOOTCAMP ===== */
 .bc-screen{padding:26px 30px; overflow-y:auto; height:100%}
-/* ── page Recouvrement (le sheet impayés, vivant) ── */
+/* ── page Recouvrement (le sheet impayés, vivant) — layout flex aéré, densité + colonnes + tri ── */
 .rc-screen{padding:26px 30px; overflow-y:auto; height:100%}
 .rc-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
 .rc-head h1{font-size:22px; font-weight:800; letter-spacing:-.02em; margin:0}
-.rc-kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:16px}
-.rc-kpi{background:var(--surface); border:1px solid var(--b1); border-radius:13px; padding:13px 15px; display:flex; flex-direction:column; gap:3px}
-.rc-kpi-n{font-size:19px; font-weight:800; letter-spacing:-.02em; color:var(--t1)}
+.rc-kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin-bottom:16px}
+.rc-kpi{background:var(--surface); border:1px solid var(--b1); border-radius:13px; padding:14px 16px; display:flex; flex-direction:column; gap:4px}
+.rc-kpi-n{font-size:20px; font-weight:800; letter-spacing:-.02em; color:var(--t1); white-space:nowrap}
 .rc-kpi-l{font-size:11px; font-weight:650; color:var(--t3)}
 .rc-kpi.warn .rc-kpi-n{color:var(--accent)} .rc-kpi.ok .rc-kpi-n{color:var(--ok)}
-.rc-filters{display:flex; gap:7px; margin-bottom:12px}
-.rc-fchip{background:var(--surface); border:1px solid var(--b1); border-radius:8px; color:var(--t2); font-family:inherit; font-size:12.5px; font-weight:650; padding:6px 12px; cursor:pointer}
+/* toolbar : filtres + densité + colonnes */
+.rc-toolbar{display:flex; align-items:center; gap:8px; margin-bottom:12px}
+.rc-filters{display:flex; gap:7px}
+.rc-fchip{background:var(--surface); border:1px solid var(--b1); border-radius:8px; color:var(--t2); font-family:inherit; font-size:12.5px; font-weight:650; padding:7px 13px; cursor:pointer}
 .rc-fchip.on{background:var(--accent); color:var(--on-accent); border-color:var(--accent)}
-.rc-table{background:var(--surface); border:1px solid var(--b1); border-radius:14px; overflow-x:auto}
-.rc-row{display:grid; grid-template-columns:minmax(150px,1.3fr) 60px 84px 84px 92px minmax(150px,1.2fr) 96px 150px minmax(120px,1fr) 66px; gap:8px; align-items:center; padding:9px 14px; border-bottom:1px solid var(--b1); min-width:1120px}
-.rc-row>*{min-width:0}
+.rc-tool{background:var(--surface); border:1px solid var(--b1); border-radius:8px; color:var(--t2); font-family:inherit; font-size:12.5px; font-weight:650; padding:7px 13px; cursor:pointer}
+.rc-tool:hover{color:var(--t1); border-color:var(--b2)}
+.rc-colswrap{position:relative}
+.rc-ov{position:fixed; inset:0; z-index:40}
+.rc-colsmenu{position:absolute; right:0; top:calc(100% + 6px); z-index:41; background:var(--surface); border:1px solid var(--b2); border-radius:11px; box-shadow:0 14px 36px rgba(0,0,0,.4); padding:8px; min-width:210px; display:flex; flex-direction:column; gap:2px}
+.rc-colitem{display:flex; align-items:center; gap:9px; padding:8px 9px; border-radius:8px; font-size:13px; color:var(--t1); cursor:pointer}
+.rc-colitem:hover{background:var(--surface-2)}
+.rc-colitem input{accent-color:var(--accent); width:15px; height:15px}
+/* liste */
+.rc-list{background:var(--surface); border:1px solid var(--b1); border-radius:14px; overflow:hidden}
+.rc-hrow,.rc-row{display:flex; align-items:center; gap:14px; padding:13px 18px; border-bottom:1px solid var(--b1)}
 .rc-row:last-child{border-bottom:none}
-.rc-hrow{font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; font-weight:700; color:var(--t3); background:var(--surface-2)}
+.rc-hrow{background:var(--surface-2); position:sticky; top:0; z-index:2}
+.rc-hcell{font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; font-weight:700; color:var(--t3); background:none; border:none; padding:0; text-align:left}
+.rc-sortable{cursor:pointer} .rc-sortable:hover{color:var(--t1)} .rc-hcell.on{color:var(--accent)}
+/* largeurs de colonne (partagées entête + lignes) */
+.rc-w-part{width:190px; flex:none} .rc-w-money{width:132px; flex:none} .rc-w-fin{width:168px; flex:none}
+.rc-w-rel{width:112px; flex:none} .rc-w-last{width:74px; flex:none} .rc-w-note{flex:1; min-width:150px} .rc-w-act{width:64px; flex:none}
+.rc-row>div{min-width:0}
 .rc-late{box-shadow:inset 3px 0 0 var(--danger)}
-.rc-name{background:none; border:none; padding:0; text-align:left; font-family:inherit; font-size:13px; font-weight:700; color:var(--t1); cursor:pointer}
+.rc-c-part{display:flex; flex-direction:column; gap:3px}
+.rc-name{background:none; border:none; padding:0; text-align:left; font-family:inherit; font-size:14px; font-weight:700; color:var(--t1); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .rc-name:hover{color:var(--accent)}
-.rc-sais{font-size:11.5px; color:var(--t2)}
-.rc-dim{color:var(--t3)} .rc-ok{color:var(--ok); font-size:12.5px} .rc-reste{color:var(--accent); font-size:13.5px; font-weight:800}
-.rc-fin{display:flex; gap:4px; flex-wrap:wrap}
-.rc-badge{font-size:10px; font-weight:700; padding:2px 6px; border-radius:5px; background:var(--surface-2); border:1px solid var(--b1); color:var(--t2); white-space:nowrap}
+.rc-sais{font-size:10.5px; font-weight:700; color:var(--t3); background:var(--surface-2); border:1px solid var(--b1); border-radius:5px; padding:1px 6px; align-self:flex-start; letter-spacing:.03em}
+.rc-c-money{display:flex; flex-direction:column; gap:2px}
+.rc-reste{font-size:16px; font-weight:800; color:var(--accent); white-space:nowrap; letter-spacing:-.01em}
+.rc-money-sub{font-size:11px; color:var(--t3); white-space:nowrap}
+.rc-dim{color:var(--t3); font-size:12px}
+.rc-c-fin{display:flex; gap:4px; flex-wrap:wrap; overflow:hidden}
+.rc-badge{font-size:10px; font-weight:700; padding:2px 7px; border-radius:5px; background:var(--surface-2); border:1px solid var(--b1); color:var(--t2); white-space:nowrap}
 .rc-badge.s-recu{color:var(--ok); border-color:color-mix(in srgb,var(--ok) 45%,transparent)}
-.rc-date{font-size:11.5px}
-.rc-datein{background:var(--bg); border:1px solid var(--b1); border-radius:7px; color:var(--t1); font-family:inherit; font-size:11.5px; padding:4px 6px}
-.rc-datein.late{border-color:var(--danger); color:var(--danger)}
-.rc-note{background:none; border:none; text-align:left; font-family:inherit; font-size:11.5px; color:var(--t1); cursor:pointer; padding:3px 5px; border-radius:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%}
+.rc-datepill{background:var(--surface-2); border:1px solid var(--b1); border-radius:8px; color:var(--t1); font-family:inherit; font-size:12.5px; font-weight:700; padding:6px 10px; cursor:pointer; white-space:nowrap}
+.rc-datepill:hover{border-color:var(--accent)}
+.rc-datepill.late{color:var(--danger); border-color:color-mix(in srgb,var(--danger) 55%,transparent); background:var(--danger-tint)}
+.rc-datepill.empty{color:var(--t3); font-weight:600}
+.rc-datein{width:150px; background:var(--bg); border:1.5px solid var(--accent); border-radius:8px; color:var(--t1); font-family:inherit; font-size:12.5px; padding:5px 8px; outline:none}
+.rc-c-note{min-width:0}
+.rc-note{background:none; border:none; text-align:left; font-family:inherit; font-size:12.5px; color:var(--t1); cursor:pointer; padding:5px 8px; border-radius:7px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; width:100%; display:block}
 .rc-note:hover{background:var(--surface-2)}
-.rc-acts{display:flex; gap:4px}
-.rc-act{width:26px; height:26px; display:grid; place-items:center; border:1px solid var(--b1); border-radius:7px; background:var(--surface-2); color:var(--t2); cursor:pointer}
+.rc-c-act{display:flex; gap:5px; justify-content:flex-end}
+.rc-act{width:28px; height:28px; display:grid; place-items:center; border:1px solid var(--b1); border-radius:8px; background:var(--surface-2); color:var(--t2); cursor:pointer; flex:none}
 .rc-act:hover{color:var(--ok); border-color:color-mix(in srgb,var(--ok) 45%,transparent)}
 .rc-act.eur:hover{color:var(--accent); border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
 .rc-act svg{width:14px; height:14px}
-.rc-empty{padding:22px 16px; font-size:13px; color:var(--t3); text-align:center}
+.rc-empty{padding:26px 16px; font-size:13.5px; color:var(--t3); text-align:center}
+/* densité compacte */
+.rc-screen.dense .rc-hrow,.rc-screen.dense .rc-row{padding:7px 18px; gap:12px}
+.rc-screen.dense .rc-name{font-size:13px}
+.rc-screen.dense .rc-reste{font-size:14px}
+.rc-screen.dense .rc-money-sub{display:none}
+.rc-screen.dense .rc-sais{padding:0 5px}
 .bc-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
 .bc-head h1{font-size:22px; font-weight:800; letter-spacing:-.02em; margin:0}
 .bc-season{background:var(--surface); border:1px solid var(--b1); border-radius:9px; color:var(--t1); font-family:inherit; font-size:13px; font-weight:650; padding:8px 10px; cursor:pointer}
@@ -5121,13 +5150,28 @@ function BcText({value,onSave,ph}){
 /* ═══ RECOUVREMENT (admin) — le Google Sheet des impayés, mais vivant : liste auto de tout lead reste>0,
    triée par date de relance (retard en haut, rouge), reste calculé du registre, soldé = disparaît. ═══ */
 function todayISO(){ return new Date().toISOString().slice(0,10); }
+function rcShort(iso){ if(!iso) return ''; try{ return new Date(iso+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}); }catch(e){ return iso; } }
+// pastille date propre : affiche « 2 juin » (rouge si retard), clic -> input date (largeur pleine, pas de troncature)
+function RcDate({ value, overdue, onSave }){
+  const [ed,setEd]=useState(false);
+  if(ed) return <input className="rc-datein" type="date" autoFocus defaultValue={value||''}
+    onChange={e=>onSave(e.target.value||null)} onBlur={()=>setEd(false)}
+    onKeyDown={e=>{ if(e.key==='Enter'||e.key==='Escape') setEd(false); }}/>;
+  return <button className={'rc-datepill'+(overdue?' late':'')+(value?'':' empty')} onClick={()=>setEd(true)}>{value?rcShort(value):'+ date'}</button>;
+}
 function RecouvScreen({ leads, recouv, paiements, closers, onOpenLead, onSet }){
   const [filt,setFilt]=useState('tous');            // tous | retard | semaine
   const [seas,setSeas]=useState('all');
+  const [dense,setDense]=useState(()=>persistedState('iqcrm_rcdense',false));
+  const [cols,setCols]=useState(()=>{ const d=persistedState('iqcrm_rccols',null); return (d&&typeof d==='object')?{detail:true,financement:true,derniere:false,...d}:{detail:true,financement:true,derniere:false}; });
+  const [colsOpen,setColsOpen]=useState(false);
+  const [sort,setSort]=useState('relance');         // relance | reste | nom
+  useEffect(()=>localStorage.setItem('iqcrm_rcdense',JSON.stringify(dense)),[dense]);
+  useEffect(()=>localStorage.setItem('iqcrm_rccols',JSON.stringify(cols)),[cols]);
   const today=todayISO();
   const in7=(()=>{ const d=new Date(); d.setDate(d.getDate()+7); return d.toISOString().slice(0,10); })();
-  // base : DÉBITEUR RÉEL = reste>0 ET (en attente d'encaissement OU partiellement payé OU explicitement suivi).
-  // Sinon un « Closed Won » legacy (payé, mais sans versement loggé dans le registre) apparaîtrait à tort comme débiteur.
+  const name=l=>`${l.prenom||''} ${l.nom||''}`.trim()||l.email||'Lead';
+  // DÉBITEUR RÉEL = reste>0 ET (en attente d'encaissement OU partiel OU suivi) — exclut les Closed Won legacy payés.
   const base=useMemo(()=>leads.filter(l=>{ const p=l._pay; if(!p||p.reste<=0) return false; return l.column==='encaisser' || p.paye>0 || recouv.has(l.id); }).map(l=>({ l, p:l._pay, rc:recouv.get(l.id)||null })),[leads,recouv]);
   const seasons=useMemo(()=>{ const s=new Set(); base.forEach(x=>{ if(x.l.saison) s.add(x.l.saison); }); return [...s].sort().reverse(); },[base]);
   const rows=useMemo(()=>{
@@ -5135,19 +5179,19 @@ function RecouvScreen({ leads, recouv, paiements, closers, onOpenLead, onSet }){
     if(seas!=='all') r=r.filter(x=>x.l.saison===seas);
     if(filt==='retard') r=r.filter(x=>x.rc&&x.rc.relance_next&&x.rc.relance_next<today);
     else if(filt==='semaine') r=r.filter(x=>x.rc&&x.rc.relance_next&&x.rc.relance_next<=in7);
-    return r.slice().sort((a,b)=>{ const ra=a.rc&&a.rc.relance_next, rb=b.rc&&b.rc.relance_next;
-      if(ra&&rb) return ra<rb?-1:ra>rb?1:0; if(ra&&!rb) return -1; if(!ra&&rb) return 1; return b.p.reste-a.p.reste; });
-  },[base,seas,filt,today,in7]);
-  // KPIs
+    const byRel=(a,b)=>{ const ra=a.rc&&a.rc.relance_next, rb=b.rc&&b.rc.relance_next; if(ra&&rb) return ra<rb?-1:ra>rb?1:0; if(ra&&!rb) return -1; if(!ra&&rb) return 1; return b.p.reste-a.p.reste; };
+    const cmp = sort==='reste' ? (a,b)=>b.p.reste-a.p.reste : sort==='nom' ? (a,b)=>name(a.l).localeCompare(name(b.l)) : byRel;
+    return r.slice().sort(cmp);
+  },[base,seas,filt,today,in7,sort]);
   const totalDu=base.reduce((s,x)=>s+x.p.reste,0);
   const enRetard=base.filter(x=>x.rc&&x.rc.relance_next&&x.rc.relance_next<today);
   const duRetard=enRetard.reduce((s,x)=>s+x.p.reste,0);
   const encMois=useMemo(()=>{ const m=today.slice(0,7); return (paiements||[]).filter(p=>String(p.date_paiement||'').slice(0,7)===m).reduce((s,p)=>s+(Number(p.montant)||0),0); },[paiements,today]);
   const sansSuivi=base.filter(x=>!x.rc||!x.rc.relance_next).length;
-  const name=l=>`${l.prenom||''} ${l.nom||''}`.trim()||l.email||'Lead';
   const bump7=()=>{ const d=new Date(); d.setDate(d.getDate()+7); return d.toISOString().slice(0,10); };
+  const arrow=k=>sort===k?' ↓':'';
   return (
-    <div className="rc-screen">
+    <div className={'rc-screen'+(dense?' dense':'')}>
       <div className="rc-head"><h1>Recouvrement</h1><div style={{flex:1}}></div>
         <select className="bc-season" value={seas} onChange={e=>setSeas(e.target.value)}>
           <option value="all">Toutes saisons</option>{seasons.map(s=><option key={s} value={s}>{SEASON_LABEL[s]||s}</option>)}
@@ -5160,32 +5204,51 @@ function RecouvScreen({ leads, recouv, paiements, closers, onOpenLead, onSet }){
         <div className="rc-kpi ok"><span className="rc-kpi-n mono">{eur(encMois)}</span><span className="rc-kpi-l">Encaissé ce mois</span></div>
         {sansSuivi>0 && <div className="rc-kpi"><span className="rc-kpi-n mono">{sansSuivi}</span><span className="rc-kpi-l">Sans date de relance</span></div>}
       </div>
-      <div className="rc-filters">
-        {[['tous','Tous'],['retard','En retard'],['semaine','Cette semaine']].map(([k,l])=>(
-          <button key={k} className={'rc-fchip'+(filt===k?' on':'')} onClick={()=>setFilt(k)}>{l}</button>
-        ))}
+      <div className="rc-toolbar">
+        <div className="rc-filters">
+          {[['tous','Tous'],['retard','En retard'],['semaine','Cette semaine']].map(([k,l])=>(
+            <button key={k} className={'rc-fchip'+(filt===k?' on':'')} onClick={()=>setFilt(k)}>{l}</button>))}
+        </div>
+        <div style={{flex:1}}></div>
+        <button className="rc-tool" onClick={()=>setDense(d=>!d)} title="Changer la densité d'affichage">{dense?'Confort':'Compact'}</button>
+        <div className="rc-colswrap">
+          <button className="rc-tool" onClick={()=>setColsOpen(o=>!o)}>Colonnes ▾</button>
+          {colsOpen && <><div className="rc-ov" onClick={()=>setColsOpen(false)}></div>
+            <div className="rc-colsmenu">
+              {[['detail','Détail payé / facturé'],['financement','Financement'],['derniere','Dernière relance']].map(([k,lbl])=>(
+                <label key={k} className="rc-colitem"><input type="checkbox" checked={!!cols[k]} onChange={e=>setCols(c=>({...c,[k]:e.target.checked}))}/>{lbl}</label>))}
+            </div></>}
+        </div>
       </div>
-      <div className="rc-table">
-        <div className="rc-row rc-hrow">
-          <span>Participant</span><span>Saison</span><span>Facturé</span><span>Payé</span><span>Reste</span><span>Financement</span><span>Dern. relance</span><span>À relancer</span><span>Suivi</span><span></span>
+      <div className="rc-list">
+        <div className="rc-hrow">
+          <button className={'rc-hcell rc-w-part rc-sortable'+(sort==='nom'?' on':'')} onClick={()=>setSort('nom')}>Participant{arrow('nom')}</button>
+          <button className={'rc-hcell rc-w-money rc-sortable'+(sort==='reste'?' on':'')} onClick={()=>setSort('reste')}>Montant{arrow('reste')}</button>
+          {cols.financement && <span className="rc-hcell rc-w-fin">Financement</span>}
+          <button className={'rc-hcell rc-w-rel rc-sortable'+(sort==='relance'?' on':'')} onClick={()=>setSort('relance')}>À relancer{arrow('relance')}</button>
+          {cols.derniere && <span className="rc-hcell rc-w-last">Dern.</span>}
+          <span className="rc-hcell rc-w-note">Suivi</span>
+          <span className="rc-hcell rc-w-act"></span>
         </div>
         {rows.length===0 && <div className="rc-empty">Rien à recouvrer{filt!=='tous'?' dans ce filtre':''}. 🎉</div>}
-        {rows.map(({l,p,rc})=>{ const overdue=rc&&rc.relance_next&&rc.relance_next<today;
-          return (
+        {rows.map(({l,p,rc})=>{ const overdue=rc&&rc.relance_next&&rc.relance_next<today; return (
           <div key={l.id} className={'rc-row'+(overdue?' rc-late':'')}>
-            <button className="rc-name" onClick={()=>onOpenLead(l.id)} title="Ouvrir la fiche">{name(l)}</button>
-            <span className="rc-sais">{l.saison||'—'}</span>
-            <span className="mono rc-dim">{eur(p.facture)}</span>
-            <span className="mono rc-ok">{eur(p.paye)}</span>
-            <span className="mono rc-reste">{eur(p.reste)}</span>
-            <span className="rc-fin">{(p.parts||[]).length?p.parts.map(f=><span key={f.id} className={'rc-badge s-'+f.statut}>{PART_TYPE_LABEL[f.type]||f.type}</span>):<span className="rc-dim">—</span>}</span>
-            <span className="rc-date rc-dim">{rc&&rc.relance_last?fmtDay(rc.relance_last):'—'}</span>
-            <input className={'rc-datein'+(overdue?' late':'')} type="date" value={(rc&&rc.relance_next)||''} onChange={e=>onSet(l.id,{relance_next:e.target.value||null})}/>
-            <RcNote value={rc&&rc.note} onSave={v=>onSet(l.id,{note:v})}/>
-            <span className="rc-acts">
-              <button className="rc-act" title="Marquer relancé aujourd'hui (repousse la prochaine relance à +7 j)" onClick={()=>onSet(l.id,{relance_last:today, relance_next:bump7()})}>{I.check({})}</button>
+            <div className="rc-w-part rc-c-part">
+              <button className="rc-name" onClick={()=>onOpenLead(l.id)} title="Ouvrir la fiche">{name(l)}</button>
+              {l.saison && <span className="rc-sais">{l.saison}</span>}
+            </div>
+            <div className="rc-w-money rc-c-money">
+              <span className="rc-reste mono">{eur(p.reste)}</span>
+              {cols.detail && <span className="rc-money-sub mono">payé {eur(p.paye)} / {eur(p.facture)}</span>}
+            </div>
+            {cols.financement && <div className="rc-w-fin rc-c-fin">{(p.parts||[]).length?p.parts.map(f=><span key={f.id} className={'rc-badge s-'+f.statut}>{PART_TYPE_LABEL[f.type]||f.type}</span>):<span className="rc-dim">—</span>}</div>}
+            <div className="rc-w-rel"><RcDate value={rc&&rc.relance_next} overdue={overdue} onSave={v=>onSet(l.id,{relance_next:v})}/></div>
+            {cols.derniere && <div className="rc-w-last rc-dim">{rc&&rc.relance_last?rcShort(rc.relance_last):'—'}</div>}
+            <div className="rc-w-note rc-c-note"><RcNote value={rc&&rc.note} onSave={v=>onSet(l.id,{note:v})}/></div>
+            <div className="rc-w-act rc-c-act">
+              <button className="rc-act" title="Relancé aujourd'hui (repousse la relance à +7 j)" onClick={()=>onSet(l.id,{relance_last:today, relance_next:bump7()})}>{I.check({})}</button>
               <button className="rc-act eur" title="Enregistrer un versement (fiche)" onClick={()=>onOpenLead(l.id)}>{I.euro({})}</button>
-            </span>
+            </div>
           </div>
         ); })}
       </div>
