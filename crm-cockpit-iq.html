@@ -1636,6 +1636,32 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .pay-inp{font-size:16px; font-weight:800; color:var(--t1); background:var(--bg); border:1.5px solid var(--accent); border-radius:8px; padding:5px 8px; width:100%; outline:none}
 .pay-sel{font-size:13.5px; font-weight:600; color:var(--t1); background:var(--bg); border:1px solid var(--b1); border-radius:8px; padding:7px 9px; cursor:pointer; max-width:260px}
 .pay-sel:hover{border-color:var(--b3)}
+/* ── bloc paiement (registre : facturé/payé/reste + parts + versements) ── */
+.pay3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px}
+.pay3-cell{display:flex; flex-direction:column; gap:4px}
+.pay3-val{font-size:16px; font-weight:800; letter-spacing:-.01em}
+.pay3-val.ok{color:var(--t1)} .pay3-val.due{color:var(--accent)}
+.pay-sec{margin-top:12px}
+.pay-sec-h{display:flex; align-items:center; justify-content:space-between; font-size:11px; font-weight:700; color:var(--t3); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px}
+.pay-mini-add{background:none; border:none; color:var(--accent); font-family:inherit; font-size:11.5px; font-weight:700; cursor:pointer; padding:2px 4px; text-transform:none; letter-spacing:0}
+.pay-mini-add:hover{text-decoration:underline}
+.pay-row{display:flex; align-items:center; gap:7px; padding:5px 0; border-bottom:1px solid var(--b1); flex-wrap:wrap}
+.pay-row:last-child{border-bottom:none}
+.pay-addrow{background:var(--surface-2); border:1px solid var(--b1); border-radius:9px; padding:7px 9px; margin-top:4px}
+.pay-chip-sel{background:var(--surface-2); border:1px solid var(--b1); border-radius:7px; color:var(--t1); font-family:inherit; font-size:12px; font-weight:650; padding:4px 6px; cursor:pointer}
+.pay-in{width:88px; background:var(--bg); border:1px solid var(--b1); border-radius:7px; color:var(--t1); font-family:inherit; font-size:12.5px; padding:4px 7px; outline:none}
+.pay-in:focus{border-color:var(--accent)}
+.pay-in-sm{width:70px} .pay-in-date{background:var(--bg); border:1px solid var(--b1); border-radius:7px; color:var(--t1); font-family:inherit; font-size:12px; padding:4px 6px}
+.pay-row-m{font-size:13px; font-weight:700} .pay-row-m.ok{color:var(--ok)}
+.pay-row-d{font-size:11.5px; color:var(--t3)} .pay-row-moy{font-size:11px; color:var(--t2); background:var(--surface-2); border-radius:5px; padding:2px 6px; text-transform:uppercase; letter-spacing:.02em}
+.pay-row-note{font-size:11px; color:var(--t3); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.pay-stat{background:var(--surface-2); border:1px solid var(--b1); border-radius:7px; font-family:inherit; font-size:11.5px; font-weight:650; padding:3px 6px; cursor:pointer}
+.pay-stat.s-recu{color:var(--ok); border-color:color-mix(in srgb,var(--ok) 45%,transparent)}
+.pay-stat.s-en_cours{color:var(--accent)}
+.pay-row-x{background:none; border:none; color:var(--t3); cursor:pointer; padding:3px; border-radius:5px; display:flex; margin-left:auto}
+.pay-row-x:hover{color:var(--danger); background:var(--danger-tint)} .pay-row-x svg{width:12px;height:12px}
+.pay-row-ok{background:none; border:none; color:var(--ok); cursor:pointer; padding:3px; display:flex} .pay-row-ok svg{width:14px;height:14px}
+.pay-empty{font-size:11.5px; color:var(--t3); padding:3px 0}
 .sync-note{margin-top:12px; border:1px solid var(--b1); border-radius:11px; background:var(--bg); overflow:hidden}
 .sync-note-h{font-size:11.5px; font-weight:700; color:var(--t2); text-transform:uppercase; letter-spacing:.04em; padding:9px 12px; border-bottom:1px solid var(--b1); display:flex; align-items:center; gap:8px; background:var(--surface)}
 .sync-note-tag{font-size:10px; font-weight:700; text-transform:none; letter-spacing:0; padding:2px 7px; border-radius:999px; background:var(--accent-tint); color:var(--accent)}
@@ -2896,6 +2922,90 @@ function ActionWhenField({ due, anchorRect, onDate, onClose }){
   );
 }
 
+/* ═══ BLOC PAIEMENT (fiche) — registre financier : facturé / payé réel / reste + parts + versements ═══
+   Facturé = leads.montant (référence). Payé = Σ versements reçus. Reste = calculé, jamais saisi.
+   Une part = un payeur/canal (CPF, reste à charge, entreprise, OPCO, FT…) que le closer saisit. */
+const PART_TYPES = [['cpf','CPF'],['cpf_2','CPF n°2'],['perso','Reste à charge'],['entreprise','Entreprise'],['opco','OPCO'],['france_travail','France Travail'],['autre','Autre']];
+const PART_STATUTS = [['attente','En attente'],['en_cours','En cours'],['recu','Reçu']];
+const PAY_MOYENS = ['cpf','stripe','virement','klarna','opco','entreprise','france_travail','autre'];
+const parseMoney = s => { const n=Number(String(s).replace(/\s/g,'').replace(',','.').replace(/[^\d.]/g,'')); return Number.isFinite(n)?n:null; };
+function PartAddRow({ onAdd, onCancel }){
+  const [type,setType]=useState('perso'); const [m,setM]=useState('');
+  return (
+    <div className="pay-row pay-addrow">
+      <select className="pay-chip-sel" value={type} onChange={e=>setType(e.target.value)}>{PART_TYPES.map(([k,l])=><option key={k} value={k}>{l}</option>)}</select>
+      <input className="pay-in mono" autoFocus placeholder="€ attendu" value={m} onChange={e=>setM(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter'){ onAdd({type, montant_attendu:parseMoney(m)}); } if(e.key==='Escape') onCancel(); }}/>
+      <button className="pay-row-ok" title="Ajouter" onClick={()=>onAdd({type, montant_attendu:parseMoney(m)})}>{I.check({})}</button>
+      <button className="pay-row-x" title="Annuler" onClick={onCancel}>{I.x({})}</button>
+    </div>
+  );
+}
+function PayAddRow({ reste, onAdd, onCancel }){
+  const [m,setM]=useState(reste>0?String(Math.round(reste)):''); const [moyen,setMoyen]=useState('cpf');
+  const [d,setD]=useState(()=>new Date().toISOString().slice(0,10));
+  const submit=()=>{ const v=parseMoney(m); if(v==null||v<=0) return; onAdd({montant:v, date_paiement:d, moyen}); };
+  return (
+    <div className="pay-row pay-addrow">
+      <input className="pay-in mono" autoFocus placeholder="€ reçu" value={m} onChange={e=>setM(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') submit(); if(e.key==='Escape') onCancel(); }}/>
+      <input className="pay-in-date" type="date" value={d} onChange={e=>setD(e.target.value)}/>
+      <select className="pay-chip-sel" value={moyen} onChange={e=>setMoyen(e.target.value)}>{PAY_MOYENS.map(k=><option key={k} value={k}>{k}</option>)}</select>
+      <button className="pay-row-ok" title="Enregistrer" onClick={submit}>{I.check({})}</button>
+      <button className="pay-row-x" title="Annuler" onClick={onCancel}>{I.x({})}</button>
+    </div>
+  );
+}
+function PaymentBlock({ lead, pay, onEditField, onPartAdd, onPartUpsert, onPartRemove, onPayAdd, onPayRemove }){
+  const p = pay || { facture:lead.offer||0, paye:0, reste:Math.max(0,lead.offer||0), statut:'attente', parts:[], paiements:[] };
+  const [addPart,setAddPart]=useState(false); const [addPay,setAddPay]=useState(false);
+  return (
+    <div className="field">
+      <span className="eyebrow">Paiement</span>
+      <div className="pay3">
+        <MoneyField label="Facturé" value={lead.offer===0?'':lead.offer} onSave={v=>onEditField('offer','offer', v===''?0:v)}/>
+        <div className="pay3-cell"><span className="pay-lbl">Payé</span><b className="pay3-val ok mono">{eur(p.paye)}</b></div>
+        <div className="pay3-cell"><span className="pay-lbl">Reste</span><b className={'pay3-val mono '+(p.reste>0?'due':'ok')}>{p.reste>0?eur(p.reste):(p.facture>0?'✓ soldé':'—')}</b></div>
+      </div>
+      <div className="pay-sec">
+        <div className="pay-sec-h"><span>Financement</span><button className="pay-mini-add" onClick={()=>setAddPart(true)}>+ part</button></div>
+        {p.parts.map(f=>(
+          <div key={f.id} className="pay-row">
+            <select className="pay-chip-sel" value={f.type} onChange={e=>onPartUpsert(f.id,{type:e.target.value})}>{PART_TYPES.map(([k,l])=><option key={k} value={k}>{l}</option>)}</select>
+            <input className="pay-in mono pay-in-sm" defaultValue={f.montant_attendu!=null?String(f.montant_attendu):''} placeholder="€" onBlur={e=>{ const v=parseMoney(e.target.value); if(v!==f.montant_attendu) onPartUpsert(f.id,{montant_attendu:v}); }}/>
+            <select className={'pay-stat s-'+f.statut} value={f.statut} onChange={e=>onPartUpsert(f.id,{statut:e.target.value})}>{PART_STATUTS.map(([k,l])=><option key={k} value={k}>{l}</option>)}</select>
+            {f.note && <span className="pay-row-note" title={f.note}>{f.note}</span>}
+            <button className="pay-row-x" title="Retirer" onClick={()=>onPartRemove(f.id)}>{I.x({})}</button>
+          </div>
+        ))}
+        {addPart && <PartAddRow onAdd={row=>{ onPartAdd(lead.id,row); setAddPart(false); }} onCancel={()=>setAddPart(false)}/>}
+        {p.parts.length===0 && !addPart && <div className="pay-empty">Aucune part de financement</div>}
+      </div>
+      <div className="pay-sec">
+        <div className="pay-sec-h"><span>Versements reçus</span><button className="pay-mini-add" onClick={()=>setAddPay(true)}>+ versement</button></div>
+        {p.paiements.map(v=>(
+          <div key={v.id} className="pay-row">
+            <span className="mono pay-row-m ok">{eur(v.montant)}</span>
+            <span className="pay-row-d">{v.date_paiement?fmtDay(v.date_paiement):''}</span>
+            <span className="pay-row-moy">{v.moyen||''}</span>
+            {v.note && <span className="pay-row-note" title={v.note}>{v.note}</span>}
+            <button className="pay-row-x" title="Supprimer" onClick={()=>onPayRemove(v.id)}>{I.x({})}</button>
+          </div>
+        ))}
+        {addPay && <PayAddRow reste={p.reste} onAdd={row=>{ onPayAdd(lead.id,row); setAddPay(false); }} onCancel={()=>setAddPay(false)}/>}
+        {p.paiements.length===0 && !addPay && <div className="pay-empty">Aucun versement enregistré</div>}
+      </div>
+      <div className="pay-cell" style={{marginTop:8}}>
+        <span className="pay-lbl">Qui paie ?</span>
+        <select className="pay-sel" value={lead.quiPaie||''} onChange={e=>onEditField('quiPaie','quiPaie', e.target.value)}>
+          <option value="">—</option>{QUI_PAIE_OPTS.map(o=><option key={o} value={o}>{o}</option>)}
+        </select>
+      </div>
+      {lead.hsImport&&lead.hsImport.deal&&(()=>{ const d=lead.hsImport.deal; const money=n=>(n||n===0)?(Number(n).toLocaleString('fr-FR')+' €'):null; const r=[['Montant HT',money(d.montant_ht)],['Montant TTC',money(d.montant_ttc)],['CPF',money(d.cpf)],['Fermé le',d.date_fermeture?fmtDay(d.date_fermeture):null],['Encaissé le',d.date_encaissement?fmtDay(d.date_encaissement):null]].filter(x=>x[1]); return r.length?(
+        <div className="hs-mini" style={{marginTop:10}}>{r.map((x,i)=><span key={i} className="hs-mini-kv"><span className="hs-mini-k">{x[0]}</span>{x[1]}</span>)}</div>
+      ):null; })()}
+    </div>
+  );
+}
+
 /* Carte action (format rectangle, comme les notes Historique) : cocher (réalisée) + éditer + supprimer */
 function ActionCard({ label, done, editing, onToggle, onEditStart, onEditCancel, onEditSave, onDelete, placeholder, due, onDate }){
   const [v,setV]=useState(label||'');
@@ -3438,7 +3548,7 @@ function MoneyField({label, value, onSave, accent}){
   );
 }
 
-function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onActions, onClaim, meId, onAddRdv, onCancelRdv, onManualRdv, onManualRemoveRdv, onRdvOutcome, onClearRdvOutcome, isAdminView, closers, rdvClosers, onAssign, calendiqReady, calendiqOrganizer, bcList, onBcUpsert, onBcAdd}){
+function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onActions, onClaim, meId, onAddRdv, onCancelRdv, onManualRdv, onManualRemoveRdv, onRdvOutcome, onClearRdvOutcome, isAdminView, closers, rdvClosers, onAssign, calendiqReady, calendiqOrganizer, bcList, onBcUpsert, onBcAdd, onPartAdd, onPartUpsert, onPartRemove, onPayAdd, onPayRemove}){
   const [moveOpen,setMoveOpen]=useState(false);
   const [noteOpen,setNoteOpen]=useState(false);
   const [noteMode,setNoteMode]=useState('note'); // 'note' = note écrite | 'nrp' = appel sans réponse
@@ -3527,23 +3637,7 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
                 </div>
                 <button className="action-add" onClick={()=>{ const n=(lead.extraActions||[]).length; onActions([...(lead.extraActions||[]), {label:'',done:false,id:(window.crypto&&crypto.randomUUID?crypto.randomUUID():'x'+Date.now().toString(36)+Math.random().toString(36).slice(2))}], false); setEditAct(n); }}>+ Ajouter une action</button>
               </div>
-              <div className="field">
-                <span className="eyebrow">Paiement</span>
-                <div className="pay-grid">
-                  <MoneyField label="Payé" value={lead.offer===0?'':lead.offer} accent onSave={v=>onEditField('offer','offer', v===''?0:v)}/>
-                  <MoneyField label="Reste à payer" value={lead.aPayer} onSave={v=>onEditField('aPayer','aPayer', v)}/>
-                </div>
-                <div className="pay-cell" style={{marginTop:8}}>
-                  <span className="pay-lbl">Qui paie ?</span>
-                  <select className="pay-sel" value={lead.quiPaie||''} onChange={e=>onEditField('quiPaie','quiPaie', e.target.value)}>
-                    <option value="">—</option>
-                    {QUI_PAIE_OPTS.map(o=><option key={o} value={o}>{o}</option>)}
-                  </select>
-                </div>
-                {lead.hsImport&&lead.hsImport.deal&&(()=>{ const d=lead.hsImport.deal; const money=n=>(n||n===0)?(Number(n).toLocaleString('fr-FR')+' €'):null; const r=[['Montant HT',money(d.montant_ht)],['Montant TTC',money(d.montant_ttc)],['CPF',money(d.cpf)],['Fermé le',d.date_fermeture?fmtDay(d.date_fermeture):null],['Encaissé le',d.date_encaissement?fmtDay(d.date_encaissement):null]].filter(x=>x[1]); return r.length?(
-                  <div className="hs-mini" style={{marginTop:10}}>{r.map((x,i)=><span key={i} className="hs-mini-kv"><span className="hs-mini-k">{x[0]}</span>{x[1]}</span>)}</div>
-                ):null; })()}
-              </div>
+              <PaymentBlock lead={lead} pay={lead._pay} onEditField={onEditField} onPartAdd={onPartAdd} onPartUpsert={onPartUpsert} onPartRemove={onPartRemove} onPayAdd={onPayAdd} onPayRemove={onPayRemove}/>
               <div className="field">
                 <span className="eyebrow">Bootcamp</span>
                 {(bcList&&bcList.length>0)?bcList.map(e=>{ const m=BC_STATUT_META[e.statut]||BC_STATUT_META.prospect; return (
@@ -5387,6 +5481,67 @@ function App({session, onLogout}){
     const { error }=await SB.from('bootcamp_enrollments').delete().eq('id',id);
     if(error){ toast('Suppression impossible', error.message, 'info'); loadBc(); }
   },[toast,loadBc]);
+
+  // ═══ REGISTRE FINANCIER : paiements (versements reçus) + financement_parts (canal pay-live) ═══
+  const [paiements,setPaiements]=useState([]);
+  const [fparts,setFparts]=useState([]);
+  const loadPay=useCallback(async()=>{
+    try{
+      const [pr,fr]=await Promise.all([
+        SB.from('paiements').select('*').order('date_paiement',{ascending:true}).order('id',{ascending:true}),
+        SB.from('financement_parts').select('*').order('created_at',{ascending:true}).order('id',{ascending:true}),
+      ]);
+      if(!pr.error){ const n=pr.data||[]; setPaiements(prev=> JSON.stringify(prev)===JSON.stringify(n)?prev:n); }
+      if(!fr.error){ const n=fr.data||[]; setFparts(prev=> JSON.stringify(prev)===JSON.stringify(n)?prev:n); }
+    }catch(e){ console.warn('loadPay',e); }
+  },[]);
+  useEffect(()=>{ loadPay();
+    const ch=SB.channel('pay-live')
+      .on('postgres_changes',{event:'*',schema:'public',table:'paiements'},loadPay)
+      .on('postgres_changes',{event:'*',schema:'public',table:'financement_parts'},loadPay).subscribe();
+    return ()=>{ SB.removeChannel(ch); };
+  },[loadPay]);
+  const payAdd=useCallback(async(leadId,row)=>{
+    const ins={ lead_id:leadId, montant:row.montant, date_paiement:row.date_paiement||new Date().toISOString().slice(0,10), moyen:row.moyen||null, note:row.note||null, part_id:row.part_id||null, created_by:session.user.id };
+    const { data, error }=await SB.from('paiements').insert(ins).select().single();
+    if(error){ toast('Versement non enregistré', error.message,'info'); return null; }
+    setPaiements(list=>[...list,data]);
+    // 1er versement -> inscription bootcamp DÉFINITIVE (prospect -> inscrit), décision Nour
+    const enr=bcEnrollments.find(e=>e.lead_id===leadId && e.statut==='prospect');
+    if(enr) bcUpsert(enr.id,{statut:'inscrit'});
+    toast('Versement enregistré', eur(row.montant),'ok');
+    return data;
+  },[toast,session,bcEnrollments,bcUpsert]);
+  const payRemove=useCallback(async(id)=>{
+    setPaiements(list=>list.filter(p=>p.id!==id));
+    const { error }=await SB.from('paiements').delete().eq('id',id);
+    if(error){ toast('Suppression impossible', error.message,'info'); loadPay(); }
+  },[toast,loadPay]);
+  const partAdd=useCallback(async(leadId,row)=>{
+    const ins={ lead_id:leadId, type:row.type||'perso', montant_attendu:(row.montant_attendu??null), statut:row.statut||'attente', date_prevue:row.date_prevue||null, note:row.note||null };
+    const { data, error }=await SB.from('financement_parts').insert(ins).select().single();
+    if(error){ toast('Part non ajoutée', error.message,'info'); return null; }
+    setFparts(list=>[...list,data]); return data;
+  },[toast]);
+  const partUpsert=useCallback(async(id,patch)=>{
+    setFparts(list=>list.map(f=>f.id===id?{...f,...patch}:f));
+    const { error }=await SB.from('financement_parts').update(patch).eq('id',id);
+    if(error){ toast('MAJ échouée', error.message,'info'); loadPay(); }
+  },[toast,loadPay]);
+  const partRemove=useCallback(async(id)=>{
+    setFparts(list=>list.filter(f=>f.id!==id));
+    const { error }=await SB.from('financement_parts').delete().eq('id',id);
+    if(error){ toast('Suppression impossible', error.message,'info'); loadPay(); }
+  },[toast,loadPay]);
+  // agrégat lead_id -> {paye, parts, paiements, prochaine, retard}
+  const payByLead=useMemo(()=>{
+    const m=new Map(); const today=new Date().toISOString().slice(0,10);
+    const get=k=>{ let e=m.get(k); if(!e){ e={paye:0,paiements:[],parts:[],prochaine:null,retard:false}; m.set(k,e);} return e; };
+    for(const p of paiements){ const e=get(p.lead_id); e.paye+=Number(p.montant)||0; e.paiements.push(p); }
+    for(const f of fparts){ const e=get(f.lead_id); e.parts.push(f);
+      if(f.statut!=='recu' && f.date_prevue){ if(!e.prochaine||f.date_prevue<e.prochaine) e.prochaine=f.date_prevue; if(f.date_prevue<today) e.retard=true; } }
+    return m;
+  },[paiements,fparts]);
   // rafraîchit l'agenda tant qu'on le regarde (RDV pris/déplacés dans CalendIQ)
   // RDV pris dans CalendIQ (ex : rush post-webi) → visibles dans le CRM en quelques secondes, sur TOUS les écrans.
   // Polling 20 s tant que l'onglet est visible + refresh instantané au focus ; en pause si onglet caché.
@@ -5460,13 +5615,20 @@ function App({session, onLogout}){
       return { ...l, rdvs, _cqCloserId: next?._closerId || null, calendiqRdv:{ ...next, meet_link: next.meet_link || l.rdvMeetLink || null } };
     });
   },[leads,cqMeetings]);
-  const sel = leadsCq.find(l=>l.id===selId);
+  // injecte _pay (agrégat registre financier) dans les objets leads -> board + fiche + statut disent la vérité (payé/reste)
+  const leadsPay = useMemo(()=> leadsCq.map(l=>{ const pd=payByLead.get(l.id); const fac=l.offer||0;
+    if(!pd && fac<=0) return l;
+    const paye = pd?pd.paye:0; const reste=Math.max(0,fac-paye);
+    const statut = (paye>=fac-0.005 && (fac>0||paye>0)) ? 'solde' : paye>0 ? 'partiel' : 'attente';
+    return { ...l, _pay:{ facture:fac, paye, reste, statut, parts:pd?pd.parts:[], paiements:pd?pd.paiements:[], prochaine:pd?pd.prochaine:null, retard:pd?pd.retard:false } };
+  }), [leadsCq, payByLead]);
+  const sel = leadsPay.find(l=>l.id===selId);
   // assigne/retire la disposition d'une entrée d'historique à la main (optimiste + écriture activites.result)
   // FILTRE SAISON GLOBAL : un seul réglage qui filtre TOUTES les vues liste (kanban, à faire, closers).
   // null = toutes · '__none' = sans saison · sinon code de saison. La fiche (sel) reste TOUJOURS sur leadsCq complet.
   const [seasonFilter,setSeasonFilter]=useState(()=>persistedState('iqcrm_season',null));
   useEffect(()=>{ localStorage.setItem('iqcrm_season',JSON.stringify(seasonFilter)); },[seasonFilter]);
-  const leadsView = useMemo(()=> !seasonFilter ? leadsCq : leadsCq.filter(l=> seasonFilter==='__none' ? !l.saison : l.saison===seasonFilter), [leadsCq,seasonFilter]);
+  const leadsView = useMemo(()=> !seasonFilter ? leadsPay : leadsPay.filter(l=> seasonFilter==='__none' ? !l.saison : l.saison===seasonFilter), [leadsPay,seasonFilter]);
   const seasonCounts = useMemo(()=>{ const m={}; let none=0; for(const l of leadsCq){ if(l.saison) m[l.saison]=(m[l.saison]||0)+1; else none++; } m.__none=none; return m; },[leadsCq]);
   const myLeadsCount = useMemo(()=>leadsCq.filter(l=>l.owner===userId||l._cqCloserId===userId).length,[leadsCq,userId]);
   // défaut de la vue selon le rôle (une fois le profil chargé) : closer = Mes leads, admin = Global
@@ -5835,7 +5997,7 @@ function App({session, onLogout}){
             colVer={colVer} renameCol={renameCol} recolorCol={recolorCol} reorderCols={reorderCols} addCol={addCol} deleteCol={deleteCol}
             onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col,defSrc,defEng)=>setAddTarget({col,defSrc,defEng})} onDelete={deleteLead}/>}
         {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen(origin)} backLabel={SCREEN_LABEL[origin]||'Retour'} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
-            onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} onManualRdv={setManualRdv} onManualRemoveRdv={removeManualRdv} onRdvOutcome={setRdvOutcome} onClearRdvOutcome={clearRdvOutcome} isAdminView={isAdmin} closers={closers} rdvClosers={cqSources} onAssign={reassignOwner} calendiqReady={isAdmin ? cqSources.length>0 : !!(profile&&profile.calendiq_organizer_id)} calendiqOrganizer={profile&&profile.calendiq_organizer_id} bcList={bcEnrollments.filter(e=>e.lead_id===sel.id)} onBcUpsert={bcUpsert} onBcAdd={isAdmin?bcAdd:null}/>}
+            onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} onManualRdv={setManualRdv} onManualRemoveRdv={removeManualRdv} onRdvOutcome={setRdvOutcome} onClearRdvOutcome={clearRdvOutcome} isAdminView={isAdmin} closers={closers} rdvClosers={cqSources} onAssign={reassignOwner} calendiqReady={isAdmin ? cqSources.length>0 : !!(profile&&profile.calendiq_organizer_id)} calendiqOrganizer={profile&&profile.calendiq_organizer_id} bcList={bcEnrollments.filter(e=>e.lead_id===sel.id)} onBcUpsert={bcUpsert} onBcAdd={isAdmin?bcAdd:null} onPartAdd={partAdd} onPartUpsert={partUpsert} onPartRemove={partRemove} onPayAdd={payAdd} onPayRemove={payRemove}/>}
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen(origin)}>Retour ({SCREEN_LABEL[origin]||'Mes leads'})</button></div>}
         {screen==='agenda' && <Agenda meetings={cqMeetings} sources={cqSources} loading={cqLoading} error={cqError}
             isAdmin={isAdmin} profile={profile} onConnect={connectCalendiq} onDisconnect={disconnectCalendiq}
@@ -5975,11 +6137,17 @@ function computeCardStatus(lead, now){
     return { text: ov+(d?(' · '+rdvShort(d,true)):''), urg: dueUrg(d, now), manual:true, money:null };
   }
   const col=lead.column;
+  const pay=lead._pay;
   if(col==='encaisser'){
+    if(pay && pay.facture>0){ // registre = vérité : reste réel affiché
+      if(pay.reste<=0) return { text:'soldé', amt:eur(pay.facture), urg:'ok', manual:false, money:'paid' };
+      return { text:(pay.paye>0?('payé '+eur(pay.paye)+' · reste'):'à encaisser'), amt:eur(pay.reste), urg:(pay.retard?'late':'today'), manual:false, money:'money' };
+    }
     const t = lead.paid ? 'payé' : (lead.statut_paiement==='lien_envoye' ? 'lien envoyé — en attente' : 'à encaisser');
     return { text:t, amt:eur(lead.offer), urg:(lead.paid?'ok':'today'), manual:false, money:(lead.paid?'paid':'money') };
   }
   if(col==='won'){
+    if(pay && pay.facture>0 && pay.reste>0) return { text:'gagné · reste', amt:eur(pay.reste), urg:(pay.retard?'late':'today'), manual:false, money:'money' };
     return { text:'gagné', amt:eur(lead.offer), urg:'ok', manual:false, money:'paid' };
   }
   const s=leadStatus(lead, now, {ignoreRecap:true});
