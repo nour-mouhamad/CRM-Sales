@@ -360,6 +360,59 @@ input,textarea{font-family:inherit; color:inherit}
 .sync-banner-btn:disabled{opacity:.6; cursor:default}
 /* ===== page BOOTCAMP ===== */
 .bc-screen{padding:26px 30px; overflow-y:auto; height:100%}
+/* ── MA JOURNÉE (daily planner closer) ── */
+.mj{max-width:860px; margin:0 auto; display:flex; flex-direction:column; gap:14px}
+.mj-top{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+.mj-strip{display:flex; gap:6px; flex:1}
+.mj-day{position:relative; display:flex; flex-direction:column; align-items:center; gap:1px; min-width:52px; padding:7px 10px 8px; background:var(--surface); border:1px solid var(--b1); border-radius:11px; cursor:pointer; font-family:inherit; transition:border-color var(--speed)}
+.mj-day:hover{border-color:var(--b3)}
+.mj-day.on{background:var(--accent); border-color:var(--accent)}
+.mj-day-l{font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--t3)}
+.mj-day-n{font-size:15px; font-weight:800; color:var(--t1)}
+.mj-day.on .mj-day-l{color:color-mix(in srgb,var(--on-accent) 75%,transparent)} .mj-day.on .mj-day-n{color:var(--on-accent)}
+.mj-day-dot{position:absolute; top:-5px; right:-4px; min-width:16px; height:16px; padding:0 4px; border-radius:99px; background:var(--accent); color:var(--on-accent); font-size:9.5px; font-weight:800; display:grid; place-items:center; border:2px solid var(--bg)}
+.mj-day.on .mj-day-dot{background:var(--t1); color:var(--bg); border-color:var(--accent)}
+.mj-hero{display:flex; align-items:center; gap:14px; background:var(--surface); border:1px solid color-mix(in srgb,var(--accent) 40%,transparent); border-radius:15px; padding:15px 18px}
+.mj-hero.live{background:var(--accent-tint); border-color:var(--accent)}
+.mj-hero-tx{display:flex; flex-direction:column; gap:3px; flex:1; min-width:0}
+.mj-hero-tx>b{font-size:10px; letter-spacing:.09em; color:var(--accent); font-weight:800}
+.mj-hero-tx>span{font-size:15px; color:var(--t1)}
+.mj-hero-btns{display:flex; gap:8px; flex:none}
+.mj-late{background:var(--danger-tint); border:1px solid color-mix(in srgb,var(--danger) 40%,transparent); border-radius:13px; padding:6px 12px 8px}
+.mj-late-h{display:flex; align-items:center; gap:8px; width:100%; background:none; border:none; color:var(--danger); font-family:inherit; font-size:12.5px; font-weight:750; padding:6px 2px; cursor:pointer}
+.mj-late-h span{margin-left:auto}
+.mj-feed{background:var(--surface); border:1px solid var(--b1); border-radius:15px; padding:6px 0; display:flex; flex-direction:column}
+.mj-empty{padding:34px 16px; text-align:center; font-size:13.5px; color:var(--t3)}
+.mj-time{width:46px; flex:none; font-size:12px; font-weight:700; color:var(--t2); text-align:right}
+.mj-rdv{display:flex; align-items:center; gap:11px; padding:12px 18px; border-bottom:1px solid var(--b1)}
+.mj-rdv:last-child,.mj-act:last-child{border-bottom:none}
+.mj-rdv.live{background:var(--accent-tint); box-shadow:inset 3px 0 0 var(--accent)}
+.mj-rdv.past{opacity:.62} .mj-rdv.past:has(.mj-verdict){opacity:1}
+.mj-rdvtype{font-size:10px; font-weight:800; letter-spacing:.05em; color:var(--accent); background:var(--accent-tint); border-radius:6px; padding:3px 7px; flex:none}
+.mj-rdvname{background:none; border:none; padding:0; font-family:inherit; font-size:14px; font-weight:750; color:var(--t1); cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.mj-rdvname:hover{color:var(--accent)}
+.mj-dur{font-size:11px; color:var(--t3); flex:none}
+.mj-out{font-size:11px; font-weight:750; flex:none} .mj-out.ok{color:var(--ok)} .mj-out.bad{color:var(--danger)}
+.mj-verdict{display:flex; gap:5px; flex:none}
+.mj-vbtn{font-family:inherit; font-size:11px; font-weight:700; padding:4px 10px; border-radius:7px; cursor:pointer; border:1px solid var(--b1); background:var(--surface-2); color:var(--t2)}
+.mj-vbtn.ok:hover{color:var(--ok); border-color:color-mix(in srgb,var(--ok) 50%,transparent)}
+.mj-vbtn.bad:hover{color:var(--danger); border-color:color-mix(in srgb,var(--danger) 50%,transparent)}
+.mj-join{font-size:12px; font-weight:750; color:var(--accent); background:var(--accent-tint); border-radius:8px; padding:6px 12px; text-decoration:none; flex:none}
+.mj-join:hover{background:var(--accent); color:var(--on-accent)}
+.mj-fiche{background:none; border:none; color:var(--t4); cursor:pointer; padding:2px; flex:none} .mj-fiche:hover{color:var(--accent)} .mj-fiche svg{width:16px;height:16px}
+.mj-act{display:flex; align-items:center; gap:11px; padding:9px 18px; border-bottom:1px solid var(--b1)}
+.mj-act.done .mj-actlbl{text-decoration:line-through; color:var(--t3)}
+.mj-actbox{width:19px; height:19px; border-radius:6px; border:1.5px solid var(--b3); display:grid; place-items:center; cursor:pointer; flex:none; color:transparent; transition:all var(--speed)}
+.mj-actbox:hover{border-color:var(--ok)}
+.mj-act.done .mj-actbox{background:var(--ok); border-color:var(--ok); color:#fff}
+.mj-actbox svg{width:12px; height:12px}
+.mj-actlbl{font-size:13.5px; color:var(--t1); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.mj-actlead{background:none; border:none; font-family:inherit; font-size:11.5px; font-weight:650; color:var(--t3); cursor:pointer; flex:none}
+.mj-actlead:hover{color:var(--accent)}
+.mj-nowline{display:flex; align-items:center; gap:10px; padding:2px 18px; color:var(--accent)}
+.mj-nowline::before,.mj-nowline::after{content:''; flex:1; height:1.5px; background:var(--accent); opacity:.6}
+.mj-nowline span{font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; flex:none}
+.mj-nowline.end{color:var(--t3)} .mj-nowline.end::before,.mj-nowline.end::after{background:var(--b2)}
 /* ── page Recouvrement (le sheet impayés, vivant) — layout flex aéré, densité + colonnes + tri ── */
 .rc-screen{padding:26px 30px; overflow-y:auto; height:100%}
 .rc-head{display:flex; align-items:center; gap:14px; margin-bottom:18px}
@@ -4421,10 +4474,116 @@ function CqMeetingRow({ m, isAdmin, onOpenLead, meetingLeadId }){
   );
 }
 
-function Agenda({ meetings, sources, loading, error, isAdmin, profile, onConnect, onDisconnect, onRefresh, onOpenLead, meetingLeadId }){
+/* ═══ MA JOURNÉE — daily planner du closer : RDV + actions fusionnés dans UN fil chronologique.
+   Héro « maintenant » (RDV live/prochain), strip 7 jours, retards, verdict présent/no-show inline.
+   Vue 100% dérivée (meetings CalendIQ + extraActions des leads) — aucune nouvelle donnée. ═══ */
+const MJ_DAY=86400000;
+function mjDayStart(off){ const d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()+off); return d; }
+function MaJournee({ meetings, leads, sources, isAdmin, meId, onOpenLead, onToggleExtra, onOutcome }){
+  const [closerId,setCloserId]=useState(isAdmin ? null : meId);
+  useEffect(()=>{ if(isAdmin && !closerId && sources.length) setCloserId(sources[0].id); },[isAdmin,sources,closerId]);
+  const [dayOff,setDayOff]=useState(0);
+  const [showLate,setShowLate]=useState(true);
+  const [now,setNow]=useState(Date.now());
+  useEffect(()=>{ const t=setInterval(()=>setNow(Date.now()),30000); return ()=>clearInterval(t); },[]);
+  const day=mjDayStart(dayOff), dayEnd=+day+MJ_DAY, isToday=dayOff===0;
+
+  // index meetingId -> {lead, rdv} (type R1/R2, verdict, fiche) via le matching déjà fait dans leadsCq
+  const rdvIndex=useMemo(()=>{ const m=new Map(); for(const l of leads){ for(const r of (l.rdvs||[])) m.set(r.id,{lead:l,rdv:r}); } return m; },[leads]);
+  const myLeads=useMemo(()=>leads.filter(l=> l.owner===closerId || (!l.owner && l._cqCloserId===closerId)),[leads,closerId]);
+  const meetingsOf=React.useCallback((d0,d1)=>meetings.filter(m=> m.status==='confirmed' && m._closerId===closerId && +new Date(m.start_at)>=d0 && +new Date(m.start_at)<d1),[meetings,closerId]);
+  const actionsOf=React.useCallback((d0,d1,undoneOnly)=>{ const out=[]; for(const l of myLeads){ (l.extraActions||[]).forEach((a,idx)=>{ if(!a.due_at) return; if(undoneOnly&&a.done) return; const t=+new Date(a.due_at); if(t>=d0&&t<d1) out.push({lead:l,a,idx,t}); }); } return out.sort((x,y)=>x.t-y.t); },[myLeads]);
+
+  const dayMeetings=useMemo(()=>meetingsOf(+day,dayEnd).sort((a,b)=>+new Date(a.start_at)-+new Date(b.start_at)),[meetingsOf,+day,dayEnd]);
+  const dayActions=useMemo(()=>actionsOf(+day,dayEnd,false),[actionsOf,+day,dayEnd]);
+  const overdue=useMemo(()=>isToday?actionsOf(0,+day,true):[],[actionsOf,isToday,+day]);
+  const feed=useMemo(()=>[ ...dayMeetings.map(m=>({kind:'rdv', t:+new Date(m.start_at), m})), ...dayActions.map(x=>({kind:'act', ...x})) ].sort((a,b)=>a.t-b.t),[dayMeetings,dayActions]);
+  const hero=useMemo(()=>{ if(!isToday) return null;
+    for(const m of dayMeetings){ const s=+new Date(m.start_at), e=s+(m.duration_minutes||45)*60000;
+      if(now>=s&&now<e) return {m,live:true}; if(s>now) return {m,live:false,mins:Math.max(1,Math.round((s-now)/60000))}; }
+    return null; },[dayMeetings,now,isToday]);
+  const strip=useMemo(()=>Array.from({length:7},(_,i)=>{ const d=mjDayStart(i);
+    return { i, d, n: meetingsOf(+d,+d+MJ_DAY).length + actionsOf(+d,+d+MJ_DAY,true).length };
+  }),[meetingsOf,actionsOf]);
+  const nameOf=m=>{ const hit=rdvIndex.get(m.id); return hit?(`${hit.lead.prenom||''} ${hit.lead.nom||''}`.trim()||m.booker_name||'Lead'):(m.booker_name||'RDV'); };
+  const nowLineIdx=isToday? feed.findIndex(it=>it.t>now) : -1;
+
+  const RdvCard=({m})=>{ const hit=rdvIndex.get(m.id); const r=hit&&hit.rdv;
+    const s=+new Date(m.start_at), e=s+(m.duration_minutes||45)*60000;
+    const live=isToday&&now>=s&&now<e, past=e<=now&&isToday || (!isToday&&+day<+mjDayStart(0));
+    const link=(r&&r.meet_link)||m.meet_link;
+    return (
+      <div className={'mj-rdv'+(live?' live':'')+(past?' past':'')}>
+        <span className="mj-time mono">{cqTime(m.start_at)}</span>
+        <span className={'mj-rdvtype'+(live?' on':'')}>{((r&&r.type)||'r1').toUpperCase()}</span>
+        <button className="mj-rdvname" onClick={()=>hit&&onOpenLead(hit.lead.id)} title={hit?'Ouvrir la fiche':undefined}>{nameOf(m)}</button>
+        <span className="mj-dur">{m.duration_minutes||45} min</span>
+        {r&&r.outcome==='present' && <span className="mj-out ok">✓ présent</span>}
+        {r&&r.outcome==='no_show' && <span className="mj-out bad">no-show</span>}
+        {past && hit && r && !r.outcome && (<span className="mj-verdict">
+          <button className="mj-vbtn ok" onClick={()=>onOutcome(hit.lead.id, r, 'present')}>Présent</button>
+          <button className="mj-vbtn bad" onClick={()=>onOutcome(hit.lead.id, r, 'no_show')}>No-show</button>
+        </span>)}
+        <span style={{flex:1}}></span>
+        {link && !past && <a className="mj-join" href={link} target="_blank" rel="noreferrer">{live?'Rejoindre':'Meet'}</a>}
+        {hit && <button className="mj-fiche" onClick={()=>onOpenLead(hit.lead.id)}>{I.chev({})}</button>}
+      </div> ); };
+  const ActRow=({x})=>(
+    <div className={'mj-act'+(x.a.done?' done':'')}>
+      <span className="mj-time mono">{cqTime(x.a.due_at)}</span>
+      <span className="mj-actbox" role="checkbox" aria-checked={!!x.a.done} onClick={()=>onToggleExtra(x.lead, x.idx)}>{I.check({})}</span>
+      <span className="mj-actlbl">{x.a.label||'Action'}</span>
+      <button className="mj-actlead" onClick={()=>onOpenLead(x.lead.id)}>{`${x.lead.prenom||''} ${x.lead.nom||''}`.trim()}</button>
+    </div> );
+
+  return (
+    <div className="mj">
+      <div className="mj-top">
+        {isAdmin && sources.length>0 && (
+          <select className="bc-season" value={closerId||''} onChange={e=>setCloserId(e.target.value)}>
+            {sources.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>)}
+        <div className="mj-strip">
+          {strip.map(({i,d,n})=>(
+            <button key={i} className={'mj-day'+(dayOff===i?' on':'')} onClick={()=>setDayOff(i)}>
+              <span className="mj-day-l">{i===0?'Auj.':d.toLocaleDateString('fr-FR',{weekday:'short'})}</span>
+              <span className="mj-day-n">{d.getDate()}</span>
+              {n>0 && <span className="mj-day-dot">{n}</span>}
+            </button>))}
+        </div>
+      </div>
+      {hero && (
+        <div className={'mj-hero'+(hero.live?' live':'')}>
+          <div className="mj-hero-tx">
+            <b>{hero.live?'EN CE MOMENT':'PROCHAIN RDV'}</b>
+            <span>{((rdvIndex.get(hero.m.id)||{}).rdv||{type:'r1'}).type.toUpperCase()} avec <b>{nameOf(hero.m)}</b> {hero.live?'— en cours':(hero.mins<60?`dans ${hero.mins} min`:`à ${cqTime(hero.m.start_at)}`)}</span>
+          </div>
+          {(()=>{ const hit=rdvIndex.get(hero.m.id); const link=(hit&&hit.rdv&&hit.rdv.meet_link)||hero.m.meet_link; return (<div className="mj-hero-btns">
+            {link && <a className="btn btn-accent" href={link} target="_blank" rel="noreferrer">Rejoindre</a>}
+            {hit && <button className="btn btn-soft" onClick={()=>onOpenLead(hit.lead.id)}>Fiche</button>}
+          </div>); })()}
+        </div>)}
+      {overdue.length>0 && (
+        <div className="mj-late">
+          <button className="mj-late-h" onClick={()=>setShowLate(v=>!v)}>⚠ {overdue.length} action{overdue.length>1?'s':''} en retard <span>{showLate?'▾':'▸'}</span></button>
+          {showLate && overdue.map(x=><ActRow key={x.lead.id+'-'+x.idx} x={x}/>)}
+        </div>)}
+      <div className="mj-feed">
+        {feed.length===0 && <div className="mj-empty">Rien de prévu {isToday?"aujourd'hui":'ce jour'} 🎉</div>}
+        {feed.map((it,i)=>(<React.Fragment key={it.kind==='rdv'?it.m.id:(it.lead.id+'-'+it.idx)}>
+          {isToday && i===nowLineIdx && <div className="mj-nowline"><span>{cqTime(new Date(now).toISOString())} · maintenant</span></div>}
+          {it.kind==='rdv'?<RdvCard m={it.m}/>:<ActRow x={it}/>}
+        </React.Fragment>))}
+        {isToday && feed.length>0 && nowLineIdx===-1 && <div className="mj-nowline end"><span>journée terminée</span></div>}
+      </div>
+    </div>
+  );
+}
+
+function Agenda({ meetings, sources, loading, error, isAdmin, profile, onConnect, onDisconnect, onRefresh, onOpenLead, meetingLeadId, leads, meId, onToggleExtra, onOutcome }){
   const connected = !!(sources && sources.length);
   const ownConnected = !!(profile && profile.calendiq_organizer_id);
-  const [tab,setTab]=useState('rdv');   // 'rdv' = liste CRM | 'cal' = dashboard CalendIQ (closer)
+  const [tab,setTab]=useState('day');   // 'day' = Ma journée (défaut) | 'rdv' = liste RDV | 'cal' = dashboard CalendIQ (closer)
   const [manage,setManage]=useState(false);
   const now=Date.now();
   const upcoming = meetings.filter(m=>m.status==='confirmed' && new Date(m.start_at).getTime()>=now-3600000)
@@ -4437,12 +4596,13 @@ function Agenda({ meetings, sources, loading, error, isAdmin, profile, onConnect
   return (
     <>
       <div className="screen-head">
-        <div className="screen-title"><h1>Agenda</h1><p>{sub}</p></div>
+        <div className="screen-title"><h1>Ma journée</h1><p>{sub}</p></div>
         <div className="head-tools cq-tools">
-          {connected && !isAdmin && (
+          {connected && (
             <div className="seg">
-              <button className={tab==='rdv'?'on':''} onClick={()=>setTab('rdv')}>Mes RDV</button>
-              <button className={tab==='cal'?'on':''} onClick={()=>setTab('cal')}>CalendIQ</button>
+              <button className={tab==='day'?'on':''} onClick={()=>setTab('day')}>Ma journée</button>
+              <button className={tab==='rdv'?'on':''} onClick={()=>setTab('rdv')}>{isAdmin?'RDV équipe':'Mes RDV'}</button>
+              {!isAdmin && <button className={tab==='cal'?'on':''} onClick={()=>setTab('cal')}>CalendIQ</button>}
             </div>
           )}
           {connected && <button className="btn btn-soft" onClick={onRefresh} disabled={loading}>{loading?'…':'Rafraîchir'}</button>}
@@ -4482,8 +4642,14 @@ function Agenda({ meetings, sources, loading, error, isAdmin, profile, onConnect
         </div>
       )}
 
+      {/* connecté · MA JOURNÉE (défaut) : fil RDV + actions du jour */}
+      {connected && tab==='day' && (
+        <MaJournee meetings={meetings} leads={leads||[]} sources={sources} isAdmin={isAdmin} meId={meId}
+          onOpenLead={onOpenLead} onToggleExtra={onToggleExtra} onOutcome={onOutcome}/>
+      )}
+
       {/* connecté · liste des RDV (closer onglet RDV + admin agrégé) */}
-      {connected && (isAdmin || tab==='rdv') && (
+      {connected && tab==='rdv' && (
         <div className="cq-agenda">
           {isAdmin && (
             <div className="cq-closers">
@@ -5386,7 +5552,7 @@ function BootcampScreen({enrollments, leads, payByLead, closers, onOpenLead, onU
   );
 }
 
-const SCREEN_LABEL = { leads:'Mes leads', agenda:'Agenda', todo:'À faire', team:'Closers', console:'Synchro HubSpot', bootcamp:'Bootcamp', recouvrement:'Recouvrement' };
+const SCREEN_LABEL = { leads:'Mes leads', agenda:'Ma journée', todo:'À faire', team:'Closers', console:'Synchro HubSpot', bootcamp:'Bootcamp', recouvrement:'Recouvrement' };
 
 /* Bannière de FRAÎCHEUR du sync CalendIQ : lit la ligne unique sync_health('calendiq') (écrite par calendiq-pull
    à chaque run du cron 60s) + realtime. Si le dernier succès date de > 5 min => le sync est décroché => bannière
@@ -6097,6 +6263,13 @@ function App({session, onLogout}){
       const n={...m}; if(Object.keys(e).length) n[key]=e; else delete n[key]; return n;
     });
   },[sel,writeRdvMeta]);
+  // verdict présent/no-show DEPUIS « Ma journée » (pas besoin de fiche ouverte) — même écriture rdv_meta que setRdvOutcome
+  const setRdvOutcomeFor=useCallback(async(leadId, rdv, outcome)=>{
+    if(!leadId || !rdv) return;
+    await writeRdvMeta(leadId, m=>{ const ex=m[rdv.id]||{}; if(ex.outcome===outcome) return m;
+      return { ...m, [rdv.id]:{ ...ex, outcome, outcome_at:new Date().toISOString(), by:'manual', ...(rdv.type?{type:rdv.type}:{}) } }; });
+    toast(outcome==='present'?'RDV marqué présent':'RDV marqué no-show', (rdv.type||'r1').toUpperCase()+' · '+cqDayLabel(rdv.start_at), outcome==='present'?'ok':'info');
+  },[writeRdvMeta,toast]);
 
   // payment send → À payer, then auto Payé (id capturé, transition garantie)
   const sendPayment=(amount,tag)=>{
@@ -6158,7 +6331,7 @@ function App({session, onLogout}){
   },[leadsPay,recouv]);
   const navItems=[
     {id:'leads', label:'Mes leads', icon:I.leads, badge:rappelerCount},
-    {id:'agenda', label:'Agenda', icon:I.agenda, soon:true},
+    {id:'agenda', label:'Ma journée', icon:I.agenda},
     ...(isAdmin?[{id:'todo', label:'À faire', icon:I.check},{id:'bootcamp', label:'Bootcamp', icon:I.admission},{id:'recouvrement', label:'Recouvrement', icon:I.euro, badge:recouvDue||null, badgeWarn:true},{id:'team', label:'Closers', icon:I.users},{id:'console', label:'Synchro HubSpot', icon:I.sync, badge:syncPending||null, badgeWarn:syncWarn}]:[]),
   ];
   useEffect(()=>{ if(!isAdmin && (screen==='team'||screen==='console'||screen==='todo'||screen==='bootcamp'||screen==='recouvrement')) setScreen('leads'); },[isAdmin,screen]);
@@ -6215,7 +6388,8 @@ function App({session, onLogout}){
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen(origin)}>Retour ({SCREEN_LABEL[origin]||'Mes leads'})</button></div>}
         {screen==='agenda' && <Agenda meetings={cqMeetings} sources={cqSources} loading={cqLoading} error={cqError}
             isAdmin={isAdmin} profile={profile} onConnect={connectCalendiq} onDisconnect={disconnectCalendiq}
-            onRefresh={loadCalendiq} onOpenLead={openLead} meetingLeadId={meetingLeadId}/>}
+            onRefresh={loadCalendiq} onOpenLead={openLead} meetingLeadId={meetingLeadId}
+            leads={leadsPay} meId={userId} onToggleExtra={toggleExtraFor} onOutcome={setRdvOutcomeFor}/>}
         {screen==='todo' && isAdmin && <AFaire leads={leadsView} onOpenLead={openLead} onToggleAction={toggleActionFor} onToggleExtra={toggleExtraFor} onToggleStar={toggleStar} onReassign={reassignOwner} onHideAction={hideActionFor} onUnhideAction={unhideActionFor} seasonFilter={seasonFilter} setSeasonFilter={setSeasonFilter} seasonCounts={seasonCounts}/>}
         {screen==='bootcamp' && isAdmin && <BootcampScreen enrollments={bcEnrollments} leads={leadsCq} payByLead={payByLead} closers={closers} onOpenLead={openLead} onUpsert={bcUpsert} onAdd={bcAdd} onRemove={bcRemove}/>}
         {screen==='recouvrement' && isAdmin && <RecouvScreen leads={leadsPay} recouv={recouv} paiements={paiements} closers={closers} onOpenLead={openLead} onSet={recouvSet}/>}
