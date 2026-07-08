@@ -4880,7 +4880,7 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
   const doneRef=React.useRef(new Set());        // clés d'items cochés (masqués)
   const committedRef=React.useRef(new Set());   // clés dont le saveLead a résolu (write committé)
   const [tick,bump]=React.useReducer(x=>x+1,0);
-  React.useEffect(()=>{ let on=true; SB.from('profiles').select('id,name,role').then(({data})=>{ if(on) setClosers((data||[]).filter(p=>p.role==='closer')); }); return ()=>{on=false;}; },[]);
+  React.useEffect(()=>{ let on=true; SB.from('profiles').select('id,name,role').then(({data})=>{ if(on) setClosers(data||[]); }); return ()=>{on=false;}; },[]);
 
   // ===== Repères temps (calculés une fois) =====
   const T=React.useMemo(()=>{ const d=new Date(); const s=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime(); return {start:s, endToday:s+86400000, endWeek:s+7*86400000}; },[]);
@@ -5478,7 +5478,7 @@ function App({session, onLogout}){
   const isAdmin = (profile?.role||'closer')==='admin';
   // liste des closers (admin) — pour assigner un lead à un closer depuis la fiche
   const [closers,setClosers]=useState([]);
-  useEffect(()=>{ if(!isAdmin){ setClosers([]); return; } let on=true; SB.from('profiles').select('id,name,role').then(({data})=>{ if(on) setClosers((data||[]).filter(p=>p.role==='closer')); }); return ()=>{on=false;}; },[isAdmin]);
+  useEffect(()=>{ if(!isAdmin){ setClosers([]); return; } let on=true; SB.from('profiles').select('id,name,role').then(({data})=>{ if(on) setClosers(data||[]); }); return ()=>{on=false;}; },[isAdmin]);
   // onboarding : un closer sans CalendIQ doit le connecter avant d'entrer (puis il a ses leads)
   const [onbActive,setOnbActive]=useState(false);
   const [onbDone,setOnbDone]=useState(false);
@@ -6704,7 +6704,7 @@ function TeamScreen({ userId, toast, leads, onOpenLead, onSetCockpit, cqPending 
   const { rosterClosers, unassigned } = useMemo(()=>{
     const nameById={}; profiles.forEach(p=>{ nameById[p.id]=p.name; });
     const byKey={};
-    profiles.filter(p=>p.role==='closer').forEach(p=>{ byKey[p.id]={key:p.id, name:p.name||'—', leads:[]}; });
+    profiles.forEach(p=>{ byKey[p.id]={key:p.id, name:p.name||'—', leads:[]}; });   // admin = closer aussi : tous les membres apparaissent dans le classement
     const un=[];
     all.forEach(l=>{
       if(!l.owner){ un.push(l); return; }
