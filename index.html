@@ -6894,7 +6894,13 @@ async function consoleLoad(force){
 // numéros sentinelles/bidons : JAMAIS une clé de dédup (un même faux numéro = N humains distincts)
 const IMPORT_SENTINEL = new Set(['000000000','012345678','123456789','606060606','600000000','010203040','999999999']);
 function importDigits(s){ return String(s==null?'':s).replace(/\D/g,''); }
-function importPhone9(tel){ const d=importDigits(tel); if(d.length<9) return ''; const k=d.slice(-9); return (IMPORT_SENTINEL.has(k) || /^(\d)\1{8}$/.test(k)) ? '' : k; }
+function importPhone9(tel){ const s=String(tel==null?'':tel).trim(); const plus=s.replace(/[^\d+]/g,''); const d=importDigits(tel); if(d.length<9) return '';
+  const last9=d.slice(-9); if(IMPORT_SENTINEL.has(last9) || /^(\d)\1{8}$/.test(last9)) return '';
+  // FR -> clé = 9 chiffres ; international (+CC / 00CC ≠ 33) -> clé = E.164 complète (évite collision inter-pays)
+  if(plus.indexOf('+33')===0 || d.indexOf('0033')===0 || (d.charAt(0)==='0' && d.length===10) || d.length===9) return last9;
+  if(plus.charAt(0)==='+') return '+'+d;
+  if(d.indexOf('00')===0) return '+'+d.slice(2);
+  return last9; }
 function importEmailCanon(email){
   const e=String(email==null?'':email).trim().toLowerCase(); if(!e || e.indexOf('@')<1) return '';
   let p=e.split('@'), loc=p[0], dom=p[1]||''; loc=loc.split('+')[0];
@@ -6911,7 +6917,7 @@ function importParseName(row,map){
   fn=fn.trim(); ln=ln.trim();
   const nm=((map.name!=null&&map.name)?row[map.name]:'')||''; const nmt=nm.trim();
   if(!fn && !ln && nmt){ const parts=nmt.split(/\s+/); if(parts.length>=2){ fn=parts[0]; ln=parts.slice(1).join(' '); } else fn=nmt; }
-  else if(fn && !ln && nmt && nmt.toLowerCase()!==fn.toLowerCase() && nmt.toLowerCase().startsWith(fn.toLowerCase())){ ln=nmt.slice(fn.length).trim(); }
+  else if(fn && !ln && nmt && nmt.toLowerCase()!==fn.toLowerCase() && nmt.toLowerCase().indexOf(fn.toLowerCase())===0){ const nx=nmt.charAt(fn.length); if(nx===' '||nx==='-'||nx==='\''||nx==='’') ln=nmt.slice(fn.length).trim(); }
   return { prenom:importRecap(fn)||null, nom:importRecap(ln)||null };
 }
 function importStoreTel(raw){ // FR -> +33XXXXXXXXX ; international -> garde l'indicatif ; jamais corrompre
@@ -6920,6 +6926,7 @@ function importStoreTel(raw){ // FR -> +33XXXXXXXXX ; international -> garde l'i
   if(plus.indexOf('+33')===0 || d.indexOf('0033')===0) return '+33'+d.slice(-9);
   if(d.charAt(0)==='0' && d.length===10) return '+33'+d.slice(1);
   if(plus.charAt(0)==='+') return '+'+d;
+  if(d.indexOf('00')===0) return '+'+d.slice(2);   // 00CC… international -> +CC…
   if(d.length===9) return '+33'+d;
   return '+'+d;
 }
@@ -6996,22 +7003,28 @@ function importDryRun(parsed, map, params, crmIdx){
     const base=g.reduce((a,b)=>((b.nom||'').length>(a.nom||'').length?b:a), g[0]);
     let eng=null; g.forEach(x=>{ if((rank[x.eng]||0)>(rank[eng]||0)) eng=x.eng; });
     const angles=[]; g.forEach(x=>{ if(x.angle && angles.indexOf(x.angle)<0) angles.push(x.angle); });
-    return Object.assign({}, base, { eng, angles, groupSize:g.length, lines:g.map(x=>x.line_no) });
+    // pureté du groupe fusionné : ≥2 emails canoniques OU ≥2 noms distincts (ni égaux ni sous-chaîne) = fusion douteuse -> humain tranche
+    const names=[], emails=[]; g.forEach(x=>{ if(x.nomKey && names.indexOf(x.nomKey)<0) names.push(x.nomKey); if(x.ecanon && emails.indexOf(x.ecanon)<0) emails.push(x.ecanon); });
+    let impure=emails.length>=2;
+    if(!impure && names.length>=2) impure=names.some((a,i)=>names.some((b,j)=>i!==j && a!==b && a.indexOf(b)<0 && b.indexOf(a)<0));
+    return Object.assign({}, base, { eng, angles, groupSize:g.length, lines:g.map(x=>x.line_no), impure });
   });
   const items=cands.map(c=>{
     let match=null, via=null;
     if(c.ecanon && crmIdx.byEmail[c.ecanon]){ match=crmIdx.byEmail[c.ecanon]; via='email'; }
     else if(c.ph9 && crmIdx.byPhone[c.ph9] && crmIdx.byPhone[c.ph9].length){ match=crmIdx.byPhone[c.ph9][0]; via='phone'; }
     let bucket, action, ambiguous=false, confirmTel=false, conflict=null, engTo=null, hot=false;
-    if(!match){ bucket='nouveau'; action='create'; }
-    else if(match.deleted_at){ bucket='revive'; action='revive'; }
+    if(c.impure){ bucket='ambigu'; action='create'; ambiguous=true; }                 // fusion intra-CSV douteuse -> jamais silencieuse
+    else if(!match){ bucket='nouveau'; action='create'; }
+    else if(match.deleted_at){ bucket='revive'; action='skip'; }                       // défaut = NE PAS restaurer (choix humain explicite)
     else if(via==='email'){ bucket='existant'; action='enrich'; }
     else { const mk=deburr(match.nom||'');
       if(mk && c.nomKey && mk!==c.nomKey && mk.indexOf(c.nomKey)<0 && c.nomKey.indexOf(mk)<0){ bucket='ambigu'; action='create'; ambiguous=true; }
       else { bucket='existant'; action='enrich'; confirmTel=!(mk&&c.nomKey); }
     }
     if(match && !match.deleted_at){
-      if(c.email && match.email && c.email.toLowerCase()!==String(match.email).toLowerCase()) conflict={ csv:c.email, crm:match.email };
+      const ec1=importEmailCanon(c.email), ec2=importEmailCanon(match.email);          // conflit = CANONS différents (pas variantes gmail points/+tag)
+      if(ec1 && ec2 && ec1!==ec2) conflict={ csv:c.email, crm:match.email };
       if(match.source==='webinaire' && c.eng==='participe' && String(match.webi_engagement||'')!=='participe') engTo='participe';
       hot = match.source==='calendiq' && match.colonne==='rdv1';
     }
@@ -7234,7 +7247,7 @@ function ImportScreen({ toast, onOpenLead, setSyncBusy, reloadLeads, closers }){
                 {(it.bucket==='ambigu'||it.bucket==='revive')?(
                   <select className="rr-sel imp-decsel" value={act} onChange={e=>setDec(c.line_no,{action:e.target.value})}>
                     {it.bucket==='ambigu'?<option value="create">Créer nouveau</option>:null}
-                    {it.match?<option value="merge">{it.bucket==='revive'?'Restaurer':'Fusionner vers '+(it.match.prenom||'')+' '+(it.match.nom||'')}</option>:null}
+                    {it.bucket==='ambigu'&&it.match?<option value="merge">{'Fusionner vers '+(it.match.prenom||'')+' '+(it.match.nom||'')}</option>:null}
                     {it.bucket==='revive'?<option value="revive">Restaurer la fiche</option>:null}
                     <option value="skip">Ignorer</option>
                   </select>
