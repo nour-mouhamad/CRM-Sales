@@ -6970,7 +6970,7 @@ function importParseCSV(text){
 const IMPORT_PRESETS=[
   { key:'luma', label:'Luma (webinaire)', sig:['email','phone_number','first_name','last_name','name','has_joined_event','utm_source','created_at'],
     map:{ email:'email', telephone:'phone_number', prenom:'first_name', nom:'last_name', name:'name', engagement:'has_joined_event', attribution:'utm_source' },
-    params:{ source:'webinaire', engagementOn:true, attributionOn:true, defaultEngagement:'participe' } },
+    params:{ source:'webinaire', engagementOn:true, attributionOn:false, defaultEngagement:'participe' } },
   { key:'hubspot', label:'Export HubSpot', sig:['email','first name','last name','phone number'],
     map:{ email:'Email', telephone:'Phone Number', prenom:'First Name', nom:'Last Name' },
     params:{ source:'lead_gen', engagementOn:false, attributionOn:false } },
@@ -7055,7 +7055,7 @@ function ImportScreen({ toast, onOpenLead, setSyncBusy, reloadLeads, closers }){
   const [map,setMap]=React.useState({});
   const [presetLabel,setPresetLabel]=React.useState('');
   const todayISO=new Date().toISOString().slice(0,10);
-  const [params,setParams]=React.useState({ source:'webinaire', engagementOn:true, attributionOn:true, defaultEngagement:'participe', owner:'', cockpit:'vivant', eventDate:todayISO });
+  const [params,setParams]=React.useState({ source:'webinaire', engagementOn:true, attributionOn:false, defaultEngagement:'participe', owner:'', cockpit:'vivant', eventDate:todayISO });
   const [crmIdx,setCrmIdx]=React.useState(null);
   const [items,setItems]=React.useState(null);
   const [decisions,setDecisions]=React.useState({});
