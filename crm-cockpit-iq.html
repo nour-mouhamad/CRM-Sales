@@ -2018,7 +2018,7 @@ function dbToLead(r, acts){
   }
   return {
     id:r.id, prenom:r.prenom||'', nom:r.nom||'', tel:r.telephone||'', email:r.email||'',
-    source:r.source, webiEngagement:r.webi_engagement||null, heat:r.heat||null, column:COL_DB2UI(r.colonne), owner:r.owner_closer_id||null,
+    source:r.source, webiEngagement:r.webi_engagement||null, webiDate:r.webi_date||null, heat:r.heat||null, column:COL_DB2UI(r.colonne), owner:r.owner_closer_id||null,
     nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, nextActionDue:r.next_action_due||null, extraActions:Array.isArray(r.extra_actions)?r.extra_actions:[], hiddenActions:Array.isArray(r.hidden_actions)?r.hidden_actions:[], cockpitState:r.cockpit_state||null, live:false, noShow,
     offer:(r.montant==null||r.montant==='')?0:(Number(r.montant)||0), aPayer:(r.montant_a_payer==null?'':r.montant_a_payer), quiPaie:r.qui_paie||'', paid:r.statut_paiement==='paye', statut_paiement:r.statut_paiement||'aucun',
     cpf:(Number(r.cpf_dispo)||0), metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'', saison:r.saison||null,
@@ -2069,6 +2069,7 @@ async function saveLead(id, uiPatch){
   if('quiPaie' in uiPatch) m.qui_paie=uiPatch.quiPaie||null;
   if('source' in uiPatch) m.source=uiPatch.source||null;
   if('webiEngagement' in uiPatch) m.webi_engagement=uiPatch.webiEngagement||null;
+  if('webiDate' in uiPatch) m.webi_date=uiPatch.webiDate||null;
   if('owner' in uiPatch) m.owner_closer_id=uiPatch.owner;
   if('paid' in uiPatch) m.statut_paiement=uiPatch.paid?'paye':'aucun';
   if('statut_paiement' in uiPatch) m.statut_paiement=uiPatch.statut_paiement;
@@ -3724,14 +3725,18 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
                   {!srcInList && lead.source && <option value={lead.source}>{(SOURCE_INFO[lead.source]||{label:lead.source}).label}</option>}
                   {LEAD_SOURCES.map(o=><option key={o.k} value={o.k}>{o.label}</option>)}
                 </select>
-                {lead.source==='webinaire' && (
+                {lead.source==='webinaire' && (<>
                   <div className="srceng" style={{marginTop:8}}>
                     {[{k:'participe',label:'Participé'},{k:'inscrit',label:'Inscrit'},{k:null,label:'—'}].map(o=>(
                       <button key={String(o.k)} className={'srceng-chip'+((lead.webiEngagement||null)===o.k?' on':'')} title={o.k?null:'Présence inconnue'}
                         onClick={()=>onEditField('webiEngagement','webiEngagement', o.k)}>{o.label}</button>
                     ))}
                   </div>
-                )}
+                  <div style={{marginTop:8,display:'flex',alignItems:'center',gap:8}}>
+                    <span className="eyebrow" style={{margin:0,flex:'none'}}>Date du webi</span>
+                    <input type="date" className="addlead-sel src-sel" style={{flex:1}} value={lead.webiDate||''} onChange={e=>onEditField('webiDate','webiDate', e.target.value||null)}/>
+                  </div>
+                </>)}
               </div>
               <ManualRdvField lead={lead} calendiqRdvs={lead.rdvs||[]}
                 onCalModify={calendiqReady?openEditRdv:null}
@@ -6930,6 +6935,17 @@ function importStoreTel(raw){ // FR -> +33XXXXXXXXX ; international -> garde l'i
   if(d.length===9) return '+33'+d;
   return '+'+d;
 }
+// détecte la date du webi dans le NOM du fichier (« webi 07.07.2026.csv » -> 2026-07-07). Vide si aucune.
+function importDateFromName(fn){
+  const s=String(fn==null?'':fn); let m;
+  m=s.match(/(\d{1,2})[.\-_ \/](\d{1,2})[.\-_ \/](\d{4})/);                 // JJ.MM.AAAA
+  if(m){ const d=m[1].padStart(2,'0'), mo=m[2].padStart(2,'0'), y=m[3]; if(+mo>=1&&+mo<=12&&+d>=1&&+d<=31) return `${y}-${mo}-${d}`; }
+  m=s.match(/(\d{4})[.\-_ \/](\d{1,2})[.\-_ \/](\d{1,2})/);                 // AAAA-MM-JJ
+  if(m){ const y=m[1], mo=m[2].padStart(2,'0'), d=m[3].padStart(2,'0'); if(+mo>=1&&+mo<=12&&+d>=1&&+d<=31) return `${y}-${mo}-${d}`; }
+  m=s.match(/(\d{1,2})[.\-_ \/](\d{1,2})[.\-_ \/](\d{2})(?!\d)/);           // JJ.MM.AA
+  if(m){ const d=m[1].padStart(2,'0'), mo=m[2].padStart(2,'0'), y='20'+m[3]; if(+mo>=1&&+mo<=12&&+d>=1&&+d<=31) return `${y}-${mo}-${d}`; }
+  return '';
+}
 // parser CSV robuste : délimiteur , ou ; ; guillemets doublés ; CRLF/LF ; BOM
 function importParseCSV(text){
   text=String(text||'').replace(/^﻿/,'');
@@ -7071,10 +7087,12 @@ function ImportScreen({ toast, onOpenLead, setSyncBusy, reloadLeads, closers }){
       if(!g.map.email && !g.map.telephone && !g.map.name && !g.map.prenom){ toast('Colonnes non reconnues','Aucune colonne email / tél / nom trouvée — mappe à la main','info'); }
       setParsed(Object.assign({}, pr, { fileName:f.name, fileHash:String(h), dupHead }));
       setMap(g.map); setPresetLabel(g.presetLabel);
+      const dtFromName=importDateFromName(f.name);  // date du webi lue dans le nom du fichier (pré-remplie, corrigeable)
       setParams(p=>Object.assign({}, p, g.params.source?{source:g.params.source}:{}, {
         engagementOn: g.params.engagementOn!=null?g.params.engagementOn:p.engagementOn,
         attributionOn: g.params.attributionOn!=null?g.params.attributionOn:p.attributionOn,
-        defaultEngagement: g.params.defaultEngagement||p.defaultEngagement }));
+        defaultEngagement: g.params.defaultEngagement||p.defaultEngagement,
+        eventDate: dtFromName||p.eventDate }));
       setStep(2);
     };
     rd.readAsText(f,'utf-8'); };
@@ -7099,8 +7117,8 @@ function ImportScreen({ toast, onOpenLead, setSyncBusy, reloadLeads, closers }){
         const tel=importStoreTel(c.tel);
         return { line_no:c.line_no, action, lead_id,
           raw:c.row, normalized:{ email:c.email, phone9:c.ph9, prenom:c.prenom, nom:c.nom },
-          fields: action==='create'?{ prenom:c.prenom||'', nom:c.nom||'', email:c.email||'', telephone:tel, source:params.source, webi_engagement:params.source==='webinaire'?(c.eng||''):'', colonne:'contacter', date_creation:params.eventDate||todayISO, cockpit_state:(params.cockpit==='auto'?'':(params.cockpit||'vivant')), owner_closer_id:params.owner||'' }:null,
-          enrich:(action==='enrich'||action==='revive'||action==='merge')?{ engagement_to:it.engTo||'', fill:{ prenom:c.prenom||'', nom:c.nom||'', email:c.email||'', telephone:tel } }:null,
+          fields: action==='create'?{ prenom:c.prenom||'', nom:c.nom||'', email:c.email||'', telephone:tel, source:params.source, webi_engagement:params.source==='webinaire'?(c.eng||''):'', webi_date:params.source==='webinaire'?(params.eventDate||''):'', colonne:'contacter', date_creation:params.eventDate||todayISO, cockpit_state:(params.cockpit==='auto'?'':(params.cockpit||'vivant')), owner_closer_id:params.owner||'' }:null,
+          enrich:(action==='enrich'||action==='revive'||action==='merge')?{ engagement_to:it.engTo||'', webi_date:params.source==='webinaire'?(params.eventDate||''):'', fill:{ prenom:c.prenom||'', nom:c.nom||'', email:c.email||'', telephone:tel } }:null,
           note, note_titre:noteTitre, bucket:it.bucket, idem_key:`${importRef}:${c.ecanon||c.ph9||c.line_no}` };
       });
       const payload={ file_name:parsed.fileName, file_hash:parsed.fileHash, row_count:parsed.rows.length, event_date:params.eventDate||null, import_ref:importRef, mapping:map, params, rows };
@@ -7200,8 +7218,9 @@ function ImportScreen({ toast, onOpenLead, setSyncBusy, reloadLeads, closers }){
           <div className="imp-set"><span className="imp-setk">Attribution (angle)</span>
             <label className="imp-tog"><input type="checkbox" checked={params.attributionOn} onChange={e=>setParams(p=>Object.assign({},p,{attributionOn:e.target.checked}))}/> noter l’angle depuis « {map.attribution||'—'} »</label></div>
         </>)}
-        <div className="imp-set"><span className="imp-setk">Date de création</span>
-          <input type="date" className="rr-sel" value={params.eventDate} onChange={e=>setParams(p=>Object.assign({},p,{eventDate:e.target.value}))}/></div>
+        <div className="imp-set"><span className="imp-setk">{params.source==='webinaire'?'Date du webi':'Date de création'}</span>
+          <input type="date" className="rr-sel" value={params.eventDate} onChange={e=>setParams(p=>Object.assign({},p,{eventDate:e.target.value}))}/>
+          {params.source==='webinaire'?<span className="imp-tog" style={{color:'var(--t3)'}}>lue dans le nom du fichier — corrige si besoin</span>:null}</div>
         {oldWebi?<div className="sync-banner" style={{marginTop:0}}>⚠️ Date &gt; 21 jours : « Vivant » forcerait de vieux leads dans le cockpit. Choisis « Auto » si c’est un vieux backfill.</div>:null}
         <div className="imp-set"><span className="imp-setk">Attribution closer</span>
           <select className="rr-sel" value={params.owner} onChange={e=>setParams(p=>Object.assign({},p,{owner:e.target.value}))}>
