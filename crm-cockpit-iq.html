@@ -871,6 +871,37 @@ input,textarea{font-family:inherit; color:inherit}
 .rr-panel-t{font-size:12.5px; color:var(--t2); line-height:1.5}
 .rr-panel-row{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
 .rr-sel{background:var(--surface-2); color:var(--t1); border:1px solid var(--b1); border-radius:8px; padding:7px 10px; font-size:12.5px; font-weight:600; cursor:pointer; min-width:180px}
+/* Import CSV */
+.imp-drop{display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:48px 20px; border:2px dashed var(--b1); border-radius:14px; cursor:pointer; transition:all var(--speed); background:var(--surface)}
+.imp-drop:hover{border-color:var(--accent); background:var(--accent-tint)}
+.imp-maprow{display:flex; align-items:center; gap:12px; padding:8px 10px; border-radius:9px}
+.imp-maprow:hover{background:var(--surface)}
+.imp-maplbl{flex:none; width:180px; font-weight:600; font-size:13px}
+.imp-sample{flex:1; color:var(--t3); font-size:12px; font-style:italic; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.imp-set{display:flex; align-items:center; gap:12px; padding:9px 10px; border-radius:9px; flex-wrap:wrap}
+.imp-set:hover{background:var(--surface)}
+.imp-setk{flex:none; width:180px; font-weight:600; font-size:13px}
+.imp-tog{display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--t2); cursor:pointer}
+.imp-tog input{width:15px; height:15px}
+.imp-kpi{display:flex; flex-direction:column; gap:2px; padding:10px 16px; background:var(--surface-2); border-radius:11px; min-width:96px}
+.imp-kpi b{font-size:20px; font-weight:800}
+.imp-kpi span{font-size:11px; color:var(--t3); text-transform:uppercase; letter-spacing:.03em}
+.imp-kpi.warn b{color:var(--warm)}
+.imp-tab{padding:7px 13px; border-radius:9px; border:none; background:none; color:var(--t2); font-size:12.5px; font-weight:600; cursor:pointer}
+.imp-tab.on{background:var(--accent-tint); color:var(--accent)}
+.imp-tab.warn:not(.on){color:var(--warm)}
+.imp-row{display:flex; align-items:center; gap:12px; padding:9px 10px; border-radius:9px; flex-wrap:wrap}
+.imp-row:hover{background:var(--surface)}
+.imp-rowmain{flex:1; min-width:180px; display:flex; flex-direction:column; gap:2px}
+.imp-rowname{font-weight:600; font-size:13.5px}
+.imp-rowmeta{font-size:11.5px; color:var(--t3)}
+.imp-rowtags{display:flex; align-items:center; gap:7px; flex-wrap:wrap}
+.imp-badge{font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:20px; background:var(--surface-3); color:var(--t2); white-space:nowrap}
+.imp-badge.ok{background:var(--ok-tint,rgba(52,199,89,.15)); color:var(--ok)}
+.imp-badge.warn{background:var(--danger-tint); color:var(--danger)}
+.imp-badge.hot{background:var(--accent-tint); color:var(--accent)}
+.imp-link{border:none; background:none; color:var(--accent); font-size:11.5px; font-weight:600; cursor:pointer; padding:0}
+.imp-decsel{min-width:150px; padding:5px 9px}
 .cl-lead{display:flex; align-items:center; gap:10px; row-gap:4px; flex-wrap:wrap; width:100%; text-align:left; padding:9px 34px 9px 10px; border-radius:9px; cursor:pointer; position:relative; transition:background var(--speed) var(--ease)}
 .cl-lead:hover{background:var(--surface)}
 .cl-lead-wrap{display:flex; align-items:center; gap:6px}
@@ -2099,6 +2130,7 @@ async function deleteActivite(id){
 const I = {
   leads:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><rect x="3" y="4" width="5" height="16" rx="1.4"/><rect x="10" y="4" width="5" height="11" rx="1.4"/><rect x="17" y="4" width="4" height="14" rx="1.4"/></svg>,
   admission:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="M8 3h6l4 4v12a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V4.5A1.5 1.5 0 0 1 7.5 3z"/><path d="M14 3v4h4"/><path d="m9.5 14 1.7 1.7L15 12"/></svg>,
+  upload:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="M12 15V4M8 8l4-4 4 4"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/></svg>,
   search:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>,
   agenda:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></svg>,
   phone:(p)=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...p}><path d="M6.5 4h3l1.3 4-2 1.4a12 12 0 0 0 5.8 5.8l1.4-2 4 1.3v3a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 4.5 6.2 2 2 0 0 1 6.5 4z"/></svg>,
@@ -5403,7 +5435,7 @@ function BootcampScreen({enrollments, leads, payByLead, closers, onOpenLead, onU
   );
 }
 
-const SCREEN_LABEL = { leads:'Mes leads', agenda:'Mes tâches', todo:'À faire', team:'Closers', console:'Synchro HubSpot', bootcamp:'Bootcamp', recouvrement:'Recouvrement' };
+const SCREEN_LABEL = { leads:'Mes leads', agenda:'Mes tâches', todo:'À faire', team:'Closers', import:'Import CSV', console:'Synchro HubSpot', bootcamp:'Bootcamp', recouvrement:'Recouvrement' };
 
 /* Bannière de FRAÎCHEUR du sync CalendIQ : lit la ligne unique sync_health('calendiq') (écrite par calendiq-pull
    à chaque run du cron 60s) + realtime. Si le dernier succès date de > 5 min => le sync est décroché => bannière
@@ -5468,7 +5500,7 @@ function App({session, onLogout}){
   React.useMemo(()=>{ applyResultConfig(resCfg); },[resCfg]); // miroirs RESULT_META/RESULT_KEYS/RESULT_LIST live avant rendu
   const loadResults=useCallback(()=>{ SB.from('crm_results').select('*').order('position').then(({data})=>{ if(data&&data.length) setResCfg(normalizeResults(data)); }).catch(()=>{}); },[]);
   useEffect(()=>{ loadResults(); },[loadResults]);
-  const [screen,setScreen]=useState(()=>{ const s=persistedState('iqcrm_screen','leads'); return ['leads','fiche','agenda','team','console','todo'].includes(s)?s:'leads'; });
+  const [screen,setScreen]=useState(()=>{ const s=persistedState('iqcrm_screen','leads'); return ['leads','fiche','agenda','team','import','console','todo'].includes(s)?s:'leads'; });
   // page d'où le lead a été ouvert -> le bouton retour de la fiche y revient (au lieu de « Mes leads » en dur)
   const [origin,setOrigin]=useState(()=>{ const s=persistedState('iqcrm_origin','leads'); return ['leads','agenda','team','console','todo'].includes(s)?s:'leads'; });
   const [selId,setSelId]=useState(()=>persistedState('iqcrm_sel',null));
@@ -6175,9 +6207,9 @@ function App({session, onLogout}){
   const navItems=[
     {id:'leads', label:'Mes leads', icon:I.leads, badge:rappelerCount},
     {id:'agenda', label:'Mes tâches', icon:I.agenda},
-    ...(isAdmin?[{id:'todo', label:'À faire', icon:I.check},{id:'bootcamp', label:'Bootcamp', icon:I.admission},{id:'recouvrement', label:'Recouvrement', icon:I.euro, badge:recouvDue||null, badgeWarn:true},{id:'team', label:'Closers', icon:I.users},{id:'console', label:'Synchro HubSpot', icon:I.sync, badge:syncPending||null, badgeWarn:syncWarn}]:[]),
+    ...(isAdmin?[{id:'todo', label:'À faire', icon:I.check},{id:'bootcamp', label:'Bootcamp', icon:I.admission},{id:'recouvrement', label:'Recouvrement', icon:I.euro, badge:recouvDue||null, badgeWarn:true},{id:'team', label:'Closers', icon:I.users},{id:'import', label:'Import CSV', icon:I.upload},{id:'console', label:'Synchro HubSpot', icon:I.sync, badge:syncPending||null, badgeWarn:syncWarn}]:[]),
   ];
-  useEffect(()=>{ if(!isAdmin && (screen==='team'||screen==='console'||screen==='todo'||screen==='bootcamp'||screen==='recouvrement')) setScreen('leads'); },[isAdmin,screen]);
+  useEffect(()=>{ if(!isAdmin && (screen==='team'||screen==='console'||screen==='import'||screen==='todo'||screen==='bootcamp'||screen==='recouvrement')) setScreen('leads'); },[isAdmin,screen]);
   const navActive = screen==='fiche'?origin:screen;
 
   // splash bref UNIQUEMENT pendant la requête profil (évite un flash board/nav) ; ne bloque jamais après réponse
@@ -6241,6 +6273,7 @@ function App({session, onLogout}){
         {screen==='bootcamp' && isAdmin && <BootcampScreen enrollments={bcEnrollments} leads={leadsCq} payByLead={payByLead} closers={closers} onOpenLead={openLead} onUpsert={bcUpsert} onAdd={bcAdd} onRemove={bcRemove}/>}
         {screen==='recouvrement' && isAdmin && <RecouvScreen leads={leadsPay} recouv={recouv} paiements={paiements} closers={closers} onOpenLead={openLead} onSet={recouvSet}/>}
         {screen==='team' && isAdmin && <TeamScreen userId={userId} toast={toast} leads={leadsView} onOpenLead={openLead} onSetCockpit={setCockpitState} cqPending={cqLoading && !cqMeetings.length}/>}
+        {screen==='import' && isAdmin && <ImportScreen toast={toast} onOpenLead={openLead} setSyncBusy={setSyncBusy} reloadLeads={reload} closers={closers}/>}
         {screen==='console' && isAdmin && <Console toast={toast} onOpenLead={openLead} setSyncBusy={setSyncBusy} reloadLeads={reload}/>}
       </main>
 
@@ -6855,6 +6888,379 @@ async function consoleLoad(force){
   }
   catch(e){ CONSOLE_CACHE.error=e.message||'Lecture impossible'; }
   finally{ CONSOLE_CACHE.inflight=false; const again=CONSOLE_CACHE.rerun; CONSOLE_CACHE.rerun=false; consoleNotify(); if(again) consoleLoad(true); }
+}
+
+/* ============================================================= IMPORT CSV — moteur (client) */
+// numéros sentinelles/bidons : JAMAIS une clé de dédup (un même faux numéro = N humains distincts)
+const IMPORT_SENTINEL = new Set(['000000000','012345678','123456789','606060606','600000000','010203040','999999999']);
+function importDigits(s){ return String(s==null?'':s).replace(/\D/g,''); }
+function importPhone9(tel){ const d=importDigits(tel); if(d.length<9) return ''; const k=d.slice(-9); return (IMPORT_SENTINEL.has(k) || /^(\d)\1{8}$/.test(k)) ? '' : k; }
+function importEmailCanon(email){
+  const e=String(email==null?'':email).trim().toLowerCase(); if(!e || e.indexOf('@')<1) return '';
+  let p=e.split('@'), loc=p[0], dom=p[1]||''; loc=loc.split('+')[0];
+  if(dom==='gmail.com'||dom==='googlemail.com'){ loc=loc.replace(/\./g,''); dom='gmail.com'; }
+  return loc+'@'+dom;
+}
+function importRecap(s){ // recapitalise ALL-CAPS / tout-minuscule ; laisse un texte déjà mixte
+  const t=String(s==null?'':s).trim(); if(!t) return '';
+  if(t!==t.toUpperCase() && t!==t.toLowerCase()) return t;
+  return t.toLowerCase().replace(/(^|[\s'’\-])([a-zà-ÿ])/g,(m,a,c)=>a+c.toUpperCase());
+}
+function importParseName(row,map){
+  let fn=(map.prenom?row[map.prenom]:'')||''; let ln=(map.nom?row[map.nom]:'')||'';
+  fn=fn.trim(); ln=ln.trim();
+  const nm=((map.name!=null&&map.name)?row[map.name]:'')||''; const nmt=nm.trim();
+  if(!fn && !ln && nmt){ const parts=nmt.split(/\s+/); if(parts.length>=2){ fn=parts[0]; ln=parts.slice(1).join(' '); } else fn=nmt; }
+  else if(fn && !ln && nmt && nmt.toLowerCase()!==fn.toLowerCase() && nmt.toLowerCase().startsWith(fn.toLowerCase())){ ln=nmt.slice(fn.length).trim(); }
+  return { prenom:importRecap(fn)||null, nom:importRecap(ln)||null };
+}
+function importStoreTel(raw){ // FR -> +33XXXXXXXXX ; international -> garde l'indicatif ; jamais corrompre
+  const s=String(raw==null?'':raw).trim(); const plus=s.replace(/[^\d+]/g,''); const d=importDigits(s);
+  if(!d) return '';
+  if(plus.indexOf('+33')===0 || d.indexOf('0033')===0) return '+33'+d.slice(-9);
+  if(d.charAt(0)==='0' && d.length===10) return '+33'+d.slice(1);
+  if(plus.charAt(0)==='+') return '+'+d;
+  if(d.length===9) return '+33'+d;
+  return '+'+d;
+}
+// parser CSV robuste : délimiteur , ou ; ; guillemets doublés ; CRLF/LF ; BOM
+function importParseCSV(text){
+  text=String(text||'').replace(/^﻿/,'');
+  const nl=text.indexOf('\n'); const first=nl>=0?text.slice(0,nl):text;
+  const delim=(first.split(';').length > first.split(',').length)?';':',';
+  const out=[]; let cur=[], f='', i=0, q=false;
+  const pf=()=>{ cur.push(f); f=''; }; const pr=()=>{ pf(); if(cur.length>1 || cur[0]!=='') out.push(cur); cur=[]; };
+  while(i<text.length){ const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){ f+='"'; i+=2; continue; } q=false; i++; continue; } f+=c; i++; continue; }
+    if(c==='"'){ q=true; i++; continue; }
+    if(c===delim){ pf(); i++; continue; }
+    if(c==='\r'){ i++; continue; }
+    if(c==='\n'){ pr(); i++; continue; }
+    f+=c; i++;
+  }
+  if(f!=='' || cur.length) pr();
+  if(!out.length) return { headers:[], rows:[], delim };
+  const headers=out[0].map(h=>String(h).trim());
+  const rows=out.slice(1).map(r=>{ const o={}; headers.forEach((h,j)=>{ o[h]=(r[j]!=null?String(r[j]).trim():''); }); return o; });
+  return { headers, rows, delim };
+}
+const IMPORT_PRESETS=[
+  { key:'luma', label:'Luma (webinaire)', sig:['email','phone_number','first_name','last_name','name','has_joined_event','utm_source','created_at'],
+    map:{ email:'email', telephone:'phone_number', prenom:'first_name', nom:'last_name', name:'name', engagement:'has_joined_event', attribution:'utm_source' },
+    params:{ source:'webinaire', engagementOn:true, attributionOn:true, defaultEngagement:'participe' } },
+  { key:'hubspot', label:'Export HubSpot', sig:['email','first name','last name','phone number'],
+    map:{ email:'Email', telephone:'Phone Number', prenom:'First Name', nom:'Last Name' },
+    params:{ source:'lead_gen', engagementOn:false, attributionOn:false } },
+];
+function importGuess(headers){
+  const low=headers.map(h=>h.toLowerCase());
+  let best=null, bestScore=0;
+  IMPORT_PRESETS.forEach(p=>{ const s=p.sig.filter(x=>low.includes(x)).length/p.sig.length; if(s>bestScore){ bestScore=s; best=p; } });
+  if(best && bestScore>=0.6){
+    const find=(w)=>headers.find(h=>h.toLowerCase()===String(w).toLowerCase())||null;
+    const m={}; Object.keys(best.map).forEach(k=>{ m[k]=find(best.map[k]); });
+    return { preset:best.key, presetLabel:best.label, map:m, params:Object.assign({},best.params) };
+  }
+  const syn={ email:['email','e-mail','mail','courriel'], telephone:['phone','téléphone','telephone','tel','mobile','phone number','numéro','numero'],
+    prenom:['first name','prénom','prenom','firstname','first'], nom:['last name','nom','lastname','last','surname'], name:['name','nom complet','full name'] };
+  const m={}; Object.keys(syn).forEach(k=>{ const h=headers.find(x=>syn[k].indexOf(x.toLowerCase())>=0); if(h) m[k]=h; });
+  return { preset:'generic', presetLabel:'Générique', map:m, params:{ source:'manuel', engagementOn:false, attributionOn:false } };
+}
+// dry-run : normalisation -> union-find intra-CSV -> match CRM -> buckets. Aucune écriture.
+function importDryRun(parsed, map, params, crmIdx){
+  const rows=parsed.rows;
+  const norm=rows.map((row,idx)=>{
+    const nm=importParseName(row,map);
+    const email=(map.email?row[map.email]:'')||''; const tel=(map.telephone?row[map.telephone]:'')||'';
+    let eng=null;
+    if(params.source==='webinaire' && params.engagementOn){
+      const v=String((map.engagement?row[map.engagement]:'')||'').trim().toLowerCase();
+      eng = (v==='yes'||v==='true'||v==='1'||v==='oui')?'participe' : (v==='no'||v==='false'||v==='0'||v==='non')?'inscrit' : (params.defaultEngagement||null);
+    }
+    const angle=String((params.attributionOn && map.attribution?row[map.attribution]:'')||'').trim();
+    return { idx, line_no:idx+2, row, prenom:nm.prenom, nom:nm.nom, email:email.trim(), tel:tel.trim(),
+             ecanon:importEmailCanon(email), ph9:importPhone9(tel), eng, angle, nomKey:deburr(nm.nom||'') };
+  });
+  // union-find (email canon OU tél9 non-sentinelle, avec garde nom pour le tél)
+  const par=norm.map((_,i)=>i);
+  const find=(x)=>{ while(par[x]!==x){ par[x]=par[par[x]]; x=par[x]; } return x; };
+  const uni=(a,b)=>{ par[find(a)]=find(b); };
+  const bE={}, bP={};
+  norm.forEach(n=>{
+    if(n.ecanon){ if(bE[n.ecanon]!=null) uni(n.idx,bE[n.ecanon]); else bE[n.ecanon]=n.idx; }
+    if(n.ph9){ if(bP[n.ph9]!=null){ const o=norm[bP[n.ph9]]; if(!n.nomKey||!o.nomKey||n.nomKey===o.nomKey||n.nomKey.indexOf(o.nomKey)>=0||o.nomKey.indexOf(n.nomKey)>=0) uni(n.idx,bP[n.ph9]); } else bP[n.ph9]=n.idx; }
+  });
+  const grp={}; norm.forEach(n=>{ const r=find(n.idx); (grp[r]=grp[r]||[]).push(n); });
+  const rank={participe:2, inscrit:1};
+  const cands=Object.keys(grp).map(k=>{ const g=grp[k];
+    const base=g.reduce((a,b)=>((b.nom||'').length>(a.nom||'').length?b:a), g[0]);
+    let eng=null; g.forEach(x=>{ if((rank[x.eng]||0)>(rank[eng]||0)) eng=x.eng; });
+    const angles=[]; g.forEach(x=>{ if(x.angle && angles.indexOf(x.angle)<0) angles.push(x.angle); });
+    return Object.assign({}, base, { eng, angles, groupSize:g.length, lines:g.map(x=>x.line_no) });
+  });
+  const items=cands.map(c=>{
+    let match=null, via=null;
+    if(c.ecanon && crmIdx.byEmail[c.ecanon]){ match=crmIdx.byEmail[c.ecanon]; via='email'; }
+    else if(c.ph9 && crmIdx.byPhone[c.ph9] && crmIdx.byPhone[c.ph9].length){ match=crmIdx.byPhone[c.ph9][0]; via='phone'; }
+    let bucket, action, ambiguous=false, confirmTel=false, conflict=null, engTo=null, hot=false;
+    if(!match){ bucket='nouveau'; action='create'; }
+    else if(match.deleted_at){ bucket='revive'; action='revive'; }
+    else if(via==='email'){ bucket='existant'; action='enrich'; }
+    else { const mk=deburr(match.nom||'');
+      if(mk && c.nomKey && mk!==c.nomKey && mk.indexOf(c.nomKey)<0 && c.nomKey.indexOf(mk)<0){ bucket='ambigu'; action='create'; ambiguous=true; }
+      else { bucket='existant'; action='enrich'; confirmTel=!(mk&&c.nomKey); }
+    }
+    if(match && !match.deleted_at){
+      if(c.email && match.email && c.email.toLowerCase()!==String(match.email).toLowerCase()) conflict={ csv:c.email, crm:match.email };
+      if(match.source==='webinaire' && c.eng==='participe' && String(match.webi_engagement||'')!=='participe') engTo='participe';
+      hot = match.source==='calendiq' && match.colonne==='rdv1';
+    }
+    return { cand:c, match, via, bucket, action, ambiguous, confirmTel, conflict, engTo, hot };
+  });
+  return items;
+}
+
+function ImportScreen({ toast, onOpenLead, setSyncBusy, reloadLeads, closers }){
+  const [step,setStep]=React.useState(0);
+  const [parsed,setParsed]=React.useState(null);
+  const [map,setMap]=React.useState({});
+  const [presetLabel,setPresetLabel]=React.useState('');
+  const todayISO=new Date().toISOString().slice(0,10);
+  const [params,setParams]=React.useState({ source:'webinaire', engagementOn:true, attributionOn:true, defaultEngagement:'participe', owner:'', cockpit:'vivant', eventDate:todayISO });
+  const [crmIdx,setCrmIdx]=React.useState(null);
+  const [items,setItems]=React.useState(null);
+  const [decisions,setDecisions]=React.useState({});
+  const [tab,setTab]=React.useState('nouveau');
+  const [busy,setBusy]=React.useState(false);
+  const [report,setReport]=React.useState(null);
+  const [history,setHistory]=React.useState([]);
+  const fileRef=React.useRef(null);
+
+  const loadHistory=React.useCallback(()=>{ SB.from('import_batches').select('*').order('created_at',{ascending:false}).limit(20).then(({data})=>setHistory(data||[])); },[]);
+  React.useEffect(loadHistory,[loadHistory]);
+
+  const buildIdx=React.useCallback(async()=>{
+    const { data } = await SB.from('leads').select('id,prenom,nom,email,telephone,source,colonne,webi_engagement,deleted_at,hubspot_deal_id,owner_closer_id');
+    const byEmail={}, byPhone={};
+    (data||[]).forEach(l=>{ const ec=importEmailCanon(l.email); if(ec && !(byEmail[ec] && !byEmail[ec].deleted_at)) byEmail[ec]=l;
+      const p9=importPhone9(l.telephone); if(p9){ (byPhone[p9]=byPhone[p9]||[]).push(l); } });
+    // préférer un actif comme 1er candidat tél
+    Object.keys(byPhone).forEach(k=>byPhone[k].sort((a,b)=>(a.deleted_at?1:0)-(b.deleted_at?1:0)));
+    return { byEmail, byPhone, count:(data||[]).length };
+  },[]);
+
+  const onFile=(f)=>{ if(!f) return; const rd=new FileReader();
+    rd.onload=e=>{ const text=String(e.target.result||''); const pr=importParseCSV(text);
+      let h=5381; for(let i=0;i<text.length;i++){ h=((h<<5)+h+text.charCodeAt(i))>>>0; }
+      if(!pr.rows.length){ toast('Fichier vide','Aucune ligne de données détectée','info'); return; }
+      const dupH={}; let dupHead=false; pr.headers.forEach(x=>{ if(dupH[x]) dupHead=true; dupH[x]=1; });
+      const g=importGuess(pr.headers);
+      if(!g.map.email && !g.map.telephone && !g.map.name && !g.map.prenom){ toast('Colonnes non reconnues','Aucune colonne email / tél / nom trouvée — mappe à la main','info'); }
+      setParsed(Object.assign({}, pr, { fileName:f.name, fileHash:String(h), dupHead }));
+      setMap(g.map); setPresetLabel(g.presetLabel);
+      setParams(p=>Object.assign({}, p, g.params.source?{source:g.params.source}:{}, {
+        engagementOn: g.params.engagementOn!=null?g.params.engagementOn:p.engagementOn,
+        attributionOn: g.params.attributionOn!=null?g.params.attributionOn:p.attributionOn,
+        defaultEngagement: g.params.defaultEngagement||p.defaultEngagement }));
+      setStep(2);
+    };
+    rd.readAsText(f,'utf-8'); };
+
+  const runDry=async()=>{ setBusy(true); try{ const idx=await buildIdx(); setCrmIdx(idx); const it=importDryRun(parsed,map,params,idx); setItems(it); setDecisions({});
+      const first=['nouveau','ambigu','existant','revive'].find(b=>it.some(x=>x.bucket===b))||'nouveau'; setTab(first); setStep(4);
+    }catch(e){ toast('Analyse impossible', e.message||String(e),'info'); } finally{ setBusy(false); } };
+
+  const counts=React.useMemo(()=>{ const c={nouveau:0,existant:0,ambigu:0,revive:0,conflit:0,upgrade:0}; (items||[]).forEach(it=>{ c[it.bucket]=(c[it.bucket]||0)+1; if(it.conflict) c.conflit++; if(it.engTo) c.upgrade++; }); return c; },[items]);
+
+  const importRef=React.useMemo(()=> parsed?`imp:${params.source}:${params.eventDate||'nd'}:${String(parsed.fileHash||'').slice(0,8)}`:'', [parsed,params.source,params.eventDate]);
+
+  const commit=async()=>{
+    const nCreate=(items||[]).filter(it=>{ const d=decisions[it.cand.line_no]; const a=(d&&d.action)||it.action; return a==='create'; }).length;
+    if(nCreate>25 && !window.confirm(`Créer ${nCreate} nouveaux leads dans le CRM ?\n(rien n'est écrit dans HubSpot)`)) return;
+    setBusy(true); if(setSyncBusy) setSyncBusy(true);
+    try{
+      const rows=(items||[]).map(it=>{ const c=it.cand; const d=decisions[c.line_no]||{}; let action=d.action||it.action; let lead_id=it.match?it.match.id:null;
+        if(action==='create') lead_id=null; if(action==='merge') lead_id=d.lead_id||(it.match&&it.match.id)||null;
+        const note=(params.attributionOn && c.angles.length)?`Angle d'acquisition : ${c.angles.join(', ')}. Import ${presetLabel||'CSV'} ${params.eventDate||''}. · ref:${importRef}`:'';
+        const noteTitre=params.source==='webinaire'?`Webinaire ${params.eventDate||''} — ${c.eng||'participé'}`:`Import CSV ${params.eventDate||''}`;
+        const tel=importStoreTel(c.tel);
+        return { line_no:c.line_no, action, lead_id,
+          raw:c.row, normalized:{ email:c.email, phone9:c.ph9, prenom:c.prenom, nom:c.nom },
+          fields: action==='create'?{ prenom:c.prenom||'', nom:c.nom||'', email:c.email||'', telephone:tel, source:params.source, webi_engagement:params.source==='webinaire'?(c.eng||''):'', colonne:'contacter', date_creation:params.eventDate||todayISO, cockpit_state:(params.cockpit==='auto'?'':(params.cockpit||'vivant')), owner_closer_id:params.owner||'' }:null,
+          enrich:(action==='enrich'||action==='revive'||action==='merge')?{ engagement_to:it.engTo||'', fill:{ prenom:c.prenom||'', nom:c.nom||'', email:c.email||'', telephone:tel } }:null,
+          note, note_titre:noteTitre, bucket:it.bucket, idem_key:`${importRef}:${c.ecanon||c.ph9||c.line_no}` };
+      });
+      const payload={ file_name:parsed.fileName, file_hash:parsed.fileHash, row_count:parsed.rows.length, event_date:params.eventDate||null, import_ref:importRef, mapping:map, params, rows };
+      const { data, error }=await SB.rpc('import_commit',{ p:payload });
+      if(error) throw error;
+      setReport(data); setStep(5); loadHistory();
+    }catch(e){ toast('Import échoué', e.message||String(e),'info'); }
+    finally{ setBusy(false); if(setSyncBusy) setSyncBusy(false); }
+  };
+
+  const undo=async(b)=>{ if(!window.confirm(`Annuler l'import « ${b.source_file_name||b.id.slice(0,8)} » ?\nLes leads créés seront retirés (sauf ceux déjà envoyés à HubSpot).`)) return;
+    try{ const { data, error }=await SB.rpc('import_undo',{ p_batch:b.id }); if(error) throw error;
+      const d=data||{}; toast('Import annulé', `${d.soft_deleted||0} retiré(s)${d.kept_pushed?` · ${d.kept_pushed} gardé(s) (déjà HubSpot)`:''}`,'ok'); loadHistory(); if(reloadLeads) reloadLeads();
+    }catch(e){ toast('Annulation impossible', e.message||String(e),'info'); } };
+
+  const closerName=(id)=>{ const c=(closers||[]).find(x=>x.id===id); return c?c.name:'—'; };
+  const setDec=(ln,d)=>setDecisions(p=>Object.assign({},p,{[ln]:Object.assign({},p[ln],d)}));
+
+  // ---------- rendu ----------
+  const STEPS=['Fichier','Colonnes','Réglages','Aperçu','Rapport'];
+  const head=(t,s)=>(<div className="screen-title"><h1>{t}</h1><p>{s}</p></div>);
+
+  if(step===0) return (
+    <div className="mgr-pad">
+      <div className="screen-head">{head('Import CSV','Importer une liste de leads (webinaire, export) — dédupliquée, prête pour la synchro HubSpot.')}
+        <button className="btn btn-accent" onClick={()=>{ setParsed(null); setItems(null); setReport(null); setStep(1); }}>{I.plus({style:{width:15,height:15}})} Nouvel import</button></div>
+      <div className="mgr-sec"><span className="eyebrow">Historique des imports</span><span className="mgr-count">{history.length}</span></div>
+      <div className="lb-list"><div className="lb-card"><div className="lb-body" style={{borderTop:'none'}}>
+        {history.length===0 ? <div className="lb-empty">Aucun import pour l’instant.</div>
+          : history.map(b=>{ const c=b.counts||{}; const un=b.status==='undone';
+            return (<div key={b.id} className="cl-lead" style={{cursor:'default',opacity:un?.55:1}}>
+              <span style={{flex:1,fontWeight:600}}>{b.source_file_name||'import'}<em style={{color:'var(--t3)',fontWeight:500}}> · {String(b.created_at||'').slice(0,10)}</em></span>
+              <span className="imp-badge ok">{c.created||0} créés</span>
+              {c.enriched?<span className="imp-badge">{c.enriched} enrichis</span>:null}
+              {c.errors?<span className="imp-badge warn">{c.errors} err.</span>:null}
+              {un ? <span className="role-badge">Annulé</span>
+                  : <button className="rr-ico" title="Annuler cet import" onClick={()=>undo(b)}>{I.trash({})}</button>}
+            </div>); })}
+      </div></div></div>
+    </div>
+  );
+
+  if(step===1) return (
+    <div className="mgr-pad">
+      <div className="screen-head">{head('Import CSV — Fichier','Étape 1/4 · dépose ton export CSV (Luma, HubSpot…)')}</div>
+      <div className="imp-drop" onClick={()=>fileRef.current&&fileRef.current.click()}
+        onDragOver={e=>{e.preventDefault();}} onDrop={e=>{ e.preventDefault(); if(e.dataTransfer.files[0]) onFile(e.dataTransfer.files[0]); }}>
+        <input ref={fileRef} type="file" accept=".csv,text/csv" style={{display:'none'}} onChange={e=>onFile(e.target.files[0])}/>
+        {I.admission({style:{width:34,height:34,opacity:.5}})}
+        <div style={{fontWeight:700,marginTop:10}}>Dépose ton fichier CSV ici</div>
+        <div style={{color:'var(--t3)',fontSize:13,marginTop:4}}>ou clique pour choisir · séparateur , ou ; détecté automatiquement</div>
+      </div>
+      <div className="m-fixfoot"><button className="btn btn-ghost" onClick={()=>setStep(0)}>← Retour</button></div>
+    </div>
+  );
+
+  if(step===2){ const CRM_FIELDS=[['email','Email'],['telephone','Téléphone'],['prenom','Prénom'],['nom','Nom'],['name','Nom complet (fallback)'],['engagement','Participation (Yes/No)'],['attribution','Angle / source pub']];
+    const okId = map.email||map.telephone||map.name||map.prenom;
+    return (
+      <div className="mgr-pad">
+        <div className="screen-head">{head('Import CSV — Colonnes',`Étape 2/4 · ${parsed?parsed.rows.length:0} lignes · format : ${presetLabel}`)}</div>
+        {parsed&&parsed.dupHead?<div className="sync-banner">⚠️ En-têtes en double dans le fichier — vérifie le mapping.</div>:null}
+        <div className="lb-list"><div className="lb-card"><div className="lb-body" style={{borderTop:'none'}}>
+          {CRM_FIELDS.map(([k,lbl])=>(
+            <div key={k} className="imp-maprow">
+              <span className="imp-maplbl">{lbl}</span>
+              <select className="rr-sel" value={map[k]||''} onChange={e=>setMap(m=>Object.assign({},m,{[k]:e.target.value||null}))}>
+                <option value="">— ignorer —</option>
+                {parsed.headers.map(h=><option key={h} value={h}>{h}</option>)}
+              </select>
+              <span className="imp-sample">{map[k]&&parsed.rows[0]?String(parsed.rows[0][map[k]]||'').slice(0,28):''}</span>
+            </div>
+          ))}
+        </div></div></div>
+        {!okId?<div className="sync-banner">Mappe au moins Email, Téléphone ou Nom pour continuer.</div>:null}
+        <div className="m-fixfoot"><button className="btn btn-ghost" onClick={()=>setStep(1)}>← Retour</button>
+          <button className="btn btn-accent" disabled={!okId} onClick={()=>setStep(3)}>Continuer →</button></div>
+      </div>
+    );
+  }
+
+  if(step===3){ const oldWebi = params.eventDate && ((Date.now()-new Date(params.eventDate).getTime())/86400000)>21;
+    return (
+    <div className="mgr-pad">
+      <div className="screen-head">{head('Import CSV — Réglages','Étape 3/4 · comment créer les fiches')}</div>
+      <div className="lb-list"><div className="lb-card"><div className="lb-body" style={{borderTop:'none'}}>
+        <div className="imp-set"><span className="imp-setk">Canal (source)</span>
+          <select className="rr-sel" value={params.source} onChange={e=>setParams(p=>Object.assign({},p,{source:e.target.value}))}>
+            {['webinaire','lead_gen','mff','perso','reference','manuel'].map(s=><option key={s} value={s}>{s}</option>)}
+          </select></div>
+        {params.source==='webinaire'&&(<>
+          <div className="imp-set"><span className="imp-setk">Engagement</span>
+            <label className="imp-tog"><input type="checkbox" checked={params.engagementOn} onChange={e=>setParams(p=>Object.assign({},p,{engagementOn:e.target.checked}))}/> depuis la colonne « {map.engagement||'—'} » (Yes→participé / No→inscrit)</label></div>
+          <div className="imp-set"><span className="imp-setk">Par défaut si absent</span>
+            <select className="rr-sel" value={params.defaultEngagement||''} onChange={e=>setParams(p=>Object.assign({},p,{defaultEngagement:e.target.value||null}))}>
+              <option value="participe">Participé</option><option value="inscrit">Inscrit</option><option value="">— aucun —</option></select></div>
+          <div className="imp-set"><span className="imp-setk">Attribution (angle)</span>
+            <label className="imp-tog"><input type="checkbox" checked={params.attributionOn} onChange={e=>setParams(p=>Object.assign({},p,{attributionOn:e.target.checked}))}/> noter l’angle depuis « {map.attribution||'—'} »</label></div>
+        </>)}
+        <div className="imp-set"><span className="imp-setk">Date de création</span>
+          <input type="date" className="rr-sel" value={params.eventDate} onChange={e=>setParams(p=>Object.assign({},p,{eventDate:e.target.value}))}/></div>
+        {oldWebi?<div className="sync-banner" style={{marginTop:0}}>⚠️ Date &gt; 21 jours : « Vivant » forcerait de vieux leads dans le cockpit. Choisis « Auto » si c’est un vieux backfill.</div>:null}
+        <div className="imp-set"><span className="imp-setk">Attribution closer</span>
+          <select className="rr-sel" value={params.owner} onChange={e=>setParams(p=>Object.assign({},p,{owner:e.target.value}))}>
+            <option value="">Pool (non assigné)</option>{(closers||[]).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+        <div className="imp-set"><span className="imp-setk">État cockpit</span>
+          <select className="rr-sel" value={params.cockpit} onChange={e=>setParams(p=>Object.assign({},p,{cockpit:e.target.value}))}>
+            <option value="vivant">Vivant</option><option value="auto">Auto (selon l’âge)</option></select></div>
+      </div></div></div>
+      <div className="m-fixfoot"><button className="btn btn-ghost" onClick={()=>setStep(2)}>← Retour</button>
+        <button className="btn btn-accent" disabled={busy} onClick={runDry}>{busy?'Analyse…':'Analyser (aperçu) →'}</button></div>
+    </div>
+    );
+  }
+
+  if(step===4){ const list=(items||[]).filter(it=>it.bucket===tab);
+    const TABS=[['nouveau','Nouveaux'],['existant','À enrichir'],['ambigu','Ambigus'],['revive','Corbeille']];
+    const nCreate=(items||[]).filter(it=>{ const d=decisions[it.cand.line_no]; const a=(d&&d.action)||it.action; return a==='create'; }).length;
+    return (
+      <div className="mgr-pad">
+        <div className="screen-head">{head('Import CSV — Aperçu','Étape 4/4 · rien n’est écrit avant ton clic « Importer »')}</div>
+        <div className="rc-kpis">
+          <div className="imp-kpi"><b>{counts.nouveau}</b><span>Nouveaux</span></div>
+          <div className="imp-kpi"><b>{counts.existant}</b><span>À enrichir</span></div>
+          <div className="imp-kpi"><b>{counts.upgrade}</b><span>Upgrade participé</span></div>
+          <div className={'imp-kpi'+(counts.ambigu?' warn':'')}><b>{counts.ambigu}</b><span>Ambigus</span></div>
+          <div className="imp-kpi"><b>{counts.revive}</b><span>Corbeille</span></div>
+          {counts.conflit?<div className="imp-kpi warn"><b>{counts.conflit}</b><span>Conflits email</span></div>:null}
+        </div>
+        <div className="sync-tabs">{TABS.map(([k,l])=><button key={k} className={'imp-tab'+(tab===k?' on':'')+(k==='ambigu'&&counts.ambigu?' warn':'')} onClick={()=>setTab(k)}>{l} {counts[k]||0}</button>)}</div>
+        <div className="lb-list"><div className="lb-card"><div className="lb-body" style={{borderTop:'none'}}>
+          {list.length===0?<div className="lb-empty">Aucune ligne dans ce bucket.</div>:list.map((it,i)=>{ const c=it.cand; const d=decisions[c.line_no]||{}; const act=d.action||it.action;
+            return (<div key={i} className="imp-row">
+              <div className="imp-rowmain">
+                <span className="imp-rowname">{(c.prenom||'')+' '+(c.nom||'')||'(sans nom)'}</span>
+                <span className="imp-rowmeta">{c.email||'—'}{c.tel?' · '+fmtPhone(importStoreTel(c.tel)):''}{c.groupSize>1?' · '+c.groupSize+' lignes fusionnées':''}</span>
+              </div>
+              <div className="imp-rowtags">
+                {it.hot?<span className="imp-badge hot">🔒 chaud (RDV)</span>:null}
+                {it.engTo?<span className="imp-badge ok">↑ participé</span>:null}
+                {it.confirmTel?<span className="imp-badge">tél non confirmé</span>:null}
+                {it.conflict?<span className="imp-badge warn" title={'CRM: '+it.conflict.crm}>email ≠</span>:null}
+                {it.match?<button className="imp-link" onClick={()=>onOpenLead&&onOpenLead(it.match.id)}>fiche existante ↗</button>:null}
+                {(it.bucket==='ambigu'||it.bucket==='revive')?(
+                  <select className="rr-sel imp-decsel" value={act} onChange={e=>setDec(c.line_no,{action:e.target.value})}>
+                    {it.bucket==='ambigu'?<option value="create">Créer nouveau</option>:null}
+                    {it.match?<option value="merge">{it.bucket==='revive'?'Restaurer':'Fusionner vers '+(it.match.prenom||'')+' '+(it.match.nom||'')}</option>:null}
+                    {it.bucket==='revive'?<option value="revive">Restaurer la fiche</option>:null}
+                    <option value="skip">Ignorer</option>
+                  </select>
+                ):null}
+              </div>
+            </div>); })}
+        </div></div></div>
+        <div className="m-fixfoot"><button className="btn btn-ghost" onClick={()=>setStep(3)}>← Retour</button>
+          <button className="btn btn-accent" disabled={busy} onClick={commit}>{busy?'Import…':`Importer (${nCreate} créés · ${counts.existant} enrichis)`}</button></div>
+      </div>
+    );
+  }
+
+  // step 5 — rapport
+  const r=report||{};
+  return (
+    <div className="mgr-pad">
+      <div className="screen-head">{head('Import CSV — Terminé','')}</div>
+      <div className="sync-ok" style={{marginBottom:14}}>✓ {r.created||0} créés · {r.enriched||0} enrichis{r.revived?` · ${r.revived} restaurés`:''}{r.skipped?` · ${r.skipped} ignorés`:''}{r.errors?` · ${r.errors} erreurs`:''}</div>
+      <div className="lb-empty" style={{marginBottom:14}}>Les {r.created||0} nouveaux (sans deal HubSpot) apparaissent dans <b>Synchro HubSpot → À créer</b>. Le push reste ton clic.</div>
+      <div className="m-fixfoot">
+        <button className="btn btn-ghost" onClick={()=>{ setStep(0); setReport(null); setItems(null); setParsed(null); }}>Fermer</button>
+        <button className="btn btn-accent" onClick={()=>{ if(reloadLeads) reloadLeads(); setStep(0); setReport(null); setItems(null); setParsed(null); }}>Voir les leads</button>
+      </div>
+    </div>
+  );
 }
 
 function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
