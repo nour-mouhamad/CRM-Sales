@@ -862,6 +862,15 @@ input,textarea{font-family:inherit; color:inherit}
 .cl-del-confirm:disabled{opacity:.6; cursor:default}
 .role-badge{font-size:10.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; padding:3px 9px; border-radius:20px; background:var(--surface-3); color:var(--t2); flex:none}
 .role-badge.admin{background:var(--accent-tint); color:var(--accent)}
+.rr-count{font-size:11.5px; font-weight:700; color:var(--t3); background:var(--surface-3); padding:2px 9px; border-radius:20px; flex:none}
+.rr-btn{padding:5px 11px !important; font-size:12px !important}
+.rr-ico{display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border:none; background:none; color:var(--t3); border-radius:8px; cursor:pointer; flex:none; transition:all var(--speed)}
+.rr-ico svg{width:15px; height:15px}
+.rr-ico:hover{color:var(--danger); background:var(--danger-tint)}
+.rr-panel{display:flex; flex-direction:column; gap:9px; padding:2px 10px 12px 10px}
+.rr-panel-t{font-size:12.5px; color:var(--t2); line-height:1.5}
+.rr-panel-row{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.rr-sel{background:var(--surface-2); color:var(--t1); border:1px solid var(--b1); border-radius:8px; padding:7px 10px; font-size:12.5px; font-weight:600; cursor:pointer; min-width:180px}
 .cl-lead{display:flex; align-items:center; gap:10px; row-gap:4px; flex-wrap:wrap; width:100%; text-align:left; padding:9px 34px 9px 10px; border-radius:9px; cursor:pointer; position:relative; transition:background var(--speed) var(--ease)}
 .cl-lead:hover{background:var(--surface)}
 .cl-lead-wrap{display:flex; align-items:center; gap:6px}
@@ -3586,6 +3595,7 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
       {showOwnerTools && selecting && (
         <div className="bulkbar">
           <span className="bulkbar-n">{selectedIds.size} sélectionné{selectedIds.size>1?'s':''}</span>
+          <button className="btn btn-ghost" disabled={!visible.length||selectedIds.size===visible.length} onClick={()=>setSelectedIds(new Set(visible.map(l=>l.id)))}>Tout sélectionner ({visible.length})</button>
           <button className="btn btn-accent" disabled={!selectedIds.size} onClick={e=>setBulkMenu({x:e.clientX,y:e.clientY})}>Assigner à…</button>
           <button className="btn btn-ghost" disabled={!selectedIds.size} onClick={clearSel}>Désélectionner</button>
           <button className="btn btn-ghost" onClick={exitSel}>Quitter</button>
@@ -6519,6 +6529,58 @@ function cockpitBucket(l, s){
     || (s.staleDays>=0 && s.staleDays<21);           // activité < 21 j
   return autoVivant ? 'vivant' : 'sommeil';
 }
+// Ligne « Accès & rôles » : rôle (admin/closer) + transfert du portefeuille + suppression d'accès (avec réattribution).
+// Top-level (état local mode/dest préservé malgré les re-renders 60s de TeamScreen).
+function RoleRow({ p, isMe, count, dests, onSetRole, onTransfer, onDelete }){
+  const [mode,setMode]=React.useState(null); // null | 'transfer' | 'delete'
+  const [dest,setDest]=React.useState('');   // id destinataire ('' = aucun / libérer)
+  const [busy,setBusy]=React.useState(false);
+  const isAdmin=p.role==='admin';
+  const canTransfer = !isMe && !isAdmin && count>0 && dests.length>0;
+  const canDelete = !isMe && !isAdmin;
+  const close=()=>{ setMode(null); setDest(''); };
+  const doTransfer=async()=>{ if(!dest) return; setBusy(true); try{ await onTransfer(p.id,dest,p.name); close(); }catch(e){}finally{ setBusy(false); } };
+  const doDelete=async()=>{ setBusy(true); try{ await onDelete(p.id,p.name,dest||null); close(); }catch(e){}finally{ setBusy(false); } };
+  return (
+    <div className="rr">
+      <div className="cl-lead" style={{cursor:'default'}}>
+        <span style={{flex:1,fontWeight:600}}>{p.name||'—'}{isMe && <em style={{color:'var(--t3)',fontWeight:500}}> (toi)</em>}</span>
+        {!isAdmin && count>0 && <span className="rr-count">{count} lead{count>1?'s':''}</span>}
+        <span className={'role-badge'+(isAdmin?' admin':'')}>{isAdmin?'Admin':'Closer'}</span>
+        {!isMe && <button className="btn btn-soft rr-btn" onClick={()=>onSetRole(p.id, isAdmin?'closer':'admin', p.name)}>{isAdmin?'Repasser closer':'Passer admin'}</button>}
+        {canTransfer && <button className={'btn btn-soft rr-btn'+(mode==='transfer'?' on':'')} onClick={()=>{ setMode(m=>m==='transfer'?null:'transfer'); setDest(''); }}>Transférer {count} →</button>}
+        {canDelete && <button className="rr-ico" title="Supprimer l’accès" onClick={()=>{ setMode(m=>m==='delete'?null:'delete'); setDest(''); }}>{I.trash({})}</button>}
+      </div>
+      {mode==='transfer' && (
+        <div className="rr-panel">
+          <span className="rr-panel-t">Déplacer les <b>{count} lead{count>1?'s':''}</b> de {p.name} vers :</span>
+          <div className="rr-panel-row">
+            <select className="rr-sel" value={dest} onChange={e=>setDest(e.target.value)}>
+              <option value="">Choisir un closer…</option>
+              {dests.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+            <button className="btn btn-ghost rr-btn" disabled={busy} onClick={close}>Annuler</button>
+            <button className="btn btn-accent rr-btn" disabled={busy||!dest} onClick={doTransfer}>{busy?'Transfert…':'Transférer'}</button>
+          </div>
+        </div>
+      )}
+      {mode==='delete' && (
+        <div className="rr-panel">
+          <span className="rr-panel-t cl-del-warn">Révoquer l’accès de <b>{p.name}</b> ? Compte supprimé (email ré-invitable).{count>0?' Ses '+count+' lead'+(count>1?'s':'')+' :':''}</span>
+          <div className="rr-panel-row">
+            {count>0 && dests.length>0 && <select className="rr-sel" value={dest} onChange={e=>setDest(e.target.value)}>
+              <option value="">Libérer (sans closer)</option>
+              {dests.map(d=><option key={d.id} value={d.id}>Réattribuer à {d.name}</option>)}
+            </select>}
+            <button className="btn btn-ghost rr-btn" disabled={busy} onClick={close}>Annuler</button>
+            <button className="cl-del-confirm rr-btn" disabled={busy} onClick={doDelete}>{busy?'Suppression…':(dest?'Supprimer + réattribuer':'Supprimer l’accès')}</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TeamScreen({ userId, toast, leads, onOpenLead, onSetCockpit, cqPending }){
   const [profiles,setProfiles]=useState([]);
   const [invites,setInvites]=useState([]);
@@ -6542,13 +6604,26 @@ function TeamScreen({ userId, toast, leads, onOpenLead, onSetCockpit, cqPending 
     toast(role==='admin'?'Passé admin':'Repassé closer',(nm||'')+' — accès mis à jour','ok'); load();
   }catch(e){ toast('Changement impossible', e.message, 'info'); } };
   const copy=t=>{ try{ navigator.clipboard.writeText(linkFor(t)); toast('Lien copié',null,'ok'); }catch(e){} };
-  const delCloser=async(closerId,nm)=>{
+  // nb de leads possédés par membre (owner) — pilote « Transférer N » et le libellé de la suppression
+  const bookCount = React.useMemo(()=>{ const m={}; (leads||[]).forEach(l=>{ if(l.owner) m[l.owner]=(m[l.owner]||0)+1; }); return m; },[leads]);
+  // TRANSFERT de portefeuille : tous les leads de fromId -> toId (atomique côté edge). 0 écriture HubSpot.
+  const reassignBook=async(fromId,toId,fromName)=>{
     try{
-      const r=await callFn('admin-closer',{action:'delete_closer',closerId});
-      const n=r.unassigned||0;
-      toast('Closer supprimé', (nm||'')+' — accès révoqué'+(n?(' · '+n+' lead'+(n>1?'s':'')+' libéré'+(n>1?'s':'')):''), 'ok');
+      const r=await callFn('admin-closer',{action:'reassign_leads',fromCloserId:fromId,toCloserId:toId});
+      const n=r.moved||0;
+      toast('Portefeuille transféré', (fromName||'')+' → '+(r.to||'')+' · '+n+' lead'+(n>1?'s':''), 'ok');
       load();
-    }catch(e){ toast('Suppression impossible', e.message, 'info'); throw e; } // rethrow -> CloserCard réinitialise
+    }catch(e){ toast('Transfert impossible', e.message, 'info'); throw e; }
+  };
+  const delCloser=async(closerId,nm,reassignTo)=>{
+    try{
+      const r=await callFn('admin-closer', reassignTo ? {action:'delete_closer',closerId,reassignTo} : {action:'delete_closer',closerId});
+      const moved=r.reassigned||0, freed=r.unassigned||0;
+      const detail = moved ? (' · '+moved+' lead'+(moved>1?'s':'')+' → '+(r.reassignedTo||'closer'))
+                   : (freed ? (' · '+freed+' lead'+(freed>1?'s':'')+' libéré'+(freed>1?'s':'')) : '');
+      toast('Closer supprimé', (nm||'')+' — accès révoqué'+detail, 'ok');
+      load();
+    }catch(e){ toast('Suppression impossible', e.message, 'info'); throw e; } // rethrow -> CloserCard/RoleRow réinitialise
   };
   const pending = invites.filter(i=>!i.used_at);
 
@@ -6701,11 +6776,9 @@ function TeamScreen({ userId, toast, leads, onOpenLead, onSetCockpit, cqPending 
         <div className="lb-card"><div className="lb-body" style={{borderTop:'none'}}>
           {profiles.length===0 ? <div className="lb-empty">Aucun membre.</div>
             : profiles.map(p=>(
-              <div key={p.id} className="cl-lead" style={{cursor:'default'}}>
-                <span style={{flex:1,fontWeight:600}}>{p.name||'—'}{p.id===userId && <em style={{color:'var(--t3)',fontWeight:500}}> (toi)</em>}</span>
-                <span className={'role-badge'+(p.role==='admin'?' admin':'')}>{p.role==='admin'?'Admin':'Closer'}</span>
-                {p.id!==userId && <button className="btn btn-soft" style={{padding:'5px 11px',fontSize:12}} onClick={()=>setMemberRole(p.id, p.role==='admin'?'closer':'admin', p.name)}>{p.role==='admin'?'Repasser closer':'Passer admin'}</button>}
-              </div>
+              <RoleRow key={p.id} p={p} isMe={p.id===userId} count={bookCount[p.id]||0}
+                dests={profiles.filter(x=>x.id!==p.id).map(x=>({id:x.id,name:x.name||'—'}))}
+                onSetRole={setMemberRole} onTransfer={reassignBook} onDelete={delCloser}/>
             ))}
         </div></div>
       </div>
