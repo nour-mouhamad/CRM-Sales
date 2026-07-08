@@ -4828,7 +4828,7 @@ function AFaire({ leads, onOpenLead, onToggleAction, onToggleExtra, onToggleStar
   const [groupBy,setGroupBy]=React.useState('urgence');   // 'urgence' | 'domaine'
   const [panelOpen,setPanelOpen]=React.useState(false);   // panneau Filtres (saison + groupement + échéance)
   const [expanded,setExpanded]=React.useState({});        // leadId -> bool (déplier « +N autres »)
-  const [collapsedSecs,setCollapsedSecs]=React.useState(()=>new Set()); // clés de section REPLIÉES (vide par défaut = tout ouvert)
+  const [collapsedSecs,setCollapsedSecs]=React.useState(()=>new Set(['__suivi','late','today','week','later','none','rdv','appel','argent','suivi','admin'])); // REPLIÉ par défaut : toutes les sections
   const ALL_DUE=['late','today','week','later','none'];
   const ALL_DOM=['rdv','appel','argent','suivi','admin'];
   const [dueFilter,setDueFilter]=React.useState(()=>new Set(ALL_DUE)); // échéances visibles (défaut : toutes)
