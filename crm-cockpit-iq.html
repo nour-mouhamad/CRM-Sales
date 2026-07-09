@@ -1848,6 +1848,64 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .sync-ok{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:50px 20px; color:var(--t3); text-align:center}
 .sync-ok svg{width:34px; height:34px; color:var(--ok)}
 .spin{width:18px; height:18px; border:2.5px solid var(--b1); border-top-color:var(--accent); border-radius:50%; animation:iqspin .7s linear infinite; flex:none}
+/* ----- Setting (file d'appel setter) ----- */
+.set-wrap{padding:22px 26px 40px; max-width:1180px; margin:0 auto}
+.set-top{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px}
+.set-top h1{font-size:20px; font-weight:800; margin:0}
+.set-webisel{display:flex; align-items:center; gap:8px; margin-left:auto}
+.set-webisel select{background:var(--surface-2); border:1px solid var(--b1); color:var(--t1); border-radius:9px; padding:7px 10px; font-size:13px; font-weight:600; cursor:pointer}
+.set-kpis{display:flex; gap:9px; flex-wrap:wrap; margin-bottom:16px}
+.set-kpi{background:var(--surface-2); border:1px solid var(--b1); border-radius:11px; padding:9px 13px; min-width:82px}
+.set-kpi b{display:block; font-size:19px; font-weight:800; line-height:1.1}
+.set-kpi span{font-size:10.5px; font-weight:700; color:var(--t3); text-transform:uppercase; letter-spacing:.03em}
+.set-kpi.hot b{color:var(--accent)} .set-kpi.ok b{color:var(--ok)} .set-kpi.bad b{color:var(--danger)}
+.set-main{display:grid; grid-template-columns:minmax(280px,360px) 1fr; gap:18px; align-items:start}
+.set-file{background:var(--surface-2); border:1px solid var(--b1); border-radius:14px; overflow:hidden}
+.set-filetabs{display:flex; border-bottom:1px solid var(--b1)}
+.set-filetabs button{flex:1; background:none; border:none; color:var(--t3); font-size:12px; font-weight:700; padding:10px 6px; cursor:pointer; border-bottom:2px solid transparent}
+.set-filetabs button.on{color:var(--accent); border-bottom-color:var(--accent)}
+.set-list{max-height:66vh; overflow-y:auto}
+.set-row{display:flex; align-items:center; gap:10px; padding:10px 13px; cursor:pointer; border-bottom:1px solid var(--b1); border-left:3px solid transparent}
+.set-row:hover{background:var(--surface)}
+.set-row.on{background:var(--surface); border-left-color:var(--accent)}
+.set-row-main{flex:1; min-width:0}
+.set-row-main b{display:block; font-size:13.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.set-row-main span{font-size:11.5px; color:var(--t3)}
+.set-row-meta{display:flex; flex-direction:column; align-items:flex-end; gap:3px; flex:none}
+.set-att{font-size:11px; font-weight:700; color:var(--t3); font-variant-numeric:tabular-nums}
+.set-badge{font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.03em; padding:2px 6px; border-radius:6px; background:var(--b1); color:var(--t2)}
+.set-badge.new{background:var(--accent-tint,rgba(255,90,20,.14)); color:var(--accent)}
+.set-badge.enc{background:rgba(120,120,120,.18); color:var(--t2)}
+.set-badge.rap{background:rgba(230,170,20,.18); color:#e0a000}
+.set-empty{padding:34px 18px; text-align:center; color:var(--t3); font-size:13px}
+.set-panel{background:var(--surface-2); border:1px solid var(--b1); border-radius:14px; padding:18px 20px; min-height:60vh; display:flex; flex-direction:column; gap:14px}
+.set-lead-head{display:flex; align-items:center; gap:12px}
+.set-lead-head .set-lh-tx{flex:1; min-width:0}
+.set-lead-head b{font-size:18px; font-weight:800; display:block}
+.set-lead-head .set-tel{font-size:15px; font-weight:700; color:var(--accent); font-variant-numeric:tabular-nums}
+.set-lead-sub{font-size:12px; color:var(--t3); display:flex; gap:8px; flex-wrap:wrap}
+.set-hist{background:var(--surface); border:1px solid var(--b1); border-radius:10px; padding:10px 12px; max-height:130px; overflow-y:auto}
+.set-hist-row{font-size:12px; color:var(--t2); padding:3px 0; border-bottom:1px solid var(--b1)}
+.set-hist-row:last-child{border-bottom:none}
+.set-hist-row .h-when{color:var(--t3); font-size:10.5px; margin-right:6px}
+.set-callbtn{display:flex; align-items:center; justify-content:center; gap:10px; width:100%; padding:16px; border:none; border-radius:12px; background:var(--accent); color:#fff; font-size:16px; font-weight:800; cursor:pointer}
+.set-callbtn:hover{filter:brightness(1.05)} .set-callbtn svg{width:20px;height:20px}
+.set-callbtn:disabled{opacity:.4; cursor:not-allowed}
+.set-note{width:100%; min-height:70px; resize:vertical; background:var(--surface); border:1px solid var(--b1); border-radius:10px; padding:10px 12px; font-size:13.5px; color:var(--t1); font-family:inherit}
+.set-note:focus{outline:none; border-color:var(--accent)}
+.set-dispos-lbl{font-size:10.5px; font-weight:700; color:var(--t3); text-transform:uppercase; letter-spacing:.04em}
+.set-dispos{display:grid; grid-template-columns:repeat(3,1fr); gap:9px}
+.set-dispo{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:12px 6px; border:1px solid var(--b1); border-radius:11px; background:var(--surface); color:var(--t1); font-size:12.5px; font-weight:700; cursor:pointer}
+.set-dispo:hover{border-color:var(--accent)}
+.set-dispo .k{font-size:9.5px; font-weight:800; color:var(--t3)}
+.set-dispo.rdv{border-color:var(--ok); color:var(--ok)} .set-dispo.rdv:hover{background:rgba(40,180,110,.1)}
+.set-dispo.lost:hover,.set-dispo.faux:hover{border-color:var(--danger); color:var(--danger); background:var(--danger-tint)}
+.set-cbpick{display:flex; gap:7px; flex-wrap:wrap; align-items:center}
+.set-cbpick button{background:var(--surface); border:1px solid var(--b1); color:var(--t1); border-radius:8px; padding:7px 11px; font-size:12.5px; font-weight:600; cursor:pointer}
+.set-cbpick button:hover{border-color:var(--accent)}
+.set-cbpick input{background:var(--surface); border:1px solid var(--b1); color:var(--t1); border-radius:8px; padding:6px 9px; font-size:12.5px}
+.set-help{font-size:11px; color:var(--t3); margin-top:2px}
+@media(max-width:860px){ .set-main{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
@@ -2020,6 +2078,7 @@ function dbToLead(r, acts){
     id:r.id, prenom:r.prenom||'', nom:r.nom||'', tel:r.telephone||'', email:r.email||'',
     source:r.source, webiEngagement:r.webi_engagement||null, webiDate:r.webi_date||null, heat:r.heat||null, column:COL_DB2UI(r.colonne), owner:r.owner_closer_id||null,
     nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, nextActionDue:r.next_action_due||null, extraActions:Array.isArray(r.extra_actions)?r.extra_actions:[], hiddenActions:Array.isArray(r.hidden_actions)?r.hidden_actions:[], cockpitState:r.cockpit_state||null, live:false, noShow,
+    settingState:r.setting_state||null, callAttempts:r.call_attempts||0, lastCallAt:r.last_call_at||null, lastCallAnswered:(r.last_call_answered==null?null:!!r.last_call_answered), callbackAt:r.callback_at||null,
     offer:(r.montant==null||r.montant==='')?0:(Number(r.montant)||0), aPayer:(r.montant_a_payer==null?'':r.montant_a_payer), quiPaie:r.qui_paie||'', paid:r.statut_paiement==='paye', statut_paiement:r.statut_paiement||'aucun',
     cpf:(Number(r.cpf_dispo)||0), metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'', saison:r.saison||null,
     rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, rdvMeetLink:r.rdv_meet_link||null, rdvMeta, hubspot_deal_id:r.hubspot_deal_id||null, date_creation:r.date_creation||null, hsImport:r.hs_import||null, starred:!!r.starred,
@@ -2070,6 +2129,11 @@ async function saveLead(id, uiPatch){
   if('source' in uiPatch) m.source=uiPatch.source||null;
   if('webiEngagement' in uiPatch) m.webi_engagement=uiPatch.webiEngagement||null;
   if('webiDate' in uiPatch) m.webi_date=uiPatch.webiDate||null;
+  if('settingState' in uiPatch) m.setting_state=uiPatch.settingState||null;
+  if('callAttempts' in uiPatch) m.call_attempts=uiPatch.callAttempts||0;
+  if('lastCallAt' in uiPatch) m.last_call_at=uiPatch.lastCallAt||null;
+  if('lastCallAnswered' in uiPatch) m.last_call_answered=(uiPatch.lastCallAnswered==null?null:!!uiPatch.lastCallAnswered);
+  if('callbackAt' in uiPatch) m.callback_at=uiPatch.callbackAt||null;
   if('owner' in uiPatch) m.owner_closer_id=uiPatch.owner;
   if('paid' in uiPatch) m.statut_paiement=uiPatch.paid?'paye':'aucun';
   if('statut_paiement' in uiPatch) m.statut_paiement=uiPatch.statut_paiement;
@@ -2114,7 +2178,7 @@ async function createLead(fields){
 // ajoute une ligne d'historique (note/appel/rdv/mail/paiement)
 async function addActivite(lead_id, type, titre, contenu, montant, extra){
   const row={lead_id, type, titre:titre||null, contenu:contenu||null, montant:montant||null};
-  if(extra){ if(extra.result!=null) row.result=extra.result; if(extra.conclusion!=null) row.conclusion=extra.conclusion; if(extra.call_kind!=null) row.call_kind=extra.call_kind; if(extra.rdv_outcome!=null) row.rdv_outcome=extra.rdv_outcome; }
+  if(extra){ if(extra.result!=null) row.result=extra.result; if(extra.conclusion!=null) row.conclusion=extra.conclusion; if(extra.call_kind!=null) row.call_kind=extra.call_kind; if(extra.rdv_outcome!=null) row.rdv_outcome=extra.rdv_outcome; if(extra.closer_id!=null) row.closer_id=extra.closer_id; }
   const { data, error } = await SB.from('activites').insert(row).select('id').single();
   if(error){ console.warn('addActivite',error); throw error; } // supabase-js ne throw pas : on remonte explicitement
   return data && data.id;
@@ -5440,7 +5504,7 @@ function BootcampScreen({enrollments, leads, payByLead, closers, onOpenLead, onU
   );
 }
 
-const SCREEN_LABEL = { leads:'Mes leads', agenda:'Mes tâches', todo:'À faire', team:'Closers', import:'Import CSV', console:'Synchro HubSpot', bootcamp:'Bootcamp', recouvrement:'Recouvrement' };
+const SCREEN_LABEL = { leads:'Mes leads', setting:'Setting', agenda:'Mes tâches', todo:'À faire', team:'Closers', import:'Import CSV', console:'Synchro HubSpot', bootcamp:'Bootcamp', recouvrement:'Recouvrement' };
 
 /* Bannière de FRAÎCHEUR du sync CalendIQ : lit la ligne unique sync_health('calendiq') (écrite par calendiq-pull
    à chaque run du cron 60s) + realtime. Si le dernier succès date de > 5 min => le sync est décroché => bannière
@@ -6012,6 +6076,23 @@ function App({session, onLogout}){
   const reassignOwner=(id,closerId)=>{ patch(id,{owner:closerId||null}); saveLead(id,{owner:closerId||null}); };
   // cockpit : vivant / sommeil (override manuel de l'auto-classement 21j) / archive (retiré du cockpit)
   const setCockpitState=(id,st)=>{ patch(id,{cockpitState:st}); saveLead(id,{cockpitState:st}); };
+  // ---- SETTING (file d'appel setter) : appel + dispositions. État de prospection séparé du pipeline. Zéro HubSpot.
+  const settingCall=(lead)=>{ if(!lead) return; placeCall(lead); const p={ lastCallAt:new Date().toISOString() }; if(!lead.settingState) p.settingState='en_cours'; patch(lead.id,p); saveLead(lead.id,p); };
+  const settingDispose=(lead,kind,opts={})=>{ if(!lead) return;
+    const nowIso=new Date().toISOString(); const att=(lead.callAttempts||0);
+    const prev={ settingState:lead.settingState, callAttempts:lead.callAttempts||0, lastCallAt:lead.lastCallAt||null, lastCallAnswered:(lead.lastCallAnswered==null?null:!!lead.lastCallAnswered), callbackAt:lead.callbackAt||null };
+    let p={lastCallAt:nowIso}; let title, callKind, answered=null;
+    if(kind==='nrp'){ p.callAttempts=att+1; p.lastCallAnswered=false; answered=false; p.settingState=(att+1>=4?'perdu':'en_cours'); p.callbackAt=null; title='NRP'; callKind='nrp'; }
+    else if(kind==='rappeler'){ p.callAttempts=att+1; p.lastCallAnswered=true; answered=true; p.callbackAt=opts.callbackAt||null; p.settingState='en_cours'; title='À rappeler'+(opts.callbackAt?(' — '+fmtRdv(opts.callbackAt)):''); callKind='callback'; }
+    else if(kind==='lost'){ p.callAttempts=att+1; p.lastCallAnswered=true; answered=true; p.settingState='perdu'; p.callbackAt=null; title='Lost'; callKind='lost'; }
+    else if(kind==='faux'){ p.lastCallAnswered=false; p.settingState='invalide'; p.callbackAt=null; title='Faux numéro'; callKind='faux'; }
+    else return;
+    patch(lead.id,p); saveLead(lead.id,p);
+    const actP=addActivite(lead.id,'appel',title,opts.note||null,null,{call_kind:'setting', closer_id:userId}).catch(()=>null);
+    const name=`${lead.prenom||''} ${lead.nom||''}`.trim()||lead.email||'Lead';
+    toast(title+' · '+name, opts.note?opts.note.slice(0,70):null, (kind==='lost'||kind==='faux')?'info':'ok', { label:'Annuler', fn:async()=>{ patch(lead.id,prev); await saveLead(lead.id,prev); try{ const aid=await actP; if(aid) await deleteActivite(aid); }catch(e){} } });
+  };
+  const settingRdv=(lead,note)=>{ if(!lead) return; if(note&&note.trim()){ addActivite(lead.id,'note','Note setter',note.trim(),null,{closer_id:userId}).catch(()=>null); } openLead(lead.id); toast('Ouvre la fiche pour caler le RDV','Choisis le closer et le créneau','accent'); };
   // appropriation du lead par le closer connecté (toggle) — owner_closer_id = id de l'utilisateur auth
   // 3 états : libre -> je m'approprie ; à moi -> je libère ; à un autre closer -> bloqué (pas de vol)
   const claimLead=()=>{ if(!sel) return; const uid=session.user.id; if(sel.owner && sel.owner!==uid){ toast('Lead déjà approprié','Par un autre closer','info'); return; } const next=sel.owner?null:uid; patch(sel.id,{owner:next}); saveLead(sel.id,{owner:next}); toast(next?'Lead approprié':'Lead libéré', `${sel.prenom||''} ${sel.nom||''}`.trim()||null, next?'ok':'info'); };
@@ -6211,6 +6292,7 @@ function App({session, onLogout}){
   },[leadsPay,recouv]);
   const navItems=[
     {id:'leads', label:'Mes leads', icon:I.leads, badge:rappelerCount},
+    {id:'setting', label:'Setting', icon:I.phone},
     {id:'agenda', label:'Mes tâches', icon:I.agenda},
     ...(isAdmin?[{id:'todo', label:'À faire', icon:I.check},{id:'bootcamp', label:'Bootcamp', icon:I.admission},{id:'recouvrement', label:'Recouvrement', icon:I.euro, badge:recouvDue||null, badgeWarn:true},{id:'team', label:'Closers', icon:I.users},{id:'import', label:'Import CSV', icon:I.upload},{id:'console', label:'Synchro HubSpot', icon:I.sync, badge:syncPending||null, badgeWarn:syncWarn}]:[]),
   ];
@@ -6280,6 +6362,7 @@ function App({session, onLogout}){
         {screen==='team' && isAdmin && <TeamScreen userId={userId} toast={toast} leads={leadsView} onOpenLead={openLead} onSetCockpit={setCockpitState} cqPending={cqLoading && !cqMeetings.length}/>}
         {screen==='import' && isAdmin && <ImportScreen toast={toast} onOpenLead={openLead} setSyncBusy={setSyncBusy} reloadLeads={reload} closers={closers}/>}
         {screen==='console' && isAdmin && <Console toast={toast} onOpenLead={openLead} setSyncBusy={setSyncBusy} reloadLeads={reload}/>}
+        {screen==='setting' && <SettingScreen leads={leads} toast={toast} userId={userId} onCall={settingCall} onDispose={settingDispose} onRdv={settingRdv} onOpenLead={openLead}/>}
       </main>
 
       {/* OVERLAYS */}
@@ -7047,6 +7130,176 @@ function importDryRun(parsed, map, params, crmIdx){
     return { cand:c, match, via, bucket, action, ambiguous, confirmTel, conflict, engTo, hot };
   });
   return items;
+}
+
+/* ====================== SETTING — file d'appel setter ======================
+   Écran unique : file du webi à gauche, lead courant à droite. 1 clic pour appeler,
+   1 bouton (ou touche 1-5) pour trancher le résultat, le lead suivant se charge tout seul.
+   État de prospection (setting_state/tentatives/rappel) SÉPARÉ du pipeline de vente (colonne).
+   « RDV pris » ouvre la fiche (flux CalendIQ existant : choix closer + créneau). Zéro HubSpot. */
+function SettingScreen({ leads, toast, userId, onCall, onDispose, onRdv, onOpenLead }){
+  const now=Date.now();
+  const nm=(l)=> (((l.prenom||'')+' '+(l.nom||'')).trim()) || l.email || 'Lead';
+  const booked=(l)=> !!l.rdv_at || (l.rdvMeta && Object.keys(l.rdvMeta).length>0);
+  const fmtWebi=(d)=>{ try{ const [y,m,dd]=d.split('-'); return dd+'/'+m+'/'+y; }catch(e){ return d; } };
+
+  const webiLeads=React.useMemo(()=> (leads||[]).filter(l=> l.webiDate), [leads]);
+  const webiDates=React.useMemo(()=>{ const s=new Set(); webiLeads.forEach(l=> s.add(l.webiDate)); return Array.from(s).sort((a,b)=> a<b?1:(a>b?-1:0)); },[webiLeads]);
+  const [webi,setWebi]=React.useState(null);
+  React.useEffect(()=>{ if(webiDates.length && (!webi || !webiDates.includes(webi))) setWebi(webiDates[0]); },[webiDates]);
+  const pool=React.useMemo(()=> webiLeads.filter(l=> l.webiDate===webi), [webiLeads,webi]);
+
+  const buckets=React.useMemo(()=>{
+    const acall=[], later=[], done=[];
+    pool.forEach(l=>{
+      if(l.settingState==='perdu'||l.settingState==='invalide'||booked(l)){ done.push(l); return; }
+      const cb=l.callbackAt? new Date(l.callbackAt).getTime():null;
+      if(l.settingState==='en_cours' && cb && cb>now){ later.push(l); return; }
+      acall.push(l);
+    });
+    const rank=(l)=>{ const cb=l.callbackAt?new Date(l.callbackAt).getTime():null; if(cb&&cb<=now) return [0,cb]; if((l.callAttempts||0)===0) return [1,0]; return [2, l.lastCallAt?new Date(l.lastCallAt).getTime():0]; };
+    acall.sort((a,b)=>{ const ra=rank(a),rb=rank(b); return ra[0]-rb[0]||(ra[1]-rb[1]); });
+    later.sort((a,b)=> new Date(a.callbackAt).getTime()-new Date(b.callbackAt).getTime());
+    return {acall,later,done};
+  },[pool]);
+
+  const kpi=React.useMemo(()=>{ let appeles=0,joints=0,rdv=0,perdus=0,invalides=0,rappelsDus=0;
+    pool.forEach(l=>{ if((l.callAttempts||0)>0) appeles++; if(l.lastCallAnswered===true) joints++; if(booked(l)) rdv++;
+      if(l.settingState==='perdu') perdus++; if(l.settingState==='invalide') invalides++;
+      const cb=l.callbackAt?new Date(l.callbackAt).getTime():null; if(l.settingState==='en_cours'&&cb&&cb<=now&&!booked(l)) rappelsDus++; });
+    return {total:pool.length, restants:buckets.acall.length, rappelsDus, appeles, joints, rdv, perdus, invalides};
+  },[pool,buckets]);
+
+  const [tab,setTab]=React.useState('acall');
+  const list = tab==='acall'?buckets.acall : tab==='later'?buckets.later : buckets.done;
+
+  const [curId,setCurId]=React.useState(null);
+  React.useEffect(()=>{ if(!pool.length){ setCurId(null); return; } if(!curId || !pool.some(l=>l.id===curId)) setCurId((buckets.acall[0]||pool[0]||{}).id||null); },[webi,pool.length]);
+  const cur = pool.find(l=>l.id===curId) || null;
+
+  const [hist,setHist]=React.useState([]);
+  React.useEffect(()=>{ let alive=true; setHist([]); if(curId){ loadLeadTimeline(curId).then(t=>{ if(alive) setHist((t||[]).filter(e=>e.type==='appel'||e.type==='note'||e.type==='rdv').slice(0,5)); }).catch(()=>{}); } return ()=>{alive=false;}; },[curId]);
+
+  const [note,setNote]=React.useState(''); const noteRef=React.useRef(null);
+  const [cbOpen,setCbOpen]=React.useState(false); const [cbCustom,setCbCustom]=React.useState('');
+  React.useEffect(()=>{ setNote(''); setCbOpen(false); setCbCustom(''); },[curId]);
+
+  const advance=()=>{ const arr=buckets.acall; const i=arr.findIndex(l=>l.id===curId); const nxt=arr[i+1]||arr.find(l=>l.id!==curId)||null; setCurId(nxt?nxt.id:null); };
+  const call=()=>{ if(!cur) return; onCall(cur); if(noteRef.current) noteRef.current.focus(); };
+  const dispose=(kind)=>{ if(!cur) return;
+    if(kind==='rdv'){ onRdv(cur, note); return; }
+    if(kind==='rappeler'){ setCbOpen(true); return; }
+    const c=cur; advance(); onDispose(c,kind,{note}); setNote('');
+  };
+  const doCallback=(iso)=>{ const c=cur; if(!c) return; setCbOpen(false); advance(); onDispose(c,'rappeler',{note,callbackAt:iso}); setNote(''); };
+  const cbPresets=()=>{ const d=new Date();
+    const in1h=new Date(d.getTime()+3600000);
+    const tonight=new Date(d); tonight.setHours(18,0,0,0); if(tonight.getTime()<=d.getTime()) tonight.setDate(tonight.getDate()+1);
+    const tomo=new Date(d); tomo.setDate(tomo.getDate()+1); tomo.setHours(10,0,0,0);
+    return [['+1h',in1h.toISOString()],['Ce soir 18h',tonight.toISOString()],['Demain 10h',tomo.toISOString()]];
+  };
+
+  React.useEffect(()=>{ const h=(e)=>{ const t=e.target; if(t&&(t.tagName==='TEXTAREA'||t.tagName==='INPUT'||t.tagName==='SELECT')) return; if(e.metaKey||e.ctrlKey||e.altKey) return;
+      const k=(e.key||'').toLowerCase();
+      if(k==='a'){ e.preventDefault(); call(); }
+      else if(k==='1'){ e.preventDefault(); dispose('rdv'); }
+      else if(k==='2'){ e.preventDefault(); dispose('nrp'); }
+      else if(k==='3'){ e.preventDefault(); dispose('rappeler'); }
+      else if(k==='4'){ e.preventDefault(); dispose('lost'); }
+      else if(k==='5'){ e.preventDefault(); dispose('faux'); } };
+    window.addEventListener('keydown',h); return ()=>window.removeEventListener('keydown',h); });
+
+  const rowBadge=(l)=>{ if(booked(l)) return ['','RDV']; if(l.settingState==='perdu') return ['','Perdu']; if(l.settingState==='invalide') return ['','Faux n°'];
+    if(l.callbackAt && new Date(l.callbackAt).getTime()>now && l.settingState==='en_cours') return ['rap','Rappel'];
+    if((l.callAttempts||0)===0 && !l.settingState) return ['new','Nouveau']; return ['enc','En cours']; };
+
+  if(!webiDates.length) return <div className="set-wrap"><div className="set-empty">Aucun lead de webinaire pour l’instant. Importe une liste (Import CSV) et les leads apparaîtront ici.</div></div>;
+
+  return (
+    <div className="set-wrap">
+      <div className="set-top">
+        <h1>Setting</h1>
+        <div className="set-webisel">
+          <span style={{fontSize:12,color:'var(--t3)',fontWeight:700}}>Webinaire</span>
+          <select value={webi||''} onChange={e=>setWebi(e.target.value)}>
+            {webiDates.map(d=>{ const n=webiLeads.filter(l=>l.webiDate===d).length; return <option key={d} value={d}>{fmtWebi(d)} · {n} leads</option>; })}
+          </select>
+        </div>
+      </div>
+      <div className="set-kpis">
+        <div className="set-kpi hot"><b>{kpi.restants}</b><span>À appeler</span></div>
+        <div className="set-kpi"><b>{kpi.rappelsDus}</b><span>Rappels dus</span></div>
+        <div className="set-kpi"><b>{kpi.appeles}</b><span>Appelés</span></div>
+        <div className="set-kpi"><b>{kpi.joints}{kpi.appeles?<span style={{fontSize:12,fontWeight:700,color:'var(--t3)'}}> · {Math.round(kpi.joints/kpi.appeles*100)}%</span>:null}</b><span>Joints</span></div>
+        <div className="set-kpi ok"><b>{kpi.rdv}</b><span>RDV pris</span></div>
+        <div className="set-kpi bad"><b>{kpi.perdus}</b><span>Perdus</span></div>
+        <div className="set-kpi"><b>{kpi.invalides}</b><span>Faux n°</span></div>
+      </div>
+      <div className="set-main">
+        <div className="set-file">
+          <div className="set-filetabs">
+            <button className={tab==='acall'?'on':''} onClick={()=>setTab('acall')}>À appeler ({buckets.acall.length})</button>
+            <button className={tab==='later'?'on':''} onClick={()=>setTab('later')}>À rappeler ({buckets.later.length})</button>
+            <button className={tab==='done'?'on':''} onClick={()=>setTab('done')}>Terminés ({buckets.done.length})</button>
+          </div>
+          <div className="set-list">
+            {list.length===0 ? <div className="set-empty">Rien ici.</div> : list.map(l=>{ const [bc,bl]=rowBadge(l);
+              return (
+              <div key={l.id} className={'set-row'+(l.id===curId?' on':'')} onClick={()=>setCurId(l.id)}>
+                <div className="set-row-main"><b>{nm(l)}</b><span>{l.tel?fmtPhone(l.tel):(l.email||'—')}</span></div>
+                <div className="set-row-meta">
+                  <span className={'set-badge '+bc}>{bl}</span>
+                  <span className="set-att">{(l.callAttempts||0)}/4{l.lastCallAnswered===true?' ✓':(l.lastCallAnswered===false?' ✗':'')}</span>
+                </div>
+              </div>); })}
+          </div>
+        </div>
+        {!cur ? <div className="set-panel"><div className="set-empty">File terminée. Sélectionne un lead à gauche ou change de webinaire.</div></div> : (
+        <div className="set-panel">
+          <div className="set-lead-head">
+            <Avatar lead={cur} size="sz-md"/>
+            <div className="set-lh-tx">
+              <b>{nm(cur)}</b>
+              <div className="set-lead-sub">
+                <span>Webi {fmtWebi(cur.webiDate)}</span>
+                {cur.webiEngagement?<span>· {cur.webiEngagement==='participe'?'a participé':'inscrit'}</span>:null}
+                <span>· tentative {(cur.callAttempts||0)}/4</span>
+                {cur.lastCallAt?<span>· dernier appel {fmtRdv(cur.lastCallAt)}</span>:null}
+              </div>
+            </div>
+            <div className="set-tel">{cur.tel?fmtPhone(cur.tel):'—'}</div>
+          </div>
+          {hist.length>0 && <div className="set-hist">{hist.map((e,i)=><div key={i} className="set-hist-row"><span className="h-when">{e.when||''}</span>{e.title||e.text||e.type}{(e.text&&e.title)?(' — '+e.text):''}</div>)}</div>}
+          <button className="set-callbtn" onClick={call} disabled={!cur.tel}>{I.phone({})} Appeler <span style={{opacity:.7,fontSize:12,fontWeight:700}}>(A)</span></button>
+          <textarea ref={noteRef} className="set-note" placeholder="Note d’appel (rattachée au résultat)…" value={note} onChange={e=>setNote(e.target.value)}/>
+          {cbOpen ? (
+            <div>
+              <div className="set-dispos-lbl" style={{marginBottom:6}}>Rappeler quand ?</div>
+              <div className="set-cbpick">
+                {cbPresets().map(([lbl,iso])=><button key={lbl} onClick={()=>doCallback(iso)}>{lbl}</button>)}
+                <input type="datetime-local" value={cbCustom} onChange={e=>setCbCustom(e.target.value)}/>
+                <button onClick={()=>{ if(cbCustom) doCallback(new Date(cbCustom).toISOString()); }} disabled={!cbCustom}>OK</button>
+                <button onClick={()=>setCbOpen(false)}>Annuler</button>
+              </div>
+            </div>
+          ) : (
+          <div>
+            <div className="set-dispos-lbl" style={{marginBottom:6}}>Résultat de l’appel — 1 clic = enregistre + lead suivant</div>
+            <div className="set-dispos">
+              <button className="set-dispo rdv" onClick={()=>dispose('rdv')}><span>RDV pris</span><span className="k">1</span></button>
+              <button className="set-dispo nrp" onClick={()=>dispose('nrp')}><span>NRP</span><span className="k">2</span></button>
+              <button className="set-dispo rap" onClick={()=>dispose('rappeler')}><span>À rappeler</span><span className="k">3</span></button>
+              <button className="set-dispo lost" onClick={()=>dispose('lost')}><span>Lost</span><span className="k">4</span></button>
+              <button className="set-dispo faux" onClick={()=>dispose('faux')}><span>Faux Num</span><span className="k">5</span></button>
+            </div>
+            <div className="set-help">Raccourcis : A = appeler · 1-5 = résultat. « RDV pris » ouvre la fiche pour choisir le closer et le créneau.</div>
+          </div>
+          )}
+        </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function ImportScreen({ toast, onOpenLead, setSyncBusy, reloadLeads, closers }){
