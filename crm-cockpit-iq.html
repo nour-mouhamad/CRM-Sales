@@ -1905,6 +1905,16 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .set-cbpick button:hover{border-color:var(--accent)}
 .set-cbpick input{background:var(--surface); border:1px solid var(--b1); color:var(--t1); border-radius:8px; padding:6px 9px; font-size:12.5px}
 .set-help{font-size:11px; color:var(--t3); margin-top:2px}
+.set-scope{display:flex; gap:2px; background:var(--surface-2); border:1px solid var(--b1); border-radius:9px; padding:2px}
+.set-scope button{background:none; border:none; color:var(--t3); font-size:12px; font-weight:700; padding:6px 11px; border-radius:7px; cursor:pointer}
+.set-scope button.on{background:var(--accent); color:#fff}
+.set-assign{display:flex; align-items:center; gap:9px; flex-wrap:wrap; background:var(--surface-2); border:1px solid var(--b1); border-radius:11px; padding:9px 13px; margin-bottom:14px; font-size:13px; color:var(--t2)}
+.set-assign select{background:var(--surface); border:1px solid var(--b1); color:var(--t1); border-radius:8px; padding:6px 9px; font-size:12.5px; font-weight:600}
+.set-badge.occ{background:rgba(230,120,20,.2); color:#d07000}
+.set-row.occ{opacity:.62}
+.set-occ-warn{background:rgba(230,120,20,.12); border:1px solid rgba(230,120,20,.4); color:#c86000; border-radius:9px; padding:8px 11px; font-size:12.5px; font-weight:600}
+.rr-role-sel{background:var(--surface-2); border:1px solid var(--b1); color:var(--t1); border-radius:8px; padding:5px 8px; font-size:12px; font-weight:600; cursor:pointer}
+.role-badge.setter{background:rgba(120,90,220,.16); color:#8b6fe0}
 @media(max-width:860px){ .set-main{grid-template-columns:1fr} }
 </style>
 </head>
@@ -2079,6 +2089,7 @@ function dbToLead(r, acts){
     source:r.source, webiEngagement:r.webi_engagement||null, webiDate:r.webi_date||null, heat:r.heat||null, column:COL_DB2UI(r.colonne), owner:r.owner_closer_id||null,
     nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, nextActionDue:r.next_action_due||null, extraActions:Array.isArray(r.extra_actions)?r.extra_actions:[], hiddenActions:Array.isArray(r.hidden_actions)?r.hidden_actions:[], cockpitState:r.cockpit_state||null, live:false, noShow,
     settingState:r.setting_state||null, callAttempts:r.call_attempts||0, lastCallAt:r.last_call_at||null, lastCallAnswered:(r.last_call_answered==null?null:!!r.last_call_answered), callbackAt:r.callback_at||null,
+    setterId:r.setter_id||null, claimedBy:r.claimed_by||null, claimedAt:r.claimed_at||null,
     offer:(r.montant==null||r.montant==='')?0:(Number(r.montant)||0), aPayer:(r.montant_a_payer==null?'':r.montant_a_payer), quiPaie:r.qui_paie||'', paid:r.statut_paiement==='paye', statut_paiement:r.statut_paiement||'aucun',
     cpf:(Number(r.cpf_dispo)||0), metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'', saison:r.saison||null,
     rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, rdvMeetLink:r.rdv_meet_link||null, rdvMeta, hubspot_deal_id:r.hubspot_deal_id||null, date_creation:r.date_creation||null, hsImport:r.hs_import||null, starred:!!r.starred,
@@ -2134,6 +2145,7 @@ async function saveLead(id, uiPatch){
   if('lastCallAt' in uiPatch) m.last_call_at=uiPatch.lastCallAt||null;
   if('lastCallAnswered' in uiPatch) m.last_call_answered=(uiPatch.lastCallAnswered==null?null:!!uiPatch.lastCallAnswered);
   if('callbackAt' in uiPatch) m.callback_at=uiPatch.callbackAt||null;
+  if('setterId' in uiPatch) m.setter_id=uiPatch.setterId||null;
   if('owner' in uiPatch) m.owner_closer_id=uiPatch.owner;
   if('paid' in uiPatch) m.statut_paiement=uiPatch.paid?'paye':'aucun';
   if('statut_paiement' in uiPatch) m.statut_paiement=uiPatch.statut_paiement;
@@ -5545,6 +5557,7 @@ function App({session, onLogout}){
       .catch(()=>{ if(!alive) return; setProfile({role:'closer'}); setProfileLoaded(true); });
     return ()=>{alive=false;}; },[userId,isDev]);
   const isAdmin = (profile?.role||'closer')==='admin';
+  const isSetter = (profile?.role||'')==='setter';
   // liste des closers (admin) — pour assigner un lead à un closer depuis la fiche
   const [closers,setClosers]=useState([]);
   useEffect(()=>{ if(!isAdmin){ setClosers([]); return; } let on=true; SB.from('profiles').select('id,name,role').then(({data})=>{ if(on) setClosers(data||[]); }); return ()=>{on=false;}; },[isAdmin]);
@@ -6092,7 +6105,19 @@ function App({session, onLogout}){
     const name=`${lead.prenom||''} ${lead.nom||''}`.trim()||lead.email||'Lead';
     toast(title+' · '+name, opts.note?opts.note.slice(0,70):null, (kind==='lost'||kind==='faux')?'info':'ok', { label:'Annuler', fn:async()=>{ patch(lead.id,prev); await saveLead(lead.id,prev); try{ const aid=await actP; if(aid) await deleteActivite(aid); }catch(e){} } });
   };
-  const settingRdv=(lead,note)=>{ if(!lead) return; if(note&&note.trim()){ addActivite(lead.id,'note','Note setter',note.trim(),null,{closer_id:userId}).catch(()=>null); } openLead(lead.id); toast('Ouvre la fiche pour caler le RDV','Choisis le closer et le créneau','accent'); };
+  // RDV pris depuis Setting : cale le RDV SANS quitter l'écran (même modale + booking CalendIQ que la fiche).
+  const [rdvFromSetting,setRdvFromSetting]=useState(null); // id du lead pour qui on cale un RDV
+  const settingRdv=(lead,note)=>{ if(!lead) return; if(note&&note.trim()){ addActivite(lead.id,'note','Note setter',note.trim(),null,{closer_id:userId}).catch(()=>null); } setSelId(lead.id); setRdvFromSetting(lead.id); };
+  // assignation en masse d'une file de webi à un setter (owner reste au closer ; setter_id = qui appelle). 0 HubSpot.
+  const settingAssign=async(ids,setterId)=>{ if(!ids||!ids.length) return; ids.forEach(id=>patch(id,{setterId:setterId||null}));
+    try{ const { error }=await SB.from('leads').update({setter_id:setterId||null}).in('id',ids); if(error) throw error;
+      const who = setterId ? (((closers||[]).find(c=>c.id===setterId)||{}).name||'un setter') : 'le pool';
+      toast('File assignée', ids.length+' lead'+(ids.length>1?'s':'')+' → '+who, 'ok');
+    }catch(e){ toast('Assignation impossible', e.message||'Réessaie','info'); reload(); } };
+  // verrou anti-collision : réserve/atomique (RPC). Optimiste, rollback si un autre a déjà le lead.
+  const settingClaim=async(id)=>{ if(!id) return; patch(id,{claimedBy:userId, claimedAt:new Date().toISOString()});
+    try{ const { data }=await SB.rpc('setting_claim',{p_lead:id}); if(data===false){ patch(id,{claimedBy:null, claimedAt:null}); } }catch(e){} };
+  const settingRelease=async(id)=>{ if(!id) return; patch(id,{claimedBy:null, claimedAt:null}); try{ await SB.rpc('setting_release',{p_lead:id}); }catch(e){} };
   // appropriation du lead par le closer connecté (toggle) — owner_closer_id = id de l'utilisateur auth
   // 3 états : libre -> je m'approprie ; à moi -> je libère ; à un autre closer -> bloqué (pas de vol)
   const claimLead=()=>{ if(!sel) return; const uid=session.user.id; if(sel.owner && sel.owner!==uid){ toast('Lead déjà approprié','Par un autre closer','info'); return; } const next=sel.owner?null:uid; patch(sel.id,{owner:next}); saveLead(sel.id,{owner:next}); toast(next?'Lead approprié':'Lead libéré', `${sel.prenom||''} ${sel.nom||''}`.trim()||null, next?'ok':'info'); };
@@ -6112,8 +6137,9 @@ function App({session, onLogout}){
     if(replaceMeetingId){ try{ await cqInvoke('cancel-meeting',{ meeting_id:replaceMeetingId }); }catch(e){ console.warn('cancel old',e); } cqPendingRef.current.delete(replaceMeetingId); setCqMeetings(ms=>ms.filter(m=>m.id!==replaceMeetingId)); }
     // admin : caler sur l'agenda d'un closer = attribuer le lead à ce closer. closer : auto-claim au R1 sur lead libre (inchangé).
     const bookedCloser = (cqSources||[]).find(s=>s.organizer===orgId) || null;
-    const adminAssign = (isAdmin && bookedCloser) ? bookedCloser.id : null;
-    const claim = type==='r1' && !sel.owner && !isAdmin;
+    // admin OU setter qui book = choisit l'agenda d'un closer -> le lead est attribué à CE closer (jamais au setter).
+    const adminAssign = ((isAdmin||isSetter) && bookedCloser) ? bookedCloser.id : null;
+    const claim = type==='r1' && !sel.owner && !isAdmin && !isSetter;
     const ownerPatch = adminAssign ? { owner:adminAssign } : (claim ? { owner:userId } : {});
     const tgt = rdvTargetStage(type, sel.column); // RDV fixé → avance l'étape (R1→1er RDV pris, R2→Closing), jamais en arrière
     const stagePatch = tgt ? { column:tgt, nextAction:NEXT_BY_COL[tgt]||null } : {};
@@ -6290,13 +6316,17 @@ function App({session, onLogout}){
     for(const l of leadsPay){ const p=l._pay; if(p&&p.reste>0){ const r=recouv.get(l.id); if(r&&r.relance_next&&r.relance_next<today) n++; } }
     return n;
   },[leadsPay,recouv]);
-  const navItems=[
+  const navItems = isSetter
+    ? [ {id:'setting', label:'Setting', icon:I.phone}, {id:'agenda', label:'Mes tâches', icon:I.agenda} ]
+    : [
     {id:'leads', label:'Mes leads', icon:I.leads, badge:rappelerCount},
     {id:'setting', label:'Setting', icon:I.phone},
     {id:'agenda', label:'Mes tâches', icon:I.agenda},
     ...(isAdmin?[{id:'todo', label:'À faire', icon:I.check},{id:'bootcamp', label:'Bootcamp', icon:I.admission},{id:'recouvrement', label:'Recouvrement', icon:I.euro, badge:recouvDue||null, badgeWarn:true},{id:'team', label:'Closers', icon:I.users},{id:'import', label:'Import CSV', icon:I.upload},{id:'console', label:'Synchro HubSpot', icon:I.sync, badge:syncPending||null, badgeWarn:syncWarn}]:[]),
   ];
   useEffect(()=>{ if(!isAdmin && (screen==='team'||screen==='console'||screen==='import'||screen==='todo'||screen==='bootcamp'||screen==='recouvrement')) setScreen('leads'); },[isAdmin,screen]);
+  // setter : accès restreint à Setting + Mes tâches (+ fiche pour un RDV). Renvoyé sur Setting sinon.
+  useEffect(()=>{ if(isSetter && !(screen==='setting'||screen==='agenda'||screen==='fiche')) setScreen('setting'); },[isSetter,screen]);
   const navActive = screen==='fiche'?origin:screen;
 
   // splash bref UNIQUEMENT pendant la requête profil (évite un flash board/nav) ; ne bloque jamais après réponse
@@ -6362,7 +6392,12 @@ function App({session, onLogout}){
         {screen==='team' && isAdmin && <TeamScreen userId={userId} toast={toast} leads={leadsView} onOpenLead={openLead} onSetCockpit={setCockpitState} cqPending={cqLoading && !cqMeetings.length}/>}
         {screen==='import' && isAdmin && <ImportScreen toast={toast} onOpenLead={openLead} setSyncBusy={setSyncBusy} reloadLeads={reload} closers={closers}/>}
         {screen==='console' && isAdmin && <Console toast={toast} onOpenLead={openLead} setSyncBusy={setSyncBusy} reloadLeads={reload}/>}
-        {screen==='setting' && <SettingScreen leads={leads} toast={toast} userId={userId} onCall={settingCall} onDispose={settingDispose} onRdv={settingRdv} onOpenLead={openLead}/>}
+        {screen==='setting' && <SettingScreen leads={leads} closers={closers} toast={toast} userId={userId} isAdmin={isAdmin} isSetter={isSetter} onCall={settingCall} onDispose={settingDispose} onRdv={settingRdv} onAssign={settingAssign} onClaim={settingClaim} onRelease={settingRelease} onOpenLead={openLead}/>}
+        {rdvFromSetting && sel && sel.id===rdvFromSetting && <AddRdvModal lead={sel}
+          organizerId={(isAdmin||isSetter) ? null : (profile&&profile.calendiq_organizer_id)}
+          closers={cqSources} pickCloser={isAdmin||isSetter}
+          onClose={()=>setRdvFromSetting(null)}
+          onAdd={(t,d,iso,org)=>addCalendiqRdv(t,d,iso,null,org||(profile&&profile.calendiq_organizer_id))}/>}
       </main>
 
       {/* OVERLAYS */}
@@ -6667,8 +6702,12 @@ function RoleRow({ p, isMe, count, dests, onSetRole, onTransfer, onDelete }){
       <div className="cl-lead" style={{cursor:'default'}}>
         <span style={{flex:1,fontWeight:600}}>{p.name||'—'}{isMe && <em style={{color:'var(--t3)',fontWeight:500}}> (toi)</em>}</span>
         {!isAdmin && count>0 && <span className="rr-count">{count} lead{count>1?'s':''}</span>}
-        <span className={'role-badge'+(isAdmin?' admin':'')}>{isAdmin?'Admin':'Closer'}</span>
-        {!isMe && <button className="btn btn-soft rr-btn" onClick={()=>onSetRole(p.id, isAdmin?'closer':'admin', p.name)}>{isAdmin?'Repasser closer':'Passer admin'}</button>}
+        <span className={'role-badge'+(isAdmin?' admin':(p.role==='setter'?' setter':''))}>{isAdmin?'Admin':(p.role==='setter'?'Setter':'Closer')}</span>
+        {!isMe && <select className="rr-role-sel" value={p.role||'closer'} onChange={e=>onSetRole(p.id, e.target.value, p.name)} title="Changer le rôle">
+          <option value="closer">Closer</option>
+          <option value="setter">Setter</option>
+          <option value="admin">Admin</option>
+        </select>}
         {canTransfer && <button className={'btn btn-soft rr-btn'+(mode==='transfer'?' on':'')} onClick={()=>{ setMode(m=>m==='transfer'?null:'transfer'); setDest(''); }}>Transférer {count} →</button>}
         {canDelete && <button className="rr-ico" title="Supprimer l’accès" onClick={()=>{ setMode(m=>m==='delete'?null:'delete'); setDest(''); }}>{I.trash({})}</button>}
       </div>
@@ -6717,12 +6756,12 @@ function TeamScreen({ userId, toast, leads, onOpenLead, onSetCockpit, cqPending 
   const gen=async()=>{ setBusy(true); try{
     const r=await callFn('admin-closer',{action:'create_invite',role:inviteRole});
     try{ await navigator.clipboard.writeText(linkFor(r.token)); }catch(e){}
-    toast('Lien d’invitation créé','Copié — '+(inviteRole==='admin'?'invitation ADMIN':'invitation closer'),'ok'); load();
+    toast('Lien d’invitation créé','Copié — '+(inviteRole==='admin'?'invitation ADMIN':(inviteRole==='setter'?'invitation setter':'invitation closer')),'ok'); load();
   }catch(e){ toast('Erreur', e.message, 'info'); } finally{ setBusy(false); } };
   // PROMOUVOIR / RÉTROGRADER (admin <-> closer) via l'edge admin-gated. 0 écriture HubSpot.
   const setMemberRole=async(id,role,nm)=>{ try{
     await callFn('admin-closer',{action:'set_role',targetId:id,role});
-    toast(role==='admin'?'Passé admin':'Repassé closer',(nm||'')+' — accès mis à jour','ok'); load();
+    toast(role==='admin'?'Passé admin':(role==='setter'?'Passé setter':'Repassé closer'),(nm||'')+' — accès mis à jour','ok'); load();
   }catch(e){ toast('Changement impossible', e.message, 'info'); } };
   const copy=t=>{ try{ navigator.clipboard.writeText(linkFor(t)); toast('Lien copié',null,'ok'); }catch(e){} };
   // nb de leads possédés par membre (owner) — pilote « Transférer N » et le libellé de la suppression
@@ -6922,9 +6961,10 @@ function TeamScreen({ userId, toast, leads, onOpenLead, onSetCockpit, cqPending 
       <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
         <div className="af-seg" title="Rôle de l’invitation">
           <button className={'af-seg-b'+(inviteRole==='closer'?' on':'')} onClick={()=>setInviteRole('closer')}>Closer</button>
+          <button className={'af-seg-b'+(inviteRole==='setter'?' on':'')} onClick={()=>setInviteRole('setter')}>Setter</button>
           <button className={'af-seg-b'+(inviteRole==='admin'?' on':'')} onClick={()=>setInviteRole('admin')}>Admin</button>
         </div>
-        <button className="btn btn-accent" disabled={busy} onClick={gen}><I.plus style={{width:15,height:15}}/>Inviter {inviteRole==='admin'?'un admin':'un closer'}</button>
+        <button className="btn btn-accent" disabled={busy} onClick={gen}><I.plus style={{width:15,height:15}}/>Inviter {inviteRole==='admin'?'un admin':(inviteRole==='setter'?'un setter':'un closer')}</button>
       </div>
     </div>
   );
@@ -7137,17 +7177,27 @@ function importDryRun(parsed, map, params, crmIdx){
    1 bouton (ou touche 1-5) pour trancher le résultat, le lead suivant se charge tout seul.
    État de prospection (setting_state/tentatives/rappel) SÉPARÉ du pipeline de vente (colonne).
    « RDV pris » ouvre la fiche (flux CalendIQ existant : choix closer + créneau). Zéro HubSpot. */
-function SettingScreen({ leads, toast, userId, onCall, onDispose, onRdv, onOpenLead }){
+function SettingScreen({ leads, closers, toast, userId, isAdmin, isSetter, onCall, onDispose, onRdv, onAssign, onClaim, onRelease, onOpenLead }){
   const now=Date.now();
   const nm=(l)=> (((l.prenom||'')+' '+(l.nom||'')).trim()) || l.email || 'Lead';
   const booked=(l)=> !!l.rdv_at || (l.rdvMeta && Object.keys(l.rdvMeta).length>0);
+  const occupied=(l)=> !!(l.claimedBy && l.claimedBy!==userId && l.claimedAt && (now-new Date(l.claimedAt).getTime() < 600000));
   const fmtWebi=(d)=>{ try{ const [y,m,dd]=d.split('-'); return dd+'/'+m+'/'+y; }catch(e){ return d; } };
+  const memberName=(id)=>{ const c=(closers||[]).find(x=>x.id===id); return c?(c.name||'—'):'—'; };
 
   const webiLeads=React.useMemo(()=> (leads||[]).filter(l=> l.webiDate), [leads]);
   const webiDates=React.useMemo(()=>{ const s=new Set(); webiLeads.forEach(l=> s.add(l.webiDate)); return Array.from(s).sort((a,b)=> a<b?1:(a>b?-1:0)); },[webiLeads]);
   const [webi,setWebi]=React.useState(null);
   React.useEffect(()=>{ if(webiDates.length && (!webi || !webiDates.includes(webi))) setWebi(webiDates[0]); },[webiDates]);
-  const pool=React.useMemo(()=> webiLeads.filter(l=> l.webiDate===webi), [webiLeads,webi]);
+  const webiPool=React.useMemo(()=> webiLeads.filter(l=> l.webiDate===webi), [webiLeads,webi]);
+
+  // périmètre : ma file (assignée à moi) · pool (non assignés) · toute la file
+  const [scope,setScope]=React.useState(isSetter?'mine':'all');
+  const pool=React.useMemo(()=>{
+    if(scope==='mine') return webiPool.filter(l=> l.setterId===userId);
+    if(scope==='pool') return webiPool.filter(l=> !l.setterId);
+    return webiPool;
+  },[webiPool,scope,userId]);
 
   const buckets=React.useMemo(()=>{
     const acall=[], later=[], done=[];
@@ -7157,7 +7207,7 @@ function SettingScreen({ leads, toast, userId, onCall, onDispose, onRdv, onOpenL
       if(l.settingState==='en_cours' && cb && cb>now){ later.push(l); return; }
       acall.push(l);
     });
-    const rank=(l)=>{ const cb=l.callbackAt?new Date(l.callbackAt).getTime():null; if(cb&&cb<=now) return [0,cb]; if((l.callAttempts||0)===0) return [1,0]; return [2, l.lastCallAt?new Date(l.lastCallAt).getTime():0]; };
+    const rank=(l)=>{ if(occupied(l)) return [9,0]; const cb=l.callbackAt?new Date(l.callbackAt).getTime():null; if(cb&&cb<=now) return [0,cb]; if((l.callAttempts||0)===0) return [1,0]; return [2, l.lastCallAt?new Date(l.lastCallAt).getTime():0]; };
     acall.sort((a,b)=>{ const ra=rank(a),rb=rank(b); return ra[0]-rb[0]||(ra[1]-rb[1]); });
     later.sort((a,b)=> new Date(a.callbackAt).getTime()-new Date(b.callbackAt).getTime());
     return {acall,later,done};
@@ -7174,8 +7224,18 @@ function SettingScreen({ leads, toast, userId, onCall, onDispose, onRdv, onOpenL
   const list = tab==='acall'?buckets.acall : tab==='later'?buckets.later : buckets.done;
 
   const [curId,setCurId]=React.useState(null);
-  React.useEffect(()=>{ if(!pool.length){ setCurId(null); return; } if(!curId || !pool.some(l=>l.id===curId)) setCurId((buckets.acall[0]||pool[0]||{}).id||null); },[webi,pool.length]);
+  const firstFree=()=>{ const a=buckets.acall.find(l=>!occupied(l)); return (a||buckets.acall[0]||pool[0]||{}).id||null; };
+  React.useEffect(()=>{ if(!pool.length){ setCurId(null); return; } if(!curId || !pool.some(l=>l.id===curId)) setCurId(firstFree()); },[webi,scope,pool.length]);
   const cur = pool.find(l=>l.id===curId) || null;
+
+  // verrou anti-collision : réserve le lead courant (claim 10 min), libère le précédent → jamais 2 setters sur le même.
+  const prevClaim=React.useRef(null);
+  React.useEffect(()=>{ const prev=prevClaim.current;
+    if(prev && prev!==curId && onRelease) onRelease(prev);
+    if(curId && onClaim) onClaim(curId);
+    prevClaim.current=curId;
+  },[curId]);
+  React.useEffect(()=>()=>{ if(prevClaim.current && onRelease) onRelease(prevClaim.current); },[]);
 
   const [hist,setHist]=React.useState([]);
   React.useEffect(()=>{ let alive=true; setHist([]); if(curId){ loadLeadTimeline(curId).then(t=>{ if(alive) setHist((t||[]).filter(e=>e.type==='appel'||e.type==='note'||e.type==='rdv').slice(0,5)); }).catch(()=>{}); } return ()=>{alive=false;}; },[curId]);
@@ -7184,7 +7244,7 @@ function SettingScreen({ leads, toast, userId, onCall, onDispose, onRdv, onOpenL
   const [cbOpen,setCbOpen]=React.useState(false); const [cbCustom,setCbCustom]=React.useState('');
   React.useEffect(()=>{ setNote(''); setCbOpen(false); setCbCustom(''); },[curId]);
 
-  const advance=()=>{ const arr=buckets.acall; const i=arr.findIndex(l=>l.id===curId); const nxt=arr[i+1]||arr.find(l=>l.id!==curId)||null; setCurId(nxt?nxt.id:null); };
+  const advance=()=>{ const arr=buckets.acall; const i=arr.findIndex(l=>l.id===curId); const nxt=arr.slice(i+1).find(l=>!occupied(l))||arr.find(l=>l.id!==curId && !occupied(l))||null; setCurId(nxt?nxt.id:null); };
   const call=()=>{ if(!cur) return; onCall(cur); if(noteRef.current) noteRef.current.focus(); };
   const dispose=(kind)=>{ if(!cur) return;
     if(kind==='rdv'){ onRdv(cur, note); return; }
@@ -7199,6 +7259,9 @@ function SettingScreen({ leads, toast, userId, onCall, onDispose, onRdv, onOpenL
     return [['+1h',in1h.toISOString()],['Ce soir 18h',tonight.toISOString()],['Demain 10h',tomo.toISOString()]];
   };
 
+  const [assignTo,setAssignTo]=React.useState('');
+  const doAssign=()=>{ if(!onAssign) return; const ids=buckets.acall.map(l=>l.id); if(ids.length) onAssign(ids, assignTo||null); };
+
   React.useEffect(()=>{ const h=(e)=>{ const t=e.target; if(t&&(t.tagName==='TEXTAREA'||t.tagName==='INPUT'||t.tagName==='SELECT')) return; if(e.metaKey||e.ctrlKey||e.altKey) return;
       const k=(e.key||'').toLowerCase();
       if(k==='a'){ e.preventDefault(); call(); }
@@ -7209,7 +7272,7 @@ function SettingScreen({ leads, toast, userId, onCall, onDispose, onRdv, onOpenL
       else if(k==='5'){ e.preventDefault(); dispose('faux'); } };
     window.addEventListener('keydown',h); return ()=>window.removeEventListener('keydown',h); });
 
-  const rowBadge=(l)=>{ if(booked(l)) return ['','RDV']; if(l.settingState==='perdu') return ['','Perdu']; if(l.settingState==='invalide') return ['','Faux n°'];
+  const rowBadge=(l)=>{ if(occupied(l)) return ['occ','Occupé']; if(booked(l)) return ['','RDV']; if(l.settingState==='perdu') return ['','Perdu']; if(l.settingState==='invalide') return ['','Faux n°'];
     if(l.callbackAt && new Date(l.callbackAt).getTime()>now && l.settingState==='en_cours') return ['rap','Rappel'];
     if((l.callAttempts||0)===0 && !l.settingState) return ['new','Nouveau']; return ['enc','En cours']; };
 
@@ -7219,6 +7282,11 @@ function SettingScreen({ leads, toast, userId, onCall, onDispose, onRdv, onOpenL
     <div className="set-wrap">
       <div className="set-top">
         <h1>Setting</h1>
+        <div className="set-scope">
+          <button className={scope==='all'?'on':''} onClick={()=>setScope('all')}>Toute la file</button>
+          <button className={scope==='mine'?'on':''} onClick={()=>setScope('mine')}>La mienne</button>
+          <button className={scope==='pool'?'on':''} onClick={()=>setScope('pool')}>Pool</button>
+        </div>
         <div className="set-webisel">
           <span style={{fontSize:12,color:'var(--t3)',fontWeight:700}}>Webinaire</span>
           <select value={webi||''} onChange={e=>setWebi(e.target.value)}>
@@ -7226,6 +7294,16 @@ function SettingScreen({ leads, toast, userId, onCall, onDispose, onRdv, onOpenL
           </select>
         </div>
       </div>
+      {isAdmin && buckets.acall.length>0 && (
+        <div className="set-assign">
+          <span>Assigner les <b>{buckets.acall.length}</b> « à appeler » à</span>
+          <select value={assignTo} onChange={e=>setAssignTo(e.target.value)}>
+            <option value="">— personne (pool) —</option>
+            {(closers||[]).map(c=><option key={c.id} value={c.id}>{c.name||'—'}{c.role==='setter'?' (setter)':(c.role==='admin'?' (admin)':'')}</option>)}
+          </select>
+          <button className="btn btn-soft" onClick={doAssign}>Assigner</button>
+        </div>
+      )}
       <div className="set-kpis">
         <div className="set-kpi hot"><b>{kpi.restants}</b><span>À appeler</span></div>
         <div className="set-kpi"><b>{kpi.rappelsDus}</b><span>Rappels dus</span></div>
@@ -7245,8 +7323,8 @@ function SettingScreen({ leads, toast, userId, onCall, onDispose, onRdv, onOpenL
           <div className="set-list">
             {list.length===0 ? <div className="set-empty">Rien ici.</div> : list.map(l=>{ const [bc,bl]=rowBadge(l);
               return (
-              <div key={l.id} className={'set-row'+(l.id===curId?' on':'')} onClick={()=>setCurId(l.id)}>
-                <div className="set-row-main"><b>{nm(l)}</b><span>{l.tel?fmtPhone(l.tel):(l.email||'—')}</span></div>
+              <div key={l.id} className={'set-row'+(l.id===curId?' on':'')+(occupied(l)?' occ':'')} onClick={()=>setCurId(l.id)}>
+                <div className="set-row-main"><b>{nm(l)}</b><span>{l.tel?fmtPhone(l.tel):(l.email||'—')}{l.setterId?(' · '+memberName(l.setterId)):''}</span></div>
                 <div className="set-row-meta">
                   <span className={'set-badge '+bc}>{bl}</span>
                   <span className="set-att">{(l.callAttempts||0)}/4{l.lastCallAnswered===true?' ✓':(l.lastCallAnswered===false?' ✗':'')}</span>
@@ -7269,6 +7347,7 @@ function SettingScreen({ leads, toast, userId, onCall, onDispose, onRdv, onOpenL
             </div>
             <div className="set-tel">{cur.tel?fmtPhone(cur.tel):'—'}</div>
           </div>
+          {occupied(cur) && <div className="set-occ-warn">⚠️ En cours d’appel par {memberName(cur.claimedBy)} — évite le doublon.</div>}
           {hist.length>0 && <div className="set-hist">{hist.map((e,i)=><div key={i} className="set-hist-row"><span className="h-when">{e.when||''}</span>{e.title||e.text||e.type}{(e.text&&e.title)?(' — '+e.text):''}</div>)}</div>}
           <button className="set-callbtn" onClick={call} disabled={!cur.tel}>{I.phone({})} Appeler <span style={{opacity:.7,fontSize:12,fontWeight:700}}>(A)</span></button>
           <textarea ref={noteRef} className="set-note" placeholder="Note d’appel (rattachée au résultat)…" value={note} onChange={e=>setNote(e.target.value)}/>
@@ -7292,7 +7371,7 @@ function SettingScreen({ leads, toast, userId, onCall, onDispose, onRdv, onOpenL
               <button className="set-dispo lost" onClick={()=>dispose('lost')}><span>Lost</span><span className="k">4</span></button>
               <button className="set-dispo faux" onClick={()=>dispose('faux')}><span>Faux Num</span><span className="k">5</span></button>
             </div>
-            <div className="set-help">Raccourcis : A = appeler · 1-5 = résultat. « RDV pris » ouvre la fiche pour choisir le closer et le créneau.</div>
+            <div className="set-help">Raccourcis : A = appeler · 1-5 = résultat. « RDV pris » ouvre le calage CalendIQ (closer + créneau) sans quitter l’écran.</div>
           </div>
           )}
         </div>
