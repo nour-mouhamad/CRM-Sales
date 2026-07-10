@@ -1909,13 +1909,6 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .set-recapbtn{align-self:flex-start; display:inline-flex; align-items:center; gap:7px; background:var(--surface); border:1px solid var(--b1); color:var(--t2); border-radius:9px; padding:8px 12px; font-size:12.5px; font-weight:700; cursor:pointer}
 .set-recapbtn:hover{border-color:var(--accent); color:var(--accent)}
 .set-recapbtn svg{width:15px; height:15px}
-/* triptyque : Queue | Console d'appel | Fiche vivante intégrée */
-.set-triptyque{ grid-template-columns:minmax(230px,290px) minmax(330px,410px) minmax(0,1fr); }
-.set-fiche{ min-width:0; max-height:calc(100vh - 190px); overflow-y:auto; overflow-x:hidden; }
-.set-fiche .fiche-embed{ overflow:visible; padding:0; }
-.set-fiche .fiche-grid{ grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr)); gap:12px; align-items:start; }
-@media(max-width:1320px){ .set-triptyque{ grid-template-columns:minmax(210px,280px) 1fr; } .set-triptyque .set-fiche{ grid-column:1 / -1; max-height:none; } }
-@media(max-width:860px){ .set-triptyque{ grid-template-columns:1fr; } }
 .set-dispos-lbl{font-size:10.5px; font-weight:700; color:var(--t3); text-transform:uppercase; letter-spacing:.04em}
 .set-dispos{display:grid; grid-template-columns:repeat(3,1fr); gap:9px}
 .set-dispo{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:12px 6px; border:1px solid var(--b1); border-radius:11px; background:var(--surface); color:var(--t1); font-size:12.5px; font-weight:700; cursor:pointer}
@@ -3766,7 +3759,7 @@ function MoneyField({label, value, onSave, accent}){
   );
 }
 
-function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onActions, onClaim, meId, onAddRdv, onCancelRdv, onManualRdv, onManualRemoveRdv, onRdvOutcome, onClearRdvOutcome, isAdminView, closers, rdvClosers, onAssign, calendiqReady, calendiqOrganizer, bcList, onBcUpsert, onBcAdd, onPartAdd, onPartUpsert, onPartRemove, onPayAdd, onPayRemove, onSetSeason, embedded}){
+function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDeleteNote, onEditField, onNote, onAdvanceStage, onActions, onClaim, meId, onAddRdv, onCancelRdv, onManualRdv, onManualRemoveRdv, onRdvOutcome, onClearRdvOutcome, isAdminView, closers, rdvClosers, onAssign, calendiqReady, calendiqOrganizer, bcList, onBcUpsert, onBcAdd, onPartAdd, onPartUpsert, onPartRemove, onPayAdd, onPayRemove, onSetSeason}){
   const [moveOpen,setMoveOpen]=useState(false);
   const [noteOpen,setNoteOpen]=useState(false);
   const [noteMode,setNoteMode]=useState('note'); // 'note' = note écrite | 'nrp' = appel sans réponse
@@ -3784,7 +3777,7 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
   const statusColor = COL_COLOR[lead.column];
 
   return (
-    <div className={"fiche"+(embedded?" fiche-embed":"")}>
+    <div className="fiche">
       {noteOpen && <NoteModal mode={noteMode} onClose={()=>setNoteOpen(false)} onNote={(t,ti,tx)=>{ onNote(t,ti,tx); setNoteOpen(false); }}/>}
       {recapOpen && <RecapModal lead={lead} onClose={()=>setRecapOpen(false)} onEditField={onEditField} onNote={onNote} onAdvanceStage={onAdvanceStage} onSetRdvOutcome={(rdv,oc)=>onRdvOutcome(rdv,oc,'ia')}/>}
       {rdvOpen && <AddRdvModal lead={lead} initial={rdvEdit}
@@ -3792,7 +3785,7 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
         pickCloser={isAdminView} closers={rdvClosers}
         onClose={closeRdv}
         onAdd={(t,d,iso,org)=>onAddRdv(t,d,iso, rdvEdit?rdvEdit.id:null, org||(rdvEdit&&rdvEdit.organizer_id)||calendiqOrganizer)}/>}
-      {!embedded && (<div className="fiche-head">
+      <div className="fiche-head">
         <button className="back" onClick={onBack}><I.back/>{backLabel||'Mes leads'}</button>
         <div className="fiche-id">
           <NameEdit lead={lead} onEditField={onEditField}/>
@@ -3808,7 +3801,7 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
             </div>):null; })()}
         </div>
         <div className="status-pill"><span className="sdot" style={{background:statusColor}}></span>{COL_LABEL[lead.column]}</div>
-      </div>)}
+      </div>
 
       <div className="fiche-grid">
         {/* SITUATION */}
@@ -6357,11 +6350,6 @@ function App({session, onLogout}){
     for(const l of leadsPay){ const p=l._pay; if(p&&p.reste>0){ const r=recouv.get(l.id); if(r&&r.relance_next&&r.relance_next<today) n++; } }
     return n;
   },[leadsPay,recouv]);
-  // Fiche réutilisable : plein écran (screen 'fiche') OU intégrée dans le triptyque Setting (embedded → sans en-tête Retour/nom).
-  const mkFiche=(embedded)=> sel ? <Fiche embedded={embedded} lead={sel} onBack={()=>setScreen(origin)} backLabel={SCREEN_LABEL[origin]||'Retour'} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
-    onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} onManualRdv={setManualRdv} onManualRemoveRdv={removeManualRdv} onRdvOutcome={setRdvOutcome} onClearRdvOutcome={clearRdvOutcome} isAdminView={isAdmin} closers={closers} rdvClosers={cqSources} onAssign={reassignOwner} calendiqReady={isAdmin ? cqSources.length>0 : !!(profile&&profile.calendiq_organizer_id)} calendiqOrganizer={profile&&profile.calendiq_organizer_id} bcList={bcEnrollments.filter(e=>e.lead_id===sel.id)} onBcUpsert={bcUpsert} onBcAdd={isAdmin?bcAdd:null} onPartAdd={partAdd} onPartUpsert={partUpsert} onPartRemove={partRemove} onPayAdd={payAdd} onPayRemove={payRemove} onSetSeason={setLeadSeason}/> : null;
-  // triptyque Setting : la fiche suit le lead courant de la file (charge sa timeline complète + enrichissement paiement).
-  const selectSettingLead=(id)=>{ if(id && id!==selId){ setSelId(id); loadTimelineFor(id); } };
   const hideSetting = (userEmail||'').trim().toLowerCase()==='maxime@iq-education.com'; // Setting masqué à Maxime uniquement
   const navItems = (isSetter
     ? [ {id:'setting', label:'Setting', icon:I.phone}, {id:'agenda', label:'Mes tâches', icon:I.agenda} ]
@@ -6424,7 +6412,8 @@ function App({session, onLogout}){
             isAdmin={isAdmin} closers={closers} onAssign={reassignOwner}
             colVer={colVer} renameCol={renameCol} recolorCol={recolorCol} reorderCols={reorderCols} addCol={addCol} deleteCol={deleteCol}
             onOpenLead={openLead} onReorder={reorderLead} onAddLead={(col,defSrc,defEng)=>setAddTarget({col,defSrc,defEng})} onDelete={deleteLead}/>}
-        {screen==='fiche' && sel && mkFiche(false)}
+        {screen==='fiche' && sel && <Fiche lead={sel} onBack={()=>setScreen(origin)} backLabel={SCREEN_LABEL[origin]||'Retour'} onCall={()=>placeCall(sel)} onMove={(col)=>reorderLead(sel.id, col, null)} onEditNote={editNote} onDeleteNote={deleteNote} onEditField={editField} onNote={addNote}
+            onPay={()=>setPayTarget({lead:sel})} onAdvanceStage={(col)=>reorderLead(sel.id, col, null, {silent:true})} onActions={setActions} onClaim={claimLead} meId={session.user.id} onAddRdv={addCalendiqRdv} onCancelRdv={cancelCalendiqRdv} onManualRdv={setManualRdv} onManualRemoveRdv={removeManualRdv} onRdvOutcome={setRdvOutcome} onClearRdvOutcome={clearRdvOutcome} isAdminView={isAdmin} closers={closers} rdvClosers={cqSources} onAssign={reassignOwner} calendiqReady={isAdmin ? cqSources.length>0 : !!(profile&&profile.calendiq_organizer_id)} calendiqOrganizer={profile&&profile.calendiq_organizer_id} bcList={bcEnrollments.filter(e=>e.lead_id===sel.id)} onBcUpsert={bcUpsert} onBcAdd={isAdmin?bcAdd:null} onPartAdd={partAdd} onPartUpsert={partUpsert} onPartRemove={partRemove} onPayAdd={payAdd} onPayRemove={payRemove} onSetSeason={setLeadSeason}/>}
         {screen==='fiche' && !sel && <div className="empty-screen"><I.leads/><p>Lead introuvable.</p><button className="btn btn-ghost" onClick={()=>setScreen(origin)}>Retour ({SCREEN_LABEL[origin]||'Mes leads'})</button></div>}
         {screen==='agenda' && <Agenda meetings={cqMeetings} sources={cqSources} loading={cqLoading} error={cqError}
             isAdmin={isAdmin} profile={profile} onConnect={connectCalendiq} onDisconnect={disconnectCalendiq}
@@ -6440,7 +6429,7 @@ function App({session, onLogout}){
         {screen==='team' && isAdmin && <TeamScreen userId={userId} toast={toast} leads={leadsView} onOpenLead={openLead} onSetCockpit={setCockpitState} cqPending={cqLoading && !cqMeetings.length}/>}
         {screen==='import' && isAdmin && <ImportScreen toast={toast} onOpenLead={openLead} setSyncBusy={setSyncBusy} reloadLeads={reload} closers={closers}/>}
         {screen==='console' && isAdmin && <Console toast={toast} onOpenLead={openLead} setSyncBusy={setSyncBusy} reloadLeads={reload}/>}
-        {screen==='setting' && <SettingScreen leads={leads} closers={closers} toast={toast} userId={userId} isAdmin={isAdmin} isSetter={isSetter} onCall={settingCall} onDispose={settingDispose} onRdv={settingRdv} onRecap={settingRecap} onAssign={settingAssign} onClaim={settingClaim} onRelease={settingRelease} onOpenLead={openLead} fiche={mkFiche(true)} onSelect={selectSettingLead}/>}
+        {screen==='setting' && <SettingScreen leads={leads} closers={closers} toast={toast} userId={userId} isAdmin={isAdmin} isSetter={isSetter} onCall={settingCall} onDispose={settingDispose} onRdv={settingRdv} onRecap={settingRecap} onAssign={settingAssign} onClaim={settingClaim} onRelease={settingRelease} onOpenLead={openLead}/>}
         {rdvFromSetting && sel && sel.id===rdvFromSetting && <AddRdvModal lead={sel}
           organizerId={(isAdmin||isSetter) ? null : (profile&&profile.calendiq_organizer_id)}
           closers={cqSources} pickCloser={isAdmin||isSetter}
@@ -7232,7 +7221,7 @@ const settingWave = (l) => Math.min(SETTING_MAX, (l.callAttempts||0)+1); // tour
    File organisée par TOURNÉES (nb d'appels) : Tournée 1 = jamais appelés, Tournée N = appelés N-1× sans réponse.
    Les dispositions pilotent la VRAIE colonne pipeline (contacter->atc->contacté/rdv1/lost). call_attempts = clé de vague.
    « À rappeler » garde le lead chez le setter (heure de rappel). Zéro écriture HubSpot. */
-function SettingScreen({ leads, closers, toast, userId, isAdmin, isSetter, onCall, onDispose, onRdv, onRecap, onAssign, onClaim, onRelease, onOpenLead, fiche, onSelect }){
+function SettingScreen({ leads, closers, toast, userId, isAdmin, isSetter, onCall, onDispose, onRdv, onRecap, onAssign, onClaim, onRelease, onOpenLead }){
   const now=Date.now();
   const nm=(l)=> (((l.prenom||'')+' '+(l.nom||'')).trim()) || l.email || 'Lead';
   const occupied=(l)=> !!(l.claimedBy && l.claimedBy!==userId && l.claimedAt && (now-new Date(l.claimedAt).getTime() < 600000));
@@ -7298,7 +7287,6 @@ function SettingScreen({ leads, closers, toast, userId, isAdmin, isSetter, onCal
   React.useEffect(()=>{ const prev=prevClaim.current;
     if(prev && prev!==curId && onRelease) onRelease(prev);
     if(curId && onClaim) onClaim(curId);
-    if(curId && onSelect) onSelect(curId);   // la fiche intégrée (droite) suit le lead courant
     prevClaim.current=curId;
   },[curId]);
   React.useEffect(()=>()=>{ if(prevClaim.current && onRelease) onRelease(prevClaim.current); },[]);
@@ -7329,7 +7317,7 @@ function SettingScreen({ leads, closers, toast, userId, isAdmin, isSetter, onCal
   const doAssign=()=>{ if(!onAssign || !appelableIds.length) return; onAssign(appelableIds, assignTo||null); };
 
   const canAct = cur && appelable(cur);
-  React.useEffect(()=>{ const h=(e)=>{ const t=e.target; if(t&&(t.tagName==='TEXTAREA'||t.tagName==='INPUT'||t.tagName==='SELECT'||t.isContentEditable)) return; if(e.metaKey||e.ctrlKey||e.altKey) return;
+  React.useEffect(()=>{ const h=(e)=>{ const t=e.target; if(t&&(t.tagName==='TEXTAREA'||t.tagName==='INPUT'||t.tagName==='SELECT')) return; if(e.metaKey||e.ctrlKey||e.altKey) return;
       if(!canAct) return;
       const k=(e.key||'').toLowerCase();
       if(k==='a'){ e.preventDefault(); call(); }
@@ -7383,7 +7371,7 @@ function SettingScreen({ leads, closers, toast, userId, isAdmin, isSetter, onCal
         <div className="set-kpi ok"><b>{kpi.rdv}</b><span>RDV pris</span></div>
         <div className="set-kpi bad"><b>{kpi.lost}</b><span>Lost</span></div>
       </div>
-      <div className="set-main set-triptyque">
+      <div className="set-main">
         <div className="set-file">
           <div className="set-filetabs">
             {TABS.map(t=>(
@@ -7457,7 +7445,6 @@ function SettingScreen({ leads, closers, toast, userId, isAdmin, isSetter, onCal
           </>)}
         </div>
         )}
-        <div className="set-fiche">{cur ? fiche : null}</div>
       </div>
     </div>
   );
