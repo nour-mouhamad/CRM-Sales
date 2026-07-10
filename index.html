@@ -1861,9 +1861,21 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .set-kpi.hot b{color:var(--accent)} .set-kpi.ok b{color:var(--ok)} .set-kpi.bad b{color:var(--danger)}
 .set-main{display:grid; grid-template-columns:minmax(280px,360px) 1fr; gap:18px; align-items:start}
 .set-file{background:var(--surface-2); border:1px solid var(--b1); border-radius:14px; overflow:hidden}
-.set-filetabs{display:flex; border-bottom:1px solid var(--b1)}
-.set-filetabs button{flex:1; background:none; border:none; color:var(--t3); font-size:12px; font-weight:700; padding:10px 6px; cursor:pointer; border-bottom:2px solid transparent}
+.set-filetabs{display:flex; border-bottom:1px solid var(--b1); overflow-x:auto}
+.set-filetabs button{flex:1 0 auto; min-width:76px; display:flex; flex-direction:column; gap:1px; align-items:center; background:none; border:none; color:var(--t2); font-size:12px; font-weight:700; padding:8px 9px; cursor:pointer; border-bottom:2px solid transparent; white-space:nowrap}
+.set-filetabs button small{font-size:9px; color:var(--t3); font-weight:600; text-transform:uppercase; letter-spacing:.02em}
 .set-filetabs button.on{color:var(--accent); border-bottom-color:var(--accent)}
+.set-filetabs button.on small{color:var(--accent)}
+.set-callcount{background:var(--surface); border:1px solid var(--b1); border-radius:11px; padding:10px 14px; font-size:13px; font-weight:700; color:var(--t2); letter-spacing:.03em; display:flex; align-items:center; gap:10px}
+.set-callcount b{font-size:22px; font-weight:800; color:var(--accent)}
+.set-her-tag{margin-left:auto; font-size:10.5px; font-weight:700; color:#c86000; background:rgba(230,120,20,.14); padding:3px 8px; border-radius:7px; text-transform:none; letter-spacing:0}
+.set-done-note{font-size:13px; color:var(--t3); display:flex; flex-direction:column; gap:8px; align-items:flex-start}
+.set-badge.her{background:rgba(230,120,20,.16); color:#c86000}
+.set-badge.ok{background:rgba(40,180,110,.18); color:var(--ok)}
+.set-badge.bad{background:var(--danger-tint); color:var(--danger)}
+.set-dispo.cont{border-color:rgba(58,134,232,.5)} .set-dispo.cont:hover{background:rgba(58,134,232,.1); border-color:#3a86e8; color:#3a86e8}
+.tag-calls{background:rgba(58,134,232,.14); color:#3a86e8; font-weight:700}
+.tag-badphone{background:var(--danger-tint); color:var(--danger); font-weight:700}
 .set-list{max-height:66vh; overflow-y:auto}
 .set-row{display:flex; align-items:center; gap:10px; padding:10px 13px; cursor:pointer; border-bottom:1px solid var(--b1); border-left:3px solid transparent}
 .set-row:hover{background:var(--surface)}
@@ -2089,7 +2101,7 @@ function dbToLead(r, acts){
     source:r.source, webiEngagement:r.webi_engagement||null, webiDate:r.webi_date||null, heat:r.heat||null, column:COL_DB2UI(r.colonne), owner:r.owner_closer_id||null,
     nextAction:r.next_action||'À contacter', actionDoneFor:r.action_done_for||null, nextActionDue:r.next_action_due||null, extraActions:Array.isArray(r.extra_actions)?r.extra_actions:[], hiddenActions:Array.isArray(r.hidden_actions)?r.hidden_actions:[], cockpitState:r.cockpit_state||null, live:false, noShow,
     settingState:r.setting_state||null, callAttempts:r.call_attempts||0, lastCallAt:r.last_call_at||null, lastCallAnswered:(r.last_call_answered==null?null:!!r.last_call_answered), callbackAt:r.callback_at||null,
-    setterId:r.setter_id||null, claimedBy:r.claimed_by||null, claimedAt:r.claimed_at||null,
+    setterId:r.setter_id||null, claimedBy:r.claimed_by||null, claimedAt:r.claimed_at||null, badPhone:!!r.bad_phone,
     offer:(r.montant==null||r.montant==='')?0:(Number(r.montant)||0), aPayer:(r.montant_a_payer==null?'':r.montant_a_payer), quiPaie:r.qui_paie||'', paid:r.statut_paiement==='paye', statut_paiement:r.statut_paiement||'aucun',
     cpf:(Number(r.cpf_dispo)||0), metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'', saison:r.saison||null,
     rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, rdvMeetLink:r.rdv_meet_link||null, rdvMeta, hubspot_deal_id:r.hubspot_deal_id||null, date_creation:r.date_creation||null, hsImport:r.hs_import||null, starred:!!r.starred,
@@ -2146,6 +2158,7 @@ async function saveLead(id, uiPatch){
   if('lastCallAnswered' in uiPatch) m.last_call_answered=(uiPatch.lastCallAnswered==null?null:!!uiPatch.lastCallAnswered);
   if('callbackAt' in uiPatch) m.callback_at=uiPatch.callbackAt||null;
   if('setterId' in uiPatch) m.setter_id=uiPatch.setterId||null;
+  if('badPhone' in uiPatch) m.bad_phone=!!uiPatch.badPhone;
   if('owner' in uiPatch) m.owner_closer_id=uiPatch.owner;
   if('paid' in uiPatch) m.statut_paiement=uiPatch.paid?'paye':'aucun';
   if('statut_paiement' in uiPatch) m.statut_paiement=uiPatch.statut_paiement;
@@ -3365,6 +3378,8 @@ const LeadCard = React.memo(function LeadCard({lead, onOpen, onDragStart, onDrag
           <div className="card-name">{lead.prenom} {lead.nom}
             {lead.noShow && <span className="tag tag-noshow">No-show</span>}
             {lead.saison && <span className="tag tag-saison" title={SEASON_LABEL[lead.saison]||lead.saison}>{lead.saison}</span>}
+            {lead.badPhone && <span className="tag tag-badphone" title="Numéro invalide (marqué au setting)">faux n°</span>}
+            {!lead.badPhone && lead.callAttempts>0 && <span className="tag tag-calls" title={`Appels setting : ${lead.callAttempts} sur ${SETTING_MAX}`}>☎ {lead.callAttempts}/{SETTING_MAX}</span>}
           </div>
           <div className="card-sub"><Src source={lead.source} eng={lead.webiEngagement}/></div>
         </div>
@@ -6090,24 +6105,36 @@ function App({session, onLogout}){
   // cockpit : vivant / sommeil (override manuel de l'auto-classement 21j) / archive (retiré du cockpit)
   const setCockpitState=(id,st)=>{ patch(id,{cockpitState:st}); saveLead(id,{cockpitState:st}); };
   // ---- SETTING (file d'appel setter) : appel + dispositions. État de prospection séparé du pipeline. Zéro HubSpot.
-  const settingCall=(lead)=>{ if(!lead) return; placeCall(lead); const p={ lastCallAt:new Date().toISOString() }; if(!lead.settingState) p.settingState='en_cours'; patch(lead.id,p); saveLead(lead.id,p); };
+  const settingCall=(lead)=>{ if(lead) placeCall(lead); };  // « Appeler » = compose seulement ; le compteur bouge à la disposition
+  // dispositions setter : pilotent la VRAIE colonne pipeline (contacter->atc->contacté/rdv1/lost) + le compteur d'appels + une note.
+  // Garde anti-collision closer : sans effet si le lead a quitté la zone setter (un closer l'a déjà avancé). Zéro écriture HubSpot.
   const settingDispose=(lead,kind,opts={})=>{ if(!lead) return;
+    if(!SETTING_ZONE.has(lead.column)){ toast('Sans effet', 'Déjà avancé — colonne « '+(COL_LABEL[lead.column]||lead.column)+' »', 'info'); return; }
     const nowIso=new Date().toISOString(); const att=(lead.callAttempts||0);
-    const prev={ settingState:lead.settingState, callAttempts:lead.callAttempts||0, lastCallAt:lead.lastCallAt||null, lastCallAnswered:(lead.lastCallAnswered==null?null:!!lead.lastCallAnswered), callbackAt:lead.callbackAt||null };
-    let p={lastCallAt:nowIso}; let title, callKind, answered=null;
-    if(kind==='nrp'){ p.callAttempts=att+1; p.lastCallAnswered=false; answered=false; p.settingState=(att+1>=4?'perdu':'en_cours'); p.callbackAt=null; title='NRP'; callKind='nrp'; }
-    else if(kind==='rappeler'){ p.callAttempts=att+1; p.lastCallAnswered=true; answered=true; p.callbackAt=opts.callbackAt||null; p.settingState='en_cours'; title='À rappeler'+(opts.callbackAt?(' — '+fmtRdv(opts.callbackAt)):''); callKind='callback'; }
-    else if(kind==='lost'){ p.callAttempts=att+1; p.lastCallAnswered=true; answered=true; p.settingState='perdu'; p.callbackAt=null; title='Lost'; callKind='lost'; }
-    else if(kind==='faux'){ p.lastCallAnswered=false; p.settingState='invalide'; p.callbackAt=null; title='Faux numéro'; callKind='faux'; }
+    const prev={ column:lead.column, nextAction:lead.nextAction, callAttempts:att, lastCallAt:lead.lastCallAt||null, lastCallAnswered:(lead.lastCallAnswered==null?null:!!lead.lastCallAnswered), callbackAt:lead.callbackAt||null, badPhone:!!lead.badPhone };
+    let p={lastCallAt:nowIso}; let title, tone='ok';
+    if(kind==='nrp'){ const n=att+1; p.callAttempts=n; p.lastCallAnswered=false; p.callbackAt=null;
+      if(n>=SETTING_MAX){ p.column='lost'; title='NRP #'+n+' — injoignable, sortie auto'; tone='info'; }
+      else { if(lead.column==='contacter'||lead.column==='perso') p.column='atc'; title='NRP #'+n; } }
+    else if(kind==='rappeler'){ p.callAttempts=att+1; p.lastCallAnswered=true; p.callbackAt=opts.callbackAt||null; title='À rappeler'+(opts.callbackAt?(' — '+fmtRdv(opts.callbackAt)):''); }
+    else if(kind==='contacte'){ p.callAttempts=att+1; p.lastCallAnswered=true; p.callbackAt=null; p.column='contacte'; title='Lead contacté (répondu)'; }
+    else if(kind==='lost'){ p.callAttempts=att+1; p.lastCallAnswered=true; p.callbackAt=null; p.column='lost'; title='Lost'; tone='info'; }
+    else if(kind==='faux'){ p.badPhone=true; p.callbackAt=null; title='Faux numéro'; tone='info'; }
     else return;
+    if(p.column && p.column!==lead.column) p.nextAction=NEXT_BY_COL[p.column]||null;
     patch(lead.id,p); saveLead(lead.id,p);
     const actP=addActivite(lead.id,'appel',title,opts.note||null,null,{call_kind:'setting', closer_id:userId}).catch(()=>null);
     const name=`${lead.prenom||''} ${lead.nom||''}`.trim()||lead.email||'Lead';
-    toast(title+' · '+name, opts.note?opts.note.slice(0,70):null, (kind==='lost'||kind==='faux')?'info':'ok', { label:'Annuler', fn:async()=>{ patch(lead.id,prev); await saveLead(lead.id,prev); try{ const aid=await actP; if(aid) await deleteActivite(aid); }catch(e){} } });
+    toast(title+' · '+name, opts.note?opts.note.slice(0,70):null, tone, { label:'Annuler', fn:async()=>{ patch(lead.id,prev); await saveLead(lead.id,prev); try{ const aid=await actP; if(aid) await deleteActivite(aid); }catch(e){} } });
   };
-  // RDV pris depuis Setting : cale le RDV SANS quitter l'écran (même modale + booking CalendIQ que la fiche).
+  // RDV pris depuis Setting : cale le RDV SANS quitter l'écran (même modale + booking CalendIQ que la fiche) ; compte l'appel.
   const [rdvFromSetting,setRdvFromSetting]=useState(null); // id du lead pour qui on cale un RDV
-  const settingRdv=(lead,note)=>{ if(!lead) return; if(note&&note.trim()){ addActivite(lead.id,'note','Note setter',note.trim(),null,{closer_id:userId}).catch(()=>null); } setSelId(lead.id); setRdvFromSetting(lead.id); };
+  const settingRdv=(lead,note)=>{ if(!lead) return;
+    if(!SETTING_ZONE.has(lead.column)){ toast('Sans effet','Déjà avancé','info'); return; }
+    const p={ callAttempts:(lead.callAttempts||0)+1, lastCallAt:new Date().toISOString(), lastCallAnswered:true, callbackAt:null };
+    patch(lead.id,p); saveLead(lead.id,p);
+    if(note&&note.trim()){ addActivite(lead.id,'note','Note setter',note.trim(),null,{closer_id:userId}).catch(()=>null); }
+    setSelId(lead.id); setRdvFromSetting(lead.id); };
   // assignation en masse d'une file de webi à un setter (owner reste au closer ; setter_id = qui appelle). 0 HubSpot.
   const settingAssign=async(ids,setterId)=>{ if(!ids||!ids.length) return; ids.forEach(id=>patch(id,{setterId:setterId||null}));
     try{ const { error }=await SB.from('leads').update({setter_id:setterId||null}).in('id',ids); if(error) throw error;
@@ -7172,16 +7199,20 @@ function importDryRun(parsed, map, params, crmIdx){
   return items;
 }
 
-/* ====================== SETTING — file d'appel setter ======================
-   Écran unique : file du webi à gauche, lead courant à droite. 1 clic pour appeler,
-   1 bouton (ou touche 1-5) pour trancher le résultat, le lead suivant se charge tout seul.
-   État de prospection (setting_state/tentatives/rappel) SÉPARÉ du pipeline de vente (colonne).
-   « RDV pris » ouvre la fiche (flux CalendIQ existant : choix closer + créneau). Zéro HubSpot. */
+const SETTING_MAX = 5;                                       // 5 tournées max ; au 5e NRP le lead sort en Lost
+const SETTING_ZONE = new Set(['contacter','perso','atc']);   // colonnes "appelables" par le setter
+const settingWave = (l) => Math.min(SETTING_MAX, (l.callAttempts||0)+1); // tournée = nombre d'appels + 1
+
+/* ====================== SETTING — tournées d'appel setter ======================
+   File organisée par TOURNÉES (nb d'appels) : Tournée 1 = jamais appelés, Tournée N = appelés N-1× sans réponse.
+   Les dispositions pilotent la VRAIE colonne pipeline (contacter->atc->contacté/rdv1/lost). call_attempts = clé de vague.
+   « À rappeler » garde le lead chez le setter (heure de rappel). Zéro écriture HubSpot. */
 function SettingScreen({ leads, closers, toast, userId, isAdmin, isSetter, onCall, onDispose, onRdv, onAssign, onClaim, onRelease, onOpenLead }){
   const now=Date.now();
   const nm=(l)=> (((l.prenom||'')+' '+(l.nom||'')).trim()) || l.email || 'Lead';
-  const booked=(l)=> !!l.rdv_at || (l.rdvMeta && Object.keys(l.rdvMeta).length>0);
   const occupied=(l)=> !!(l.claimedBy && l.claimedBy!==userId && l.claimedAt && (now-new Date(l.claimedAt).getTime() < 600000));
+  const heritage=(l)=> l.column==='atc' && (l.callAttempts||0)===0;          // ATC hérité (avant Setting) : nb d'appels inconnu
+  const appelable=(l)=> SETTING_ZONE.has(l.column) && !l.badPhone;
   const fmtWebi=(d)=>{ try{ const [y,m,dd]=d.split('-'); return dd+'/'+m+'/'+y; }catch(e){ return d; } };
   const memberName=(id)=>{ const c=(closers||[]).find(x=>x.id===id); return c?(c.name||'—'):'—'; };
 
@@ -7199,33 +7230,42 @@ function SettingScreen({ leads, closers, toast, userId, isAdmin, isSetter, onCal
     return webiPool;
   },[webiPool,scope,userId]);
 
-  const buckets=React.useMemo(()=>{
-    const acall=[], later=[], done=[];
+  // rangement : chaque lead dans SA tournée (call_attempts+1), ou Rappels (heure de rappel posée), ou Terminés.
+  const groups=React.useMemo(()=>{
+    const g={ t1:[],t2:[],t3:[],t4:[],t5:[], rappels:[], done:[] };
     pool.forEach(l=>{
-      if(l.settingState==='perdu'||l.settingState==='invalide'||booked(l)){ done.push(l); return; }
-      const cb=l.callbackAt? new Date(l.callbackAt).getTime():null;
-      if(l.settingState==='en_cours' && cb && cb>now){ later.push(l); return; }
-      acall.push(l);
+      if(!appelable(l)){ g.done.push(l); return; }
+      if(l.callbackAt){ g.rappels.push(l); return; }
+      g['t'+settingWave(l)].push(l);
     });
-    const rank=(l)=>{ if(occupied(l)) return [9,0]; const cb=l.callbackAt?new Date(l.callbackAt).getTime():null; if(cb&&cb<=now) return [0,cb]; if((l.callAttempts||0)===0) return [1,0]; return [2, l.lastCallAt?new Date(l.lastCallAt).getTime():0]; };
-    acall.sort((a,b)=>{ const ra=rank(a),rb=rank(b); return ra[0]-rb[0]||(ra[1]-rb[1]); });
-    later.sort((a,b)=> new Date(a.callbackAt).getTime()-new Date(b.callbackAt).getTime());
-    return {acall,later,done};
+    g.t1.sort((a,b)=> (heritage(a)?1:0)-(heritage(b)?1:0));   // jamais appelés d'abord, ATC hérités en bas
+    g.rappels.sort((a,b)=> new Date(a.callbackAt).getTime()-new Date(b.callbackAt).getTime());
+    return g;
   },[pool]);
 
-  const kpi=React.useMemo(()=>{ let appeles=0,joints=0,rdv=0,perdus=0,invalides=0,rappelsDus=0;
-    pool.forEach(l=>{ if((l.callAttempts||0)>0) appeles++; if(l.lastCallAnswered===true) joints++; if(booked(l)) rdv++;
-      if(l.settingState==='perdu') perdus++; if(l.settingState==='invalide') invalides++;
-      const cb=l.callbackAt?new Date(l.callbackAt).getTime():null; if(l.settingState==='en_cours'&&cb&&cb<=now&&!booked(l)) rappelsDus++; });
-    return {total:pool.length, restants:buckets.acall.length, rappelsDus, appeles, joints, rdv, perdus, invalides};
-  },[pool,buckets]);
+  const TABS=[
+    {id:'t1', label:'Tournée 1', sub:'jamais appelés'},
+    {id:'t2', label:'Tournée 2', sub:'1 appel'},
+    {id:'t3', label:'Tournée 3', sub:'2 appels'},
+    {id:'t4', label:'Tournée 4', sub:'3 appels'},
+    {id:'t5', label:'Tournée 5', sub:'dernière chance'},
+    {id:'rappels', label:'🔔 Rappels', sub:'décrochés, à rappeler'},
+    {id:'done', label:'✓ Terminés', sub:'RDV / Lost / faux n°'},
+  ];
+  const [tab,setTab]=React.useState('t1');
+  const list = groups[tab]||[];
+  const appelableIds=React.useMemo(()=> pool.filter(appelable).map(l=>l.id), [pool]);
 
-  const [tab,setTab]=React.useState('acall');
-  const list = tab==='acall'?buckets.acall : tab==='later'?buckets.later : buckets.done;
+  const kpi=React.useMemo(()=>{ let appeles=0,joints=0,rdv=0,lost=0;
+    const restants=groups.t1.length+groups.t2.length+groups.t3.length+groups.t4.length+groups.t5.length;
+    pool.forEach(l=>{ if((l.callAttempts||0)>0) appeles++; if(l.lastCallAnswered===true) joints++;
+      if(l.column==='rdv1'||l.rdv_at||(l.rdvMeta&&Object.keys(l.rdvMeta).length)) rdv++; if(l.column==='lost') lost++; });
+    return {restants, rappels:groups.rappels.length, appeles, joints, rdv, lost};
+  },[pool,groups]);
 
   const [curId,setCurId]=React.useState(null);
-  const firstFree=()=>{ const a=buckets.acall.find(l=>!occupied(l)); return (a||buckets.acall[0]||pool[0]||{}).id||null; };
-  React.useEffect(()=>{ if(!pool.length){ setCurId(null); return; } if(!curId || !pool.some(l=>l.id===curId)) setCurId(firstFree()); },[webi,scope,pool.length]);
+  const firstFree=()=>{ const a=list.find(l=>!occupied(l)); return (a||list[0]||{}).id||null; };
+  React.useEffect(()=>{ if(!list.length){ setCurId(null); return; } if(!curId || !list.some(l=>l.id===curId)) setCurId(firstFree()); },[webi,scope,tab,list.length]);
   const cur = pool.find(l=>l.id===curId) || null;
 
   // verrou anti-collision : réserve le lead courant (claim 10 min), libère le précédent → jamais 2 setters sur le même.
@@ -7244,7 +7284,7 @@ function SettingScreen({ leads, closers, toast, userId, isAdmin, isSetter, onCal
   const [cbOpen,setCbOpen]=React.useState(false); const [cbCustom,setCbCustom]=React.useState('');
   React.useEffect(()=>{ setNote(''); setCbOpen(false); setCbCustom(''); },[curId]);
 
-  const advance=()=>{ const arr=buckets.acall; const i=arr.findIndex(l=>l.id===curId); const nxt=arr.slice(i+1).find(l=>!occupied(l))||arr.find(l=>l.id!==curId && !occupied(l))||null; setCurId(nxt?nxt.id:null); };
+  const advance=()=>{ const i=list.findIndex(l=>l.id===curId); const nxt=list.slice(i+1).find(l=>!occupied(l))||list.find(l=>l.id!==curId && !occupied(l))||null; setCurId(nxt?nxt.id:null); };
   const call=()=>{ if(!cur) return; onCall(cur); if(noteRef.current) noteRef.current.focus(); };
   const dispose=(kind)=>{ if(!cur) return;
     if(kind==='rdv'){ onRdv(cur, note); return; }
@@ -7260,28 +7300,33 @@ function SettingScreen({ leads, closers, toast, userId, isAdmin, isSetter, onCal
   };
 
   const [assignTo,setAssignTo]=React.useState('');
-  const doAssign=()=>{ if(!onAssign) return; const ids=buckets.acall.map(l=>l.id); if(ids.length) onAssign(ids, assignTo||null); };
+  const doAssign=()=>{ if(!onAssign || !appelableIds.length) return; onAssign(appelableIds, assignTo||null); };
 
+  const canAct = cur && appelable(cur);
   React.useEffect(()=>{ const h=(e)=>{ const t=e.target; if(t&&(t.tagName==='TEXTAREA'||t.tagName==='INPUT'||t.tagName==='SELECT')) return; if(e.metaKey||e.ctrlKey||e.altKey) return;
+      if(!canAct) return;
       const k=(e.key||'').toLowerCase();
       if(k==='a'){ e.preventDefault(); call(); }
       else if(k==='1'){ e.preventDefault(); dispose('rdv'); }
       else if(k==='2'){ e.preventDefault(); dispose('nrp'); }
       else if(k==='3'){ e.preventDefault(); dispose('rappeler'); }
-      else if(k==='4'){ e.preventDefault(); dispose('lost'); }
-      else if(k==='5'){ e.preventDefault(); dispose('faux'); } };
+      else if(k==='4'){ e.preventDefault(); dispose('contacte'); }
+      else if(k==='5'){ e.preventDefault(); dispose('lost'); }
+      else if(k==='6'){ e.preventDefault(); dispose('faux'); } };
     window.addEventListener('keydown',h); return ()=>window.removeEventListener('keydown',h); });
 
-  const rowBadge=(l)=>{ if(occupied(l)) return ['occ','Occupé']; if(booked(l)) return ['','RDV']; if(l.settingState==='perdu') return ['','Perdu']; if(l.settingState==='invalide') return ['','Faux n°'];
-    if(l.callbackAt && new Date(l.callbackAt).getTime()>now && l.settingState==='en_cours') return ['rap','Rappel'];
-    if((l.callAttempts||0)===0 && !l.settingState) return ['new','Nouveau']; return ['enc','En cours']; };
+  const rowBadge=(l)=>{ if(occupied(l)) return ['occ','Occupé'];
+    if(!appelable(l)){ if(l.badPhone) return ['bad','Faux n°']; if(l.column==='rdv1'||l.rdv_at) return ['ok','RDV']; if(l.column==='contacte') return ['','Contacté']; if(l.column==='lost') return ['',(l.callAttempts||0)>=SETTING_MAX?'Épuisé':'Lost']; return ['','Sorti']; }
+    if(l.callbackAt) return ['rap', new Date(l.callbackAt).getTime()<=now?'Rappel dû':'Rappel'];
+    if(heritage(l)) return ['her','ATC hérité'];
+    if((l.callAttempts||0)===0) return ['new','Nouveau']; return ['enc','Relance']; };
 
   if(!webiDates.length) return <div className="set-wrap"><div className="set-empty">Aucun lead de webinaire pour l’instant. Importe une liste (Import CSV) et les leads apparaîtront ici.</div></div>;
 
   return (
     <div className="set-wrap">
       <div className="set-top">
-        <h1>Setting</h1>
+        <h1>Tournées d’appel</h1>
         <div className="set-scope">
           <button className={scope==='all'?'on':''} onClick={()=>setScope('all')}>Toute la file</button>
           <button className={scope==='mine'?'on':''} onClick={()=>setScope('mine')}>La mienne</button>
@@ -7294,9 +7339,9 @@ function SettingScreen({ leads, closers, toast, userId, isAdmin, isSetter, onCal
           </select>
         </div>
       </div>
-      {isAdmin && buckets.acall.length>0 && (
+      {isAdmin && appelableIds.length>0 && (
         <div className="set-assign">
-          <span>Assigner les <b>{buckets.acall.length}</b> « à appeler » à</span>
+          <span>Assigner les <b>{appelableIds.length}</b> leads à appeler à</span>
           <select value={assignTo} onChange={e=>setAssignTo(e.target.value)}>
             <option value="">— personne (pool) —</option>
             {(closers||[]).map(c=><option key={c.id} value={c.id}>{c.name||'—'}{c.role==='setter'?' (setter)':(c.role==='admin'?' (admin)':'')}</option>)}
@@ -7306,33 +7351,34 @@ function SettingScreen({ leads, closers, toast, userId, isAdmin, isSetter, onCal
       )}
       <div className="set-kpis">
         <div className="set-kpi hot"><b>{kpi.restants}</b><span>À appeler</span></div>
-        <div className="set-kpi"><b>{kpi.rappelsDus}</b><span>Rappels dus</span></div>
+        <div className="set-kpi"><b>{kpi.rappels}</b><span>Rappels</span></div>
         <div className="set-kpi"><b>{kpi.appeles}</b><span>Appelés</span></div>
         <div className="set-kpi"><b>{kpi.joints}{kpi.appeles?<span style={{fontSize:12,fontWeight:700,color:'var(--t3)'}}> · {Math.round(kpi.joints/kpi.appeles*100)}%</span>:null}</b><span>Joints</span></div>
         <div className="set-kpi ok"><b>{kpi.rdv}</b><span>RDV pris</span></div>
-        <div className="set-kpi bad"><b>{kpi.perdus}</b><span>Perdus</span></div>
-        <div className="set-kpi"><b>{kpi.invalides}</b><span>Faux n°</span></div>
+        <div className="set-kpi bad"><b>{kpi.lost}</b><span>Lost</span></div>
       </div>
       <div className="set-main">
         <div className="set-file">
           <div className="set-filetabs">
-            <button className={tab==='acall'?'on':''} onClick={()=>setTab('acall')}>À appeler ({buckets.acall.length})</button>
-            <button className={tab==='later'?'on':''} onClick={()=>setTab('later')}>À rappeler ({buckets.later.length})</button>
-            <button className={tab==='done'?'on':''} onClick={()=>setTab('done')}>Terminés ({buckets.done.length})</button>
+            {TABS.map(t=>(
+              <button key={t.id} className={tab===t.id?'on':''} onClick={()=>setTab(t.id)}>
+                <span>{t.label}</span><small>{t.sub} · {(groups[t.id]||[]).length}</small>
+              </button>
+            ))}
           </div>
           <div className="set-list">
-            {list.length===0 ? <div className="set-empty">Rien ici.</div> : list.map(l=>{ const [bc,bl]=rowBadge(l);
+            {list.length===0 ? <div className="set-empty">Rien ici — cette tournée est vide.</div> : list.map(l=>{ const [bc,bl]=rowBadge(l);
               return (
               <div key={l.id} className={'set-row'+(l.id===curId?' on':'')+(occupied(l)?' occ':'')} onClick={()=>setCurId(l.id)}>
                 <div className="set-row-main"><b>{nm(l)}</b><span>{l.tel?fmtPhone(l.tel):(l.email||'—')}{l.setterId?(' · '+memberName(l.setterId)):''}</span></div>
                 <div className="set-row-meta">
                   <span className={'set-badge '+bc}>{bl}</span>
-                  <span className="set-att">{(l.callAttempts||0)}/4{l.lastCallAnswered===true?' ✓':(l.lastCallAnswered===false?' ✗':'')}</span>
+                  <span className="set-att">{(l.callAttempts||0)}/{SETTING_MAX}{l.lastCallAnswered===true?' ✓':(l.lastCallAnswered===false?' ✗':'')}</span>
                 </div>
               </div>); })}
           </div>
         </div>
-        {!cur ? <div className="set-panel"><div className="set-empty">File terminée. Sélectionne un lead à gauche ou change de webinaire.</div></div> : (
+        {!cur ? <div className="set-panel"><div className="set-empty">Tournée terminée. Passe à la suivante ou change de webinaire.</div></div> : (
         <div className="set-panel">
           <div className="set-lead-head">
             <Avatar lead={cur} size="sz-md"/>
@@ -7341,14 +7387,18 @@ function SettingScreen({ leads, closers, toast, userId, isAdmin, isSetter, onCal
               <div className="set-lead-sub">
                 <span>Webi {fmtWebi(cur.webiDate)}</span>
                 {cur.webiEngagement?<span>· {cur.webiEngagement==='participe'?'a participé':'inscrit'}</span>:null}
-                <span>· tentative {(cur.callAttempts||0)}/4</span>
                 {cur.lastCallAt?<span>· dernier appel {fmtRdv(cur.lastCallAt)}</span>:null}
               </div>
             </div>
             <div className="set-tel">{cur.tel?fmtPhone(cur.tel):'—'}</div>
           </div>
+          <div className="set-callcount">APPEL <b>{(cur.callAttempts||0)}</b> / {SETTING_MAX}{heritage(cur)&&<span className="set-her-tag">ATC hérité · statut inconnu</span>}</div>
           {occupied(cur) && <div className="set-occ-warn">⚠️ En cours d’appel par {memberName(cur.claimedBy)} — évite le doublon.</div>}
           {hist.length>0 && <div className="set-hist">{hist.map((e,i)=><div key={i} className="set-hist-row"><span className="h-when">{e.when||''}</span>{e.title||e.text||e.type}{(e.text&&e.title)?(' — '+e.text):''}</div>)}</div>}
+          {!canAct ? (
+            <div className="set-done-note">Ce lead est sorti des tournées (colonne « {COL_LABEL[cur.column]||cur.column} »{cur.badPhone?' · faux numéro':''}).{' '}
+              <button className="btn btn-ghost" onClick={()=>onOpenLead(cur.id)}>Ouvrir la fiche</button></div>
+          ) : (<>
           <button className="set-callbtn" onClick={call} disabled={!cur.tel}>{I.phone({})} Appeler <span style={{opacity:.7,fontSize:12,fontWeight:700}}>(A)</span></button>
           <textarea ref={noteRef} className="set-note" placeholder="Note d’appel (rattachée au résultat)…" value={note} onChange={e=>setNote(e.target.value)}/>
           {cbOpen ? (
@@ -7364,16 +7414,18 @@ function SettingScreen({ leads, closers, toast, userId, isAdmin, isSetter, onCal
           ) : (
           <div>
             <div className="set-dispos-lbl" style={{marginBottom:6}}>Résultat de l’appel — 1 clic = enregistre + lead suivant</div>
-            <div className="set-dispos">
+            <div className="set-dispos set-dispos-6">
               <button className="set-dispo rdv" onClick={()=>dispose('rdv')}><span>RDV pris</span><span className="k">1</span></button>
               <button className="set-dispo nrp" onClick={()=>dispose('nrp')}><span>NRP</span><span className="k">2</span></button>
               <button className="set-dispo rap" onClick={()=>dispose('rappeler')}><span>À rappeler</span><span className="k">3</span></button>
-              <button className="set-dispo lost" onClick={()=>dispose('lost')}><span>Lost</span><span className="k">4</span></button>
-              <button className="set-dispo faux" onClick={()=>dispose('faux')}><span>Faux Num</span><span className="k">5</span></button>
+              <button className="set-dispo cont" onClick={()=>dispose('contacte')}><span>Lead contacté</span><span className="k">4</span></button>
+              <button className="set-dispo lost" onClick={()=>dispose('lost')}><span>Lost</span><span className="k">5</span></button>
+              <button className="set-dispo faux" onClick={()=>dispose('faux')}><span>Faux Num</span><span className="k">6</span></button>
             </div>
-            <div className="set-help">Raccourcis : A = appeler · 1-5 = résultat. « RDV pris » ouvre le calage CalendIQ (closer + créneau) sans quitter l’écran.</div>
+            <div className="set-help">A = appeler · 1-6 = résultat. « NRP » fait glisser le lead dans la tournée suivante ; au 5e il passe en Lost. « RDV pris » cale le rendez-vous sans quitter l’écran.</div>
           </div>
           )}
+          </>)}
         </div>
         )}
       </div>
