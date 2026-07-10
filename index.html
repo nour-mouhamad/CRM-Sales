@@ -1905,6 +1905,10 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .set-callbtn:disabled{opacity:.4; cursor:not-allowed}
 .set-note{width:100%; min-height:70px; resize:vertical; background:var(--surface); border:1px solid var(--b1); border-radius:10px; padding:10px 12px; font-size:13.5px; color:var(--t1); font-family:inherit}
 .set-note:focus{outline:none; border-color:var(--accent)}
+.set-note-row{display:flex; flex-direction:column; gap:8px}
+.set-recapbtn{align-self:flex-start; display:inline-flex; align-items:center; gap:7px; background:var(--surface); border:1px solid var(--b1); color:var(--t2); border-radius:9px; padding:8px 12px; font-size:12.5px; font-weight:700; cursor:pointer}
+.set-recapbtn:hover{border-color:var(--accent); color:var(--accent)}
+.set-recapbtn svg{width:15px; height:15px}
 .set-dispos-lbl{font-size:10.5px; font-weight:700; color:var(--t3); text-transform:uppercase; letter-spacing:.04em}
 .set-dispos{display:grid; grid-template-columns:repeat(3,1fr); gap:9px}
 .set-dispo{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:12px 6px; border:1px solid var(--b1); border-radius:11px; background:var(--surface); color:var(--t1); font-size:12.5px; font-weight:700; cursor:pointer}
@@ -4145,7 +4149,7 @@ function RichText({ html, onChange, placeholder, autoFocus }){
 // Colle un transcript -> Edge Function `recap` (Gemini) -> récap adaptatif.
 // Auto-applique : remplit les champs VIDES, signale les conflits sans écraser,
 // sauve le récap en note datée, fait avancer l'étape R1/R2 UNIQUEMENT si un RDV est calé.
-function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage, onSetRdvOutcome }){
+function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage, onSetRdvOutcome, defaultKind }){
   const [text,setText]=useState('');
   const [phase,setPhase]=useState('input'); // input | loading | result | error
   const [result,setResult]=useState(null);
@@ -4153,7 +4157,7 @@ function RecapModal({ lead, onClose, onEditField, onNote, onAdvanceStage, onSetR
   const [recapText,setRecapText]=useState('');
   const [editActions,setEditActions]=useState([]);
   const [err,setErr]=useState('');
-  const [callKind,setCallKind]=useState(()=>inferCallKind(lead,null)||'r1'); // type de call choisi MANUELLEMENT (prime sur la détection IA)
+  const [callKind,setCallKind]=useState(()=> defaultKind || inferCallKind(lead,null)||'r1'); // type de call choisi MANUELLEMENT (prime sur la détection IA)
   const alive=useRef(true);
   useEffect(()=>()=>{ alive.current=false; },[]);
   const norm=s=>(s==null?'':String(s)).trim().toLowerCase();
@@ -6128,6 +6132,9 @@ function App({session, onLogout}){
     toast(title+' · '+name, opts.note?opts.note.slice(0,70):null, tone, { label:'Annuler', fn:async()=>{ patch(lead.id,prev); await saveLead(lead.id,prev); try{ const aid=await actP; if(aid) await deleteActivite(aid); }catch(e){} } });
   };
   // RDV pris depuis Setting : cale le RDV SANS quitter l'écran (même modale + booking CalendIQ que la fiche) ; compte l'appel.
+  // Résumer le call depuis Setting : ouvre le RecapModal (IA) sur le lead courant, type « Setting » pré-coché, sans quitter l'écran.
+  const [recapFromSetting,setRecapFromSetting]=useState(null);
+  const settingRecap=(lead)=>{ if(!lead) return; setSelId(lead.id); setRecapFromSetting(lead.id); };
   const [rdvFromSetting,setRdvFromSetting]=useState(null); // id du lead pour qui on cale un RDV
   const settingRdv=(lead,note)=>{ if(!lead) return;
     if(!SETTING_ZONE.has(lead.column)){ toast('Sans effet','Déjà avancé','info'); return; }
@@ -6422,12 +6429,16 @@ function App({session, onLogout}){
         {screen==='team' && isAdmin && <TeamScreen userId={userId} toast={toast} leads={leadsView} onOpenLead={openLead} onSetCockpit={setCockpitState} cqPending={cqLoading && !cqMeetings.length}/>}
         {screen==='import' && isAdmin && <ImportScreen toast={toast} onOpenLead={openLead} setSyncBusy={setSyncBusy} reloadLeads={reload} closers={closers}/>}
         {screen==='console' && isAdmin && <Console toast={toast} onOpenLead={openLead} setSyncBusy={setSyncBusy} reloadLeads={reload}/>}
-        {screen==='setting' && <SettingScreen leads={leads} closers={closers} toast={toast} userId={userId} isAdmin={isAdmin} isSetter={isSetter} onCall={settingCall} onDispose={settingDispose} onRdv={settingRdv} onAssign={settingAssign} onClaim={settingClaim} onRelease={settingRelease} onOpenLead={openLead}/>}
+        {screen==='setting' && <SettingScreen leads={leads} closers={closers} toast={toast} userId={userId} isAdmin={isAdmin} isSetter={isSetter} onCall={settingCall} onDispose={settingDispose} onRdv={settingRdv} onRecap={settingRecap} onAssign={settingAssign} onClaim={settingClaim} onRelease={settingRelease} onOpenLead={openLead}/>}
         {rdvFromSetting && sel && sel.id===rdvFromSetting && <AddRdvModal lead={sel}
           organizerId={(isAdmin||isSetter) ? null : (profile&&profile.calendiq_organizer_id)}
           closers={cqSources} pickCloser={isAdmin||isSetter}
           onClose={()=>setRdvFromSetting(null)}
           onAdd={(t,d,iso,org)=>addCalendiqRdv(t,d,iso,null,org||(profile&&profile.calendiq_organizer_id))}/>}
+        {recapFromSetting && sel && sel.id===recapFromSetting && <RecapModal lead={sel} defaultKind="setting"
+          onClose={()=>setRecapFromSetting(null)} onEditField={editField} onNote={addNote}
+          onAdvanceStage={(col)=>reorderLead(sel.id,col,null,{silent:true})}
+          onSetRdvOutcome={(rdv,oc)=>setRdvOutcome(rdv,oc,'ia')}/>}
       </main>
 
       {/* OVERLAYS */}
@@ -7210,7 +7221,7 @@ const settingWave = (l) => Math.min(SETTING_MAX, (l.callAttempts||0)+1); // tour
    File organisée par TOURNÉES (nb d'appels) : Tournée 1 = jamais appelés, Tournée N = appelés N-1× sans réponse.
    Les dispositions pilotent la VRAIE colonne pipeline (contacter->atc->contacté/rdv1/lost). call_attempts = clé de vague.
    « À rappeler » garde le lead chez le setter (heure de rappel). Zéro écriture HubSpot. */
-function SettingScreen({ leads, closers, toast, userId, isAdmin, isSetter, onCall, onDispose, onRdv, onAssign, onClaim, onRelease, onOpenLead }){
+function SettingScreen({ leads, closers, toast, userId, isAdmin, isSetter, onCall, onDispose, onRdv, onRecap, onAssign, onClaim, onRelease, onOpenLead }){
   const now=Date.now();
   const nm=(l)=> (((l.prenom||'')+' '+(l.nom||'')).trim()) || l.email || 'Lead';
   const occupied=(l)=> !!(l.claimedBy && l.claimedBy!==userId && l.claimedAt && (now-new Date(l.claimedAt).getTime() < 600000));
@@ -7403,7 +7414,10 @@ function SettingScreen({ leads, closers, toast, userId, isAdmin, isSetter, onCal
               <button className="btn btn-ghost" onClick={()=>onOpenLead(cur.id)}>Ouvrir la fiche</button></div>
           ) : (<>
           <button className="set-callbtn" onClick={call} disabled={!cur.tel}>{I.phone({})} Appeler <span style={{opacity:.7,fontSize:12,fontWeight:700}}>(A)</span></button>
-          <textarea ref={noteRef} className="set-note" placeholder="Note d’appel (rattachée au résultat)…" value={note} onChange={e=>setNote(e.target.value)}/>
+          <div className="set-note-row">
+            <textarea ref={noteRef} className="set-note" placeholder="Note d’appel courte (rattachée au résultat)…" value={note} onChange={e=>setNote(e.target.value)}/>
+            <button className="set-recapbtn" onClick={()=>onRecap&&onRecap(cur)} title="Coller le transcript d’un call long → résumé IA, type Setting">{I.spark({})} Résumer un call</button>
+          </div>
           {cbOpen ? (
             <div>
               <div className="set-dispos-lbl" style={{marginBottom:6}}>Rappeler quand ?</div>
