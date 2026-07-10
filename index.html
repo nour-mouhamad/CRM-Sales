@@ -6322,7 +6322,7 @@ function App({session, onLogout}){
     {id:'leads', label:'Mes leads', icon:I.leads, badge:rappelerCount},
     {id:'setting', label:'Setting', icon:I.phone},
     {id:'agenda', label:'Mes tâches', icon:I.agenda},
-    ...(isAdmin?[{id:'todo', label:'À faire', icon:I.check},{id:'bootcamp', label:'Bootcamp', icon:I.admission},{id:'recouvrement', label:'Recouvrement', icon:I.euro, badge:recouvDue||null, badgeWarn:true},{id:'team', label:'Closers', icon:I.users},{id:'import', label:'Import CSV', icon:I.upload},{id:'console', label:'Synchro HubSpot', icon:I.sync, badge:syncPending||null, badgeWarn:syncWarn}]:[]),
+    ...(isAdmin?[{id:'bootcamp', label:'Bootcamp', icon:I.admission},{id:'recouvrement', label:'Recouvrement', icon:I.euro, badge:recouvDue||null, badgeWarn:true},{id:'team', label:'Closers', icon:I.users},{id:'import', label:'Import CSV', icon:I.upload},{id:'console', label:'Synchro HubSpot', icon:I.sync, badge:syncPending||null, badgeWarn:syncWarn}]:[]),
   ];
   useEffect(()=>{ if(!isAdmin && (screen==='team'||screen==='console'||screen==='import'||screen==='todo'||screen==='bootcamp'||screen==='recouvrement')) setScreen('leads'); },[isAdmin,screen]);
   // setter : accès restreint à Setting + Mes tâches (+ fiche pour un RDV). Renvoyé sur Setting sinon.
