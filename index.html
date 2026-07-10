@@ -6343,17 +6343,20 @@ function App({session, onLogout}){
     for(const l of leadsPay){ const p=l._pay; if(p&&p.reste>0){ const r=recouv.get(l.id); if(r&&r.relance_next&&r.relance_next<today) n++; } }
     return n;
   },[leadsPay,recouv]);
-  const navItems = isSetter
+  const hideSetting = (userEmail||'').trim().toLowerCase()==='maxime@iq-education.com'; // Setting masqué à Maxime uniquement
+  const navItems = (isSetter
     ? [ {id:'setting', label:'Setting', icon:I.phone}, {id:'agenda', label:'Mes tâches', icon:I.agenda} ]
     : [
     {id:'leads', label:'Mes leads', icon:I.leads, badge:rappelerCount},
     {id:'setting', label:'Setting', icon:I.phone},
     {id:'agenda', label:'Mes tâches', icon:I.agenda},
     ...(isAdmin?[{id:'bootcamp', label:'Bootcamp', icon:I.admission},{id:'recouvrement', label:'Recouvrement', icon:I.euro, badge:recouvDue||null, badgeWarn:true},{id:'team', label:'Closers', icon:I.users},{id:'import', label:'Import CSV', icon:I.upload},{id:'console', label:'Synchro HubSpot', icon:I.sync, badge:syncPending||null, badgeWarn:syncWarn}]:[]),
-  ];
+  ]).filter(n=> !(hideSetting && n.id==='setting'));
   useEffect(()=>{ if(!isAdmin && (screen==='team'||screen==='console'||screen==='import'||screen==='todo'||screen==='bootcamp'||screen==='recouvrement')) setScreen('leads'); },[isAdmin,screen]);
   // setter : accès restreint à Setting + Mes tâches (+ fiche pour un RDV). Renvoyé sur Setting sinon.
   useEffect(()=>{ if(isSetter && !(screen==='setting'||screen==='agenda'||screen==='fiche')) setScreen('setting'); },[isSetter,screen]);
+  // Setting masqué à Maxime : s'il y atterrit (lien direct/état), on le renvoie sur ses leads.
+  useEffect(()=>{ if(hideSetting && screen==='setting') setScreen('leads'); },[hideSetting,screen]);
   const navActive = screen==='fiche'?origin:screen;
 
   // splash bref UNIQUEMENT pendant la requête profil (évite un flash board/nav) ; ne bloque jamais après réponse
