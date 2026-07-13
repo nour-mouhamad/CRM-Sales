@@ -7708,7 +7708,6 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
   const [noteEdits,setNoteEdits]=React.useState({}); // leadId -> texte de note édité inline (avant envoi)
   const [noteOpen,setNoteOpen]=React.useState({}); // leadId -> mode édition ouvert (sinon aperçu formaté)
   const [fails,setFails]=React.useState({});     // key -> { stage, error, stale } du dernier échec
-  const oneCommit=React.useRef(false);
 
   // abonnement : toute mutation du cache (notify) re-rend cette instance. Désabo au démontage (pas de setState fantôme).
   React.useEffect(()=>{ CONSOLE_CACHE.subs.add(bump); return ()=>{ CONSOLE_CACHE.subs.delete(bump); }; },[]);
@@ -7774,7 +7773,6 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     }
     setBulk(null);
     setBusy(b=>{ const n={...b}; keys.forEach(k=>delete n[k]); return n; });
-    if(ok) oneCommit.current=true;
     if(Object.keys(failInfo).length) setFails(f=>({...f,...failInfo})); // mémorise les échecs pour les afficher sur la ligne
     // RETRAIT OPTIMISTE ROBUSTE : les clés réussies entrent en liste de SUPPRESSION -> masquées partout IMMÉDIATEMENT et
     // un diff stale (lancé avant l'écriture) ne peut PLUS les faire réapparaître (fini le clignotement). Purge auto au diff frais.
@@ -7818,8 +7816,7 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
   const commitAllSortants=()=>{
     const rows=(data.sortants||[]).filter(r=>r.mode!=='lost');
     if(!rows.length) return;
-    if(!oneCommit.current){ toast('Valide 1 lead d’abord','Sécurité : un envoi unitaire réussi avant le « Tout envoyer »','info'); return; }
-    if(rows.length>10){ const a=window.prompt('Tu vas écrire dans HubSpot sur '+rows.length+' deals.\nTape '+rows.length+' pour confirmer :'); if(String(a||'').trim()!==String(rows.length)){ toast('Annulé',null,'info'); return; } }
+    if(!window.confirm('Envoyer les '+rows.length+' changement'+(rows.length>1?'s':'')+' dans HubSpot ?')) return;
     push(rows.map(sortItem),'Tout envoyé vers HubSpot');
   };
   // Tout accepter (entrants) : ajoute les nouveaux leads au CRM + adopte les modifs HubSpot. AUCUNE écriture HubSpot -> pas de garde.
@@ -7849,7 +7846,7 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
   const createAllAcreer=()=>{
     const rows=(data.acreer||[]).filter(r=>!r.incomplete);
     if(!rows.length){ toast('Rien à créer','Les leads incomplets (sans email ni tél) sont à compléter d’abord','info'); return; }
-    if(rows.length>10){ const a=window.prompt('Tu vas créer '+rows.length+' contacts + transactions dans HubSpot.\nTape '+rows.length+' pour confirmer :'); if(String(a||'').trim()!==String(rows.length)){ toast('Annulé',null,'info'); return; } }
+    if(!window.confirm('Créer '+rows.length+' contact'+(rows.length>1?'s':'')+' + transaction'+(rows.length>1?'s':'')+' dans HubSpot ?')) return;
     push(rows.map(createDealItem),'Créés dans HubSpot');
   };
   // TÂCHES (CRM -> HubSpot) : une action manuelle validée par clic devient une tâche sur la transaction. ÉCRITURE HubSpot.
@@ -7859,7 +7856,7 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
   const createAllTaches=()=>{
     const rows=(data.taches||[]);
     if(!rows.length) return;
-    if(rows.length>10){ const a=window.prompt('Tu vas créer/màj '+rows.length+' tâches dans HubSpot.\nTape '+rows.length+' pour confirmer :'); if(String(a||'').trim()!==String(rows.length)){ toast('Annulé',null,'info'); return; } }
+    if(!window.confirm('Créer / mettre à jour '+rows.length+' tâche'+(rows.length>1?'s':'')+' dans HubSpot ?')) return;
     push(rows.map(taskItem),'Tâches envoyées dans HubSpot');
   };
 
