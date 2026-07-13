@@ -6338,7 +6338,7 @@ function App({session, onLogout}){
       const c=consoleCat(d,'conflits').length+consoleCat(d,'disparus').length;
       setSyncPending(consoleCat(d,'sortants').length+consoleCat(d,'acreer').length+consoleCat(d,'taches').length+consoleCat(d,'entrants').length+c); setSyncWarn(c>0); };
     CONSOLE_CACHE.subs.add(recompute); recompute();
-    const tick=()=>{ if(document.visibilityState!=='visible') return; const now=Date.now(); if(now-(CONSOLE_CACHE.lastBg||0)<60000) return; CONSOLE_CACHE.lastBg=now; consoleLoad(true); };
+    const tick=()=>{ if(document.visibilityState!=='visible') return; const now=Date.now(); if(now-(CONSOLE_CACHE.lastBg||0)<180000) return; CONSOLE_CACHE.lastBg=now; consoleLoad(true); }; // throttle 3 min : le diff complet est lourd, il ne doit pas concurrencer les envois
     tick();
     const timer=setInterval(tick,300000);
     window.addEventListener('focus',tick); document.addEventListener('visibilitychange',tick);
@@ -7019,7 +7019,8 @@ const syncVal = (k,v)=> (v===null||v===undefined||v==='') ? '—' : ((k==='amoun
 // message d'échec lisible à partir du résultat serveur (stage/error)
 const failMsg = (res)=>{
   if(!res) return '';
-  if(res.stale || res.stage==='concurrency') return 'Le deal a changé dans HubSpot entre-temps — clique « Rafraîchir » puis renvoie.';
+  if(res.stale || res.stage==='concurrency') return (res.error?res.error+' — ':'')+'clique « Rafraîchir » puis re-valide ce lead.';
+  if(res.stage==='time_budget') return 'Envoi trop long — reclique, ça reprend où c’était (rien n’est perdu).';
   if(res.stage==='contact_conflict') return res.error || 'Email/téléphone déjà utilisé par un autre contact HubSpot.';
   if(res.stage==='pipeline_mismatch') return 'Ce deal n’est plus dans le pipeline IQ Project.';
   if(res.stage==='deal_alive') return res.error || 'Le deal existe encore dans HubSpot — rafraîchis.';
@@ -7735,23 +7736,42 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     finally{ setSyncBusy(false); setOp(false); await load(); if(reloadLeads) reloadLeads(); }
   };
 
-  // envoie une liste d'items à la fonction Edge (par paquets de 8), rafraîchit, garde les échecs visibles
+  // envoie une liste d'items à la fonction Edge — ROBUSTE :
+  //  · paquets dimensionnés au poids (créations = 3, le reste = 8) pour rester loin du timeout gateway
+  //  · un paquet en échec réseau n'abandonne PAS les suivants
+  //  · les items rendus "time_budget" par l'edge sont automatiquement renvoyés (jusqu'à 2 reprises)
+  //  · réseau coupé pendant un paquet ≠ échec : l'edge a pu finir -> la réconciliation tranche (les lignes
+  //    réellement envoyées disparaissent au diff, les autres restent, zéro faux "échec")
   const push=React.useCallback(async(items,label)=>{
     if(!items.length) return;
+    const HEAVY=new Set(['create_deal','accept_new','link_deal']); // ~15-20 appels HubSpot chacun
     const keys=items.map(i=>i.key);
     setBusy(b=>{ const n={...b}; keys.forEach(k=>n[k]=true); return n; });
     setFails(f=>{ const n={...f}; keys.forEach(k=>delete n[k]); return n; }); // on retente -> on efface l'ancien échec
     setSyncBusy(true);
-    let ok=0, fail=0; const okKeys=new Set(); const failInfo={};
-    if(items.length>1) setBulk({done:0,total:items.length});
-    try{
-      for(let i=0;i<items.length;i+=8){
-        const chunk=items.slice(i,i+8);
+    let ok=0, fail=0, netFail=0; const okKeys=new Set(); const failInfo={}; const attempts={};
+    const total=items.length; let done=0;
+    if(total>1) setBulk({done:0,total});
+    const queue=items.slice();
+    while(queue.length){
+      const heavy=HEAVY.has(queue[0].mode);
+      const size=heavy?3:8;
+      const chunk=[]; while(chunk.length<size && queue.length && HEAVY.has(queue[0].mode)===heavy) chunk.push(queue.shift());
+      try{
         const r=await callFn('hubspot-sync',{action:'push',items:chunk,confirmBulk:true});
-        (r.results||[]).forEach(res=>{ if(res.ok){ ok++; if(res.key) okKeys.add(res.key); } else { fail++; if(res.key) failInfo[res.key]=res; } });
-        if(items.length>1) setBulk({done:Math.min(i+chunk.length,items.length),total:items.length});
+        (r.results||[]).forEach(res=>{
+          if(res.ok){ ok++; done++; if(res.key) okKeys.add(res.key); }
+          else if(res.stage==='time_budget' && (attempts[res.key]=(attempts[res.key]||0)+1)<=2){
+            const it=chunk.find(c=>c.key===res.key); if(it) queue.push(it); // repart dans un paquet suivant
+          }
+          else { fail++; done++; if(res.key) failInfo[res.key]=res; }
+        });
+      }catch(e){
+        // réseau/timeout : issue INCONNUE pour ce paquet — on ne marque pas "échec", la réconciliation tranchera.
+        netFail+=chunk.length; done+=chunk.length;
       }
-    }catch(e){ toast('Envoi échoué', e.message||'', 'info'); fail+=items.length-ok-fail; }
+      if(total>1) setBulk({done:Math.min(done,total),total});
+    }
     setBulk(null);
     setBusy(b=>{ const n={...b}; keys.forEach(k=>delete n[k]); return n; });
     if(ok) oneCommit.current=true;
@@ -7760,7 +7780,8 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     // un diff stale (lancé avant l'écriture) ne peut PLUS les faire réapparaître (fini le clignotement). Purge auto au diff frais.
     if(okKeys.size){ okKeys.forEach(k=>CONSOLE_CACHE.suppressed.add(k)); consoleNotify(); }
     setSyncBusy(false);
-    toast(ok+' envoyé'+(ok>1?'s':'')+(fail?(' · '+fail+' échec'+(fail>1?'s':'')):''), label||null, fail?'info':'ok');
+    if(netFail) toast(ok+' envoyé'+(ok>1?'s':'')+' · '+netFail+' interrompu'+(netFail>1?'s':'')+' (connexion)','Vérification en cours — ce qui est réellement passé va disparaître de la liste, le reste reste à renvoyer','info');
+    else toast(ok+' envoyé'+(ok>1?'s':'')+(fail?(' · '+fail+' échec'+(fail>1?'s':'')):''), label||null, fail?'info':'ok');
     // reconciliation en fond (ne bloque pas l'UI : les lignes sont déjà retirées)
     load(true).then(()=>{ if(reloadLeads) reloadLeads(); });
   },[load,reloadLeads,setSyncBusy,toast]);
