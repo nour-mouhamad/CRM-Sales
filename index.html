@@ -6392,7 +6392,6 @@ function App({session, onLogout}){
     toast('Données réinitialisées',null,'info');
   };
 
-  const rappelerCount = useMemo(()=> leads.filter(l=>l.owner===userId && ['contacter','perso','atc','rdv1','contacte','qualifie','closing','encaisser'].includes(l.column) && (l.heat==='chaud'||l.noShow)).length,[leads,userId]);
 
   // NOTIFICATION SYNCHRO : badge « changements en attente » (sortants + entrants + conflits + disparus) sur le nav.
   // Alimenté par le diff en cache + un rafraîchissement de fond (admin only, LECTURE SEULE HubSpot, throttlé 60s,
@@ -6417,11 +6416,12 @@ function App({session, onLogout}){
     for(const l of leadsPay){ const p=l._pay; if(p&&p.reste>0){ const r=recouv.get(l.id); if(r&&r.relance_next&&r.relance_next<today) n++; } }
     return n;
   },[leadsPay,recouv]);
-  const hideSetting = (userEmail||'').trim().toLowerCase()==='maxime@iq-education.com'; // Setting masqué à Maxime uniquement
+  // Setting = outil SETTER : visible seulement pour les setters + admins. Masqué aux CLOSERS (ils se perdent) ET à Maxime (règle historique).
+  const hideSetting = (!isAdmin && !isSetter) || (userEmail||'').trim().toLowerCase()==='maxime@iq-education.com';
   const navItems = (isSetter
     ? [ {id:'setting', label:'Setting', icon:I.phone}, {id:'agenda', label:'Mes tâches', icon:I.agenda} ]
     : [
-    {id:'leads', label:'Mes leads', icon:I.leads, badge:rappelerCount},
+    {id:'leads', label:'Mes leads', icon:I.leads},
     {id:'setting', label:'Setting', icon:I.phone},
     {id:'agenda', label:'Mes tâches', icon:I.agenda},
     ...(isAdmin?[{id:'bootcamp', label:'Bootcamp', icon:I.admission},{id:'recouvrement', label:'Recouvrement', icon:I.euro, badge:recouvDue||null, badgeWarn:true},{id:'team', label:'Closers', icon:I.users},{id:'import', label:'Import', icon:I.upload},{id:'console', label:'Synchro HubSpot', icon:I.sync, badge:syncPending||null, badgeWarn:syncWarn}]:[]),
