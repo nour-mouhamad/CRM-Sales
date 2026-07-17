@@ -1546,7 +1546,9 @@ a.cq-pill:hover{border-color:var(--accent); color:var(--accent)}
 .srcdd-item .n{margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--t3)}
 .srcdd-item.active .n{color:var(--accent)}
 /* sous-filtre engagement webi (chips sous le sélecteur SOURCE quand Webinaire est actif) */
-.srceng{display:flex; gap:6px; margin-top:6px}
+.srceng{display:flex; gap:6px; margin-top:6px; flex-wrap:wrap}
+.srceng-date{flex-basis:100%; margin-top:2px; padding:6px 8px; border-radius:8px; border:1px solid var(--b1); background:var(--surface); color:var(--t1); font-size:11.5px; font-weight:600; cursor:pointer; outline:none}
+.srceng-date:focus{border-color:var(--accent)}
 .srceng-chip{flex:1; display:flex; align-items:center; justify-content:center; gap:5px; padding:6px 4px; border-radius:8px; border:1px solid var(--b1); background:none; color:var(--t2); font-size:11.5px; font-weight:650; cursor:pointer; transition:all var(--speed)}
 .srceng-chip:hover{color:var(--t1); border-color:var(--b2)}
 .srceng-chip.on{color:var(--accent); border-color:var(--accent); background:var(--accent-tint)}
@@ -3540,6 +3542,12 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
   const [srcEng, setSrcEng] = useState(()=>{ const s=persistedState('iqcrm_srceng','all'); return (s==='participe'||s==='inscrit')?s:'all'; });
   useEffect(()=>localStorage.setItem('iqcrm_srceng',JSON.stringify(srcEng)),[srcEng]);
   useEffect(()=>{ if(src!=='webinaire' && srcEng!=='all') setSrcEng('all'); },[src]); // quitter Webinaire réinitialise le sous-filtre
+  // filtre DATE du webi (menu déroulant des dates dispos) — actif quand src='webinaire'. Le filtre webi (source+présence+date) est GLOBAL (tout le board).
+  const [webiDate, setWebiDate] = useState(()=>persistedState('iqcrm_webidate',null));
+  useEffect(()=>localStorage.setItem('iqcrm_webidate',JSON.stringify(webiDate)),[webiDate]);
+  useEffect(()=>{ if(src!=='webinaire' && webiDate) setWebiDate(null); },[src]);
+  const webiDatesList = useMemo(()=>{ const s=new Set(); leads.forEach(l=>{ if(l.source==='webinaire' && l.webiDate) s.add(l.webiDate); }); return Array.from(s).sort((a,b)=> a<b?1:(a>b?-1:0)); },[leads]);
+  const fmtWebiD = (d)=>{ try{ const [y,m,dd]=String(d).split('-'); return dd+'/'+m+'/'+y.slice(2); }catch(e){ return d; } };
 
   // ---- attribution closer (admin) : filtre par owner + mode sélection multiple ----
   const [ownerFilter, setOwnerFilter] = useState(()=>persistedState('iqcrm_owner','all')); // 'all' | 'pool' | closerId
@@ -3570,13 +3578,15 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
   // compteurs par source — calculés sur la SEULE colonne « Lead à contacter ».
   // Clés dérivées de LEAD_SOURCES (source de vérité unique) + compteurs d'engagement webi pour les sous-chips.
   const srcCounts = useMemo(()=>{
-    const base = leads.filter(l=>l.column==='contacter');
+    // compté sur TOUT le board (dans la vue courante : mine/all + owner) car le filtre webi est global
+    const base = leads.filter(l=>{ if(view==='mine' && !(l.owner===userId || l._cqCloserId===userId)) return false;
+      if(ownerFilter!=='all'){ if(ownerFilter==='pool'){ if(l.owner) return false; } else if(l.owner!==ownerFilter) return false; } return true; });
     const c={all:base.length, _wp:0, _wi:0};
     for(const s of LEAD_SOURCES) c[s.k]=0;
     base.forEach(l=>{ if(c[l.source]!==undefined) c[l.source]++;
       if(l.source==='webinaire'){ if(l.webiEngagement==='participe') c._wp++; else if(l.webiEngagement==='inscrit') c._wi++; } });
     return c;
-  },[leads]);
+  },[leads,view,userId,ownerFilter]);
 
   // index de recherche pré-normalisé : 1 deburr par lead par changement de DATA (au lieu de ~950 par frappe) — mêmes 5 champs (texte)
   const hay = useMemo(()=>{ const m=new Map(); for(const l of leads) m.set(l, deburr(`${l.prenom} ${l.nom} ${l.metier} ${l.email} ${l.tel}`)); return m; },[leads]);
@@ -3591,11 +3601,14 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
       if(view==='mine' && !(l.owner===userId || l._cqCloserId===userId)) return false;
       // filtre par closer (admin) : 'pool' = non attribué, sinon un closer précis
       if(ownerFilter!=='all'){ if(ownerFilter==='pool'){ if(l.owner) return false; } else if(l.owner!==ownerFilter) return false; }
+      // filtre WEBI GLOBAL (tout le board) : source / présence (participé/inscrit) / date du webi
+      if(src!=='all'){ if(l.source!==src) return false;
+        if(src==='webinaire'){ if(srcEng!=='all' && l.webiEngagement!==srcEng) return false; if(webiDate && l.webiDate!==webiDate) return false; } }
       // match si le texte OU le téléphone normalisé correspond (téléphone : format/préfixe sans incidence)
       if(q){ const okTxt=hay.get(l).includes(q); const okTel=qtel && telIdx.get(l).includes(qtel); if(!okTxt && !okTel) return false; }
       return true;
     });
-  },[leads,hay,telIdx,dq,view,userId,ownerFilter]);
+  },[leads,hay,telIdx,dq,view,userId,ownerFilter,src,srcEng,webiDate]);
 
   // handlers STABLES (useCallback) + regroupement mémoïsé : avec ~949 cartes, seules
   // les cartes réellement concernées (carte tirée / survolée) se re-rendent pendant un drag.
@@ -3634,7 +3647,7 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
 
   // items réellement affichés par colonne (filtre source appliqué) — partagé entre le rendu et la sélection par plage
   const displayedByCol={};
-  for(const c of COLUMNS){ const ci=byCol[c.id]||[]; displayedByCol[c.id]=(c.id==='contacter'&&src!=='all'&&!dq.trim())?ci.filter(l=>l.source===src && (src!=='webinaire'||srcEng==='all'||l.webiEngagement===srcEng)):ci; }
+  for(const c of COLUMNS){ displayedByCol[c.id]=byCol[c.id]||[]; }  // filtre webi (source/présence/date) déjà appliqué GLOBALEMENT dans `visible`
   colItemsRef.current=displayedByCol;
 
   // ---- RENDU PROGRESSIF (anti-gel à l'ouverture) ----
@@ -3742,6 +3755,12 @@ function Board({leads, search, setSearch, onOpenLead, onReorder, onAddLead, onDe
                         {[{k:'all',label:'Tous',n:srcCounts.webinaire||0},{k:'participe',label:'Participé',n:srcCounts._wp||0},{k:'inscrit',label:'Inscrit',n:srcCounts._wi||0}].map(o=>(
                           <button key={o.k} className={'srceng-chip'+(srcEng===o.k?' on':'')} onClick={()=>setSrcEng(o.k)}>{o.label} <span className="n">{o.n}</span></button>
                         ))}
+                        {webiDatesList.length>0 && (
+                          <select className="srceng-date" value={webiDate||''} onChange={e=>setWebiDate(e.target.value||null)} title="Filtrer par date du webinaire">
+                            <option value="">Toutes les dates</option>
+                            {webiDatesList.map(d=><option key={d} value={d}>{fmtWebiD(d)}</option>)}
+                          </select>
+                        )}
                       </div>
                     )}
                   </div>
