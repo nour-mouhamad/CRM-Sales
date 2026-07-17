@@ -935,6 +935,19 @@ input,textarea{font-family:inherit; color:inherit}
 .luma-foot{padding:14px 16px; background:var(--bg); border-top:1px solid var(--b1); display:flex; justify-content:flex-end; align-items:center}
 .luma-done{font-size:13px; color:var(--t1); font-weight:600; margin-right:auto}
 .luma-dim{color:var(--t3); font-weight:400}
+.luma-clic{cursor:pointer; transition:background var(--speed)}
+.luma-clic:hover{background:var(--surface-2)}
+/* historique des imports Luma */
+.luma-hist{margin-top:4px}
+.luma-htbl{background:var(--surface); border:1px solid var(--b1); border-radius:12px; overflow:hidden}
+.luma-hrow{display:grid; grid-template-columns:2.4fr .8fr .8fr .8fr .8fr 1.3fr .7fr; align-items:center; gap:8px; padding:11px 16px; border-bottom:1px solid var(--b1); font-size:13px; font-variant-numeric:tabular-nums}
+.luma-hrow:last-child{border-bottom:none}
+.luma-hhead{font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.03em; color:var(--t3); background:var(--surface-2)}
+.luma-hname{display:flex; flex-direction:column; gap:1px; min-width:0}
+.luma-hname b{font-weight:700; color:var(--t1); text-transform:capitalize}
+.luma-hname em{font-style:normal; font-size:11.5px; color:var(--t3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:280px}
+.luma-ok{color:var(--ok); font-weight:700}
+@media(max-width:720px){ .luma-hrow{grid-template-columns:2fr 1fr 1fr; } .luma-hrow span:nth-child(4),.luma-hrow span:nth-child(5),.luma-hrow span:nth-child(6){display:none} }
 @media(max-width:720px){ .luma-cols{grid-template-columns:1fr} .luma-col:first-child{border-right:none; border-bottom:1px solid var(--b1)} }
 .imp-decsel{min-width:150px; padding:5px 9px}
 .cl-lead{display:flex; align-items:center; gap:10px; row-gap:4px; flex-wrap:wrap; width:100%; text-align:left; padding:9px 34px 9px 10px; border-radius:9px; cursor:pointer; position:relative; transition:background var(--speed) var(--ease)}
@@ -7489,7 +7502,7 @@ function SettingScreen({ leads, closers, toast, userId, isAdmin, isSetter, onCal
 // Sous-onglet « Depuis Luma » : liste les events du calendar (edge luma-pull), l'utilisateur CHOISIT un webi
 // + confirme (nom+date), puis pull des guests en LECTURE SEULE — séparés en ligne / non présents. Aucune écriture.
 const LUMA_WEBI_RE=/webinaire|webinar|workshop|sans coder|vibe ?cod|d[ée]veloppe ton app/i;
-function LumaImportPanel({ toast, reloadLeads }){
+function LumaImportPanel({ toast, reloadLeads, onOpenLead }){
   const [events,setEvents]=React.useState(null);
   const [loading,setLoading]=React.useState(true);
   const [err,setErr]=React.useState(null);
@@ -7499,6 +7512,11 @@ function LumaImportPanel({ toast, reloadLeads }){
   const [result,setResult]=React.useState(null);
   const [importing,setImporting]=React.useState(false);
   const [report,setReport]=React.useState(null);
+  const [history,setHistory]=React.useState([]);
+  const [viewWebi,setViewWebi]=React.useState(null); // drill-down { w, parts }
+  const loadHistory=React.useCallback(()=>{ SB.from('webinaires').select('*').order('webi_date',{ascending:false}).then(({data})=>setHistory(data||[])); },[]);
+  React.useEffect(loadHistory,[loadHistory]);
+  const openWebi=async(w)=>{ try{ const { data }=await SB.from('webi_participations').select('*').eq('webinaire_id',w.id); setViewWebi({ w, parts:data||[] }); }catch(e){ toast('Lecture impossible', e.message||'','info'); } };
 
   React.useEffect(()=>{ let live=true; (async()=>{
     setLoading(true); setErr(null);
@@ -7563,6 +7581,19 @@ function LumaImportPanel({ toast, reloadLeads }){
       const payload={ file_name:parsed.fileName, file_hash:parsed.fileHash, row_count:parsed.rows.length, event_date:eventDate, import_ref:importRef, mapping:map, params, rows:outRows };
       const { data, error }=await SB.rpc('import_commit',{ p:payload });
       if(error) throw error;
+      // HISTORIQUE par webi : upsert webinaires (stats clés) + participations (drill-down « qui sont ces gens »)
+      try{
+        const { data:fresh }=await SB.from('leads').select('id,email,telephone').is('deleted_at',null);
+        const em={}, ph={}; (fresh||[]).forEach(l=>{ const ec=importEmailCanon(l.email); if(ec&&!em[ec]) em[ec]=l.id; const p9=importPhone9(l.telephone); if(p9&&!ph[p9]) ph[p9]=l.id; });
+        const leadOf=(g)=>{ const ec=importEmailCanon(g.email); if(ec&&em[ec]) return em[ec]; const p9=importPhone9(g.phone); return (p9&&ph[p9])?ph[p9]:null; };
+        const { data:wRow }=await SB.from('webinaires').upsert({ luma_event_id:ev.id, name:ev.name||null, webi_date:eventDate, nb_inscrits:(result.counts.inscrits||result.guests.length), nb_online:(result.counts.online||0), nb_absent:(result.counts.absent||0), nb_new:nNew, nb_updated:nExist, nb_upgraded:nUpg, nb_excluded:nExcl, last_pulled_at:new Date().toISOString() }, { onConflict:'luma_event_id' }).select('id').single();
+        const wid=wRow&&wRow.id;
+        if(wid){ await SB.from('webi_participations').delete().eq('webinaire_id',wid);
+          const parts=result.guests.map(g=>({ webinaire_id:wid, lead_id:leadOf(g), statut:(g.has_joined_event==='yes'?'online':'absent'), name:((g.name||((g.first_name||'')+' '+(g.last_name||''))).trim()||null), email:g.email||null, phone:g.phone||null, phone9:importPhone9(g.phone)||null }));
+          for(let i=0;i<parts.length;i+=200){ await SB.from('webi_participations').insert(parts.slice(i,i+200)); }
+        }
+        loadHistory();
+      }catch(he){ console.warn('webi history',he); }
       setReport(Object.assign({}, data||{}, { excluded:nExcl }));
       toast('Webi importé', ((data&&data.created)||0)+' créés · '+((data&&data.enriched)||0)+' enrichis','ok');
       if(reloadLeads) reloadLeads();
@@ -7591,7 +7622,7 @@ function LumaImportPanel({ toast, reloadLeads }){
       <label className="luma-toggle"><input type="checkbox" checked={showAll} onChange={e=>setShowAll(e.target.checked)}/> voir TOUS les events ({(events||[]).length}) — pas seulement les webis ({shown.length} affichés)</label>
     </div>
 
-    {result && (<div className="luma-result">
+    {!viewWebi && result && (<div className="luma-result">
       <div className="luma-head">
         <div className="luma-webi"><div className="luma-webi-date">{fmtDate(result.event.start_at)}</div><div className="luma-webi-name">{result.event.name}</div></div>
         <div className="luma-kpis">
@@ -7612,6 +7643,35 @@ function LumaImportPanel({ toast, reloadLeads }){
           <button className="btn btn-accent" disabled={importing} onClick={doImport}>{importing?'Import en cours…':'Valider l’import dans le CRM'}</button>
         )}
       </div>
+    </div>)}
+
+    {viewWebi && (<div className="luma-result">
+      <div className="luma-head">
+        <div className="luma-webi"><div className="luma-webi-date">{fmtDate(viewWebi.w.webi_date)}</div><div className="luma-webi-name">{viewWebi.w.name}</div></div>
+        <button className="btn btn-ghost" onClick={()=>setViewWebi(null)}>← Historique</button>
+      </div>
+      <div className="luma-cols">
+        <div className="luma-col"><div className="luma-col-h ok">● En ligne ({viewWebi.parts.filter(p=>p.statut==='online').length})</div><div className="luma-col-b">{viewWebi.parts.filter(p=>p.statut==='online').map((p,i)=><div key={i} className={'luma-g'+(p.lead_id?' luma-clic':'')} onClick={()=>{ if(p.lead_id&&onOpenLead) onOpenLead(p.lead_id); }}><b>{p.name||p.email||'—'}</b><span className="luma-mail">{p.email}</span><span className="luma-tel">{p.phone||'—'}</span></div>)}</div></div>
+        <div className="luma-col"><div className="luma-col-h">○ Non présents ({viewWebi.parts.filter(p=>p.statut!=='online').length})</div><div className="luma-col-b">{viewWebi.parts.filter(p=>p.statut!=='online').map((p,i)=><div key={i} className={'luma-g'+(p.lead_id?' luma-clic':'')} onClick={()=>{ if(p.lead_id&&onOpenLead) onOpenLead(p.lead_id); }}><b>{p.name||p.email||'—'}</b><span className="luma-mail">{p.email}</span><span className="luma-tel">{p.phone||'—'}</span></div>)}</div></div>
+      </div>
+      <div className="luma-foot"><span className="luma-dim">Clique une personne rattachée pour ouvrir sa fiche.</span></div>
+    </div>)}
+
+    {!viewWebi && (<div className="luma-hist">
+      <div className="mgr-sec"><span className="eyebrow">Historique des imports Luma</span><span className="mgr-count">{history.length}</span></div>
+      {history.length===0 ? <div className="lb-empty" style={{padding:'16px'}}>Aucun webi importé — importe ton 1er webi ci-dessus.</div> : (
+        <div className="luma-htbl">
+          <div className="luma-hrow luma-hhead"><span>Webinaire</span><span>Inscrits</span><span>En ligne</span><span>Absents</span><span>Présence</span><span>Import</span><span/></div>
+          {history.map(w=>{ const taux=w.nb_inscrits?Math.round((w.nb_online||0)/w.nb_inscrits*100):0; return (
+            <div key={w.id} className="luma-hrow">
+              <span className="luma-hname"><b>{fmtDate(w.webi_date)}</b><em>{w.name}</em></span>
+              <span>{w.nb_inscrits||0}</span><span className="luma-ok">{w.nb_online||0}</span><span>{w.nb_absent||0}</span>
+              <span><b>{taux}%</b></span><span className="luma-dim">+{w.nb_new||0} · màj {w.nb_updated||0}</span>
+              <span><button className="imp-link" onClick={()=>openWebi(w)}>Voir</button></span>
+            </div>
+          );})}
+        </div>
+      )}
     </div>)}
   </div>);
 }
@@ -7716,7 +7776,7 @@ function ImportScreen({ toast, onOpenLead, setSyncBusy, reloadLeads, closers }){
         <button className={src==='csv'?'on':''} onClick={()=>setSrc('csv')}>Fichier CSV</button>
         <button className={src==='luma'?'on':''} onClick={()=>setSrc('luma')}>Depuis Luma</button>
       </div>
-      {src==='luma' ? <LumaImportPanel toast={toast} reloadLeads={reloadLeads}/> : (<>
+      {src==='luma' ? <LumaImportPanel toast={toast} reloadLeads={reloadLeads} onOpenLead={onOpenLead}/> : (<>
         <div className="mgr-sec"><span className="eyebrow">Historique des imports</span><span className="mgr-count">{history.length}</span></div>
         <div className="lb-list"><div className="lb-card"><div className="lb-body" style={{borderTop:'none'}}>
           {history.length===0 ? <div className="lb-empty">Aucun import pour l’instant.</div>
