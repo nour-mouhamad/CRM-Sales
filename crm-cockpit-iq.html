@@ -901,6 +901,39 @@ input,textarea{font-family:inherit; color:inherit}
 .imp-badge.warn{background:var(--danger-tint); color:var(--danger)}
 .imp-badge.hot{background:var(--accent-tint); color:var(--accent)}
 .imp-link{border:none; background:none; color:var(--accent); font-size:11.5px; font-weight:600; cursor:pointer; padding:0}
+/* ----- Import : sous-onglets CSV / Luma ----- */
+.imp-subtabs{display:flex; gap:8px; margin:14px 0 18px}
+.imp-subtabs button{font-size:13px; font-weight:700; padding:8px 16px; border-radius:9px; border:1px solid var(--b1); background:var(--surface); color:var(--t2); cursor:pointer; transition:all var(--speed)}
+.imp-subtabs button:hover{border-color:var(--b2); color:var(--t1)}
+.imp-subtabs button.on{background:var(--accent); border-color:var(--accent); color:var(--on-accent)}
+/* ----- panneau Luma ----- */
+.luma-wrap{display:flex; flex-direction:column; gap:18px}
+.luma-launch{background:var(--surface); border:1px solid var(--b1); border-radius:12px; padding:16px}
+.luma-launch-row{display:flex; gap:10px; align-items:center}
+.luma-sel{flex:1; min-width:0}
+.luma-toggle{display:flex; align-items:center; gap:7px; margin-top:11px; font-size:12.5px; color:var(--t3); cursor:pointer}
+.luma-result{background:var(--surface); border:1px solid var(--b1); border-radius:12px; overflow:hidden}
+.luma-head{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; padding:16px 18px; border-bottom:1px solid var(--b1); background:var(--bg)}
+.luma-webi-date{font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--accent)}
+.luma-webi-name{font-size:15px; font-weight:700; color:var(--t1); margin-top:3px; max-width:520px}
+.luma-kpis{display:flex; gap:10px}
+.luma-kpi{display:flex; flex-direction:column; align-items:center; min-width:66px; padding:8px 10px; border-radius:10px; background:var(--surface-2); border:1px solid var(--b1)}
+.luma-kpi b{font-size:19px; font-weight:800; font-variant-numeric:tabular-nums; color:var(--t1)}
+.luma-kpi span{font-size:10.5px; color:var(--t3); text-transform:uppercase; letter-spacing:.03em; margin-top:2px}
+.luma-kpi.ok b{color:var(--ok)}
+.luma-kpi.hot b{color:var(--accent)}
+.luma-cols{display:grid; grid-template-columns:1fr 1fr; gap:0}
+.luma-col{min-width:0}
+.luma-col:first-child{border-right:1px solid var(--b1)}
+.luma-col-h{font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.03em; color:var(--t2); padding:11px 16px; background:var(--surface-2); border-bottom:1px solid var(--b1)}
+.luma-col-h.ok{color:var(--ok)}
+.luma-col-b{max-height:420px; overflow:auto}
+.luma-g{display:flex; flex-direction:column; gap:1px; padding:9px 16px; border-bottom:1px solid var(--b1); font-size:13px}
+.luma-g b{font-weight:650; color:var(--t1)}
+.luma-mail{font-size:12px; color:var(--t3)}
+.luma-tel{font-size:11.5px; color:var(--t4); font-variant-numeric:tabular-nums}
+.luma-next{padding:11px 16px; font-size:12.5px; color:var(--t3); background:var(--bg); border-top:1px solid var(--b1)}
+@media(max-width:720px){ .luma-cols{grid-template-columns:1fr} .luma-col:first-child{border-right:none; border-bottom:1px solid var(--b1)} }
 .imp-decsel{min-width:150px; padding:5px 9px}
 .cl-lead{display:flex; align-items:center; gap:10px; row-gap:4px; flex-wrap:wrap; width:100%; text-align:left; padding:9px 34px 9px 10px; border-radius:9px; cursor:pointer; position:relative; transition:background var(--speed) var(--ease)}
 .cl-lead:hover{background:var(--surface)}
@@ -5535,7 +5568,7 @@ function BootcampScreen({enrollments, leads, payByLead, closers, onOpenLead, onU
   );
 }
 
-const SCREEN_LABEL = { leads:'Mes leads', setting:'Setting', agenda:'Mes tâches', todo:'À faire', team:'Closers', import:'Import CSV', console:'Synchro HubSpot', bootcamp:'Bootcamp', recouvrement:'Recouvrement' };
+const SCREEN_LABEL = { leads:'Mes leads', setting:'Setting', agenda:'Mes tâches', todo:'À faire', team:'Closers', import:'Import', console:'Synchro HubSpot', bootcamp:'Bootcamp', recouvrement:'Recouvrement' };
 
 /* Bannière de FRAÎCHEUR du sync CalendIQ : lit la ligne unique sync_health('calendiq') (écrite par calendiq-pull
    à chaque run du cron 60s) + realtime. Si le dernier succès date de > 5 min => le sync est décroché => bannière
@@ -6357,7 +6390,7 @@ function App({session, onLogout}){
     {id:'leads', label:'Mes leads', icon:I.leads, badge:rappelerCount},
     {id:'setting', label:'Setting', icon:I.phone},
     {id:'agenda', label:'Mes tâches', icon:I.agenda},
-    ...(isAdmin?[{id:'bootcamp', label:'Bootcamp', icon:I.admission},{id:'recouvrement', label:'Recouvrement', icon:I.euro, badge:recouvDue||null, badgeWarn:true},{id:'team', label:'Closers', icon:I.users},{id:'import', label:'Import CSV', icon:I.upload},{id:'console', label:'Synchro HubSpot', icon:I.sync, badge:syncPending||null, badgeWarn:syncWarn}]:[]),
+    ...(isAdmin?[{id:'bootcamp', label:'Bootcamp', icon:I.admission},{id:'recouvrement', label:'Recouvrement', icon:I.euro, badge:recouvDue||null, badgeWarn:true},{id:'team', label:'Closers', icon:I.users},{id:'import', label:'Import', icon:I.upload},{id:'console', label:'Synchro HubSpot', icon:I.sync, badge:syncPending||null, badgeWarn:syncWarn}]:[]),
   ]).filter(n=> !(hideSetting && n.id==='setting'));
   useEffect(()=>{ if(!isAdmin && (screen==='team'||screen==='console'||screen==='import'||screen==='todo'||screen==='bootcamp'||screen==='recouvrement')) setScreen('leads'); },[isAdmin,screen]);
   // setter : accès restreint à Setting + Mes tâches (+ fiche pour un RDV). Renvoyé sur Setting sinon.
@@ -7451,6 +7484,77 @@ function SettingScreen({ leads, closers, toast, userId, isAdmin, isSetter, onCal
   );
 }
 
+// Sous-onglet « Depuis Luma » : liste les events du calendar (edge luma-pull), l'utilisateur CHOISIT un webi
+// + confirme (nom+date), puis pull des guests en LECTURE SEULE — séparés en ligne / non présents. Aucune écriture.
+const LUMA_WEBI_RE=/webinaire|webinar|workshop|sans coder|vibe ?cod|d[ée]veloppe ton app/i;
+function LumaImportPanel({ toast }){
+  const [events,setEvents]=React.useState(null);
+  const [loading,setLoading]=React.useState(true);
+  const [err,setErr]=React.useState(null);
+  const [showAll,setShowAll]=React.useState(false);
+  const [sel,setSel]=React.useState('');
+  const [pulling,setPulling]=React.useState(false);
+  const [result,setResult]=React.useState(null);
+
+  React.useEffect(()=>{ let live=true; (async()=>{
+    setLoading(true); setErr(null);
+    try{ const d=await callFn('luma-pull',{action:'list'}); if(live) setEvents(d.events||[]); }
+    catch(e){ if(live) setErr(e.message||'Chargement Luma impossible'); }
+    finally{ if(live) setLoading(false); }
+  })(); return ()=>{ live=false; }; },[]);
+
+  const fmtDate=(iso)=>{ try{ return new Date(iso).toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short',year:'2-digit',timeZone:'Europe/Paris'}); }catch(e){ return String(iso||'').slice(0,10); } };
+  const shown=React.useMemo(()=>{ const all=events||[]; return showAll?all:all.filter(e=>LUMA_WEBI_RE.test(e.name||'')); },[events,showAll]);
+  const selEvent=(events||[]).find(e=>e.id===sel)||null;
+
+  const pull=async()=>{
+    if(!selEvent) return;
+    if(!window.confirm('Pull les inscrits de « '+selEvent.name+' » du '+fmtDate(selEvent.start_at)+' ?\n\nLecture seule — rien n’est importé à ce stade.')) return;
+    setPulling(true); setResult(null);
+    try{ const d=await callFn('luma-pull',{action:'guests',event_id:selEvent.id}); setResult({ event:selEvent, counts:d.counts||{}, guests:d.guests||[] }); }
+    catch(e){ toast('Pull Luma échoué', e.message||'','info'); }
+    finally{ setPulling(false); }
+  };
+
+  if(loading) return <div className="empty-screen"><div className="spin"/><p>Lecture des events Luma…</p></div>;
+  if(err) return <div className="sync-banner"><h3>Luma indisponible</h3><p>{err}</p></div>;
+
+  const gname=(g)=> (g.name||((g.first_name||'')+' '+(g.last_name||''))).trim()||g.email||'—';
+  const online=(result?result.guests:[]).filter(g=>g.has_joined_event==='yes');
+  const absent=(result?result.guests:[]).filter(g=>g.has_joined_event!=='yes');
+  const c=result?result.counts:{}; const taux=c.inscrits?Math.round((c.online||0)/c.inscrits*100):0;
+  const gcol=(list)=>list.map((g,i)=>(<div key={i} className="luma-g"><b>{gname(g)}</b><span className="luma-mail">{g.email}</span><span className="luma-tel">{g.phone||'—'}</span></div>));
+
+  return (<div className="luma-wrap">
+    <div className="luma-launch">
+      <div className="luma-launch-row">
+        <select className="rr-sel luma-sel" value={sel} onChange={e=>{ setSel(e.target.value); setResult(null); }}>
+          <option value="">— choisis l’event à importer —</option>
+          {shown.map(e=><option key={e.id} value={e.id}>{fmtDate(e.start_at)} · {e.name}</option>)}
+        </select>
+        <button className="btn btn-accent" disabled={!sel||pulling} onClick={pull}>{pulling?'Pull…':'Charger les inscrits'}</button>
+      </div>
+      <label className="luma-toggle"><input type="checkbox" checked={showAll} onChange={e=>setShowAll(e.target.checked)}/> voir TOUS les events ({(events||[]).length}) — pas seulement les webis ({shown.length} affichés)</label>
+    </div>
+
+    {result && (<div className="luma-result">
+      <div className="luma-head">
+        <div className="luma-webi"><div className="luma-webi-date">{fmtDate(result.event.start_at)}</div><div className="luma-webi-name">{result.event.name}</div></div>
+        <div className="luma-kpis">
+          <div className="luma-kpi"><b>{c.inscrits||0}</b><span>inscrits</span></div>
+          <div className="luma-kpi ok"><b>{c.online||0}</b><span>en ligne</span></div>
+          <div className="luma-kpi"><b>{c.absent||0}</b><span>non présents</span></div>
+          <div className="luma-kpi hot"><b>{taux}%</b><span>présence</span></div>
+        </div>
+      </div>
+      <div className="luma-cols">
+        <div className="luma-col"><div className="luma-col-h ok">● En ligne ({online.length})</div><div className="luma-col-b">{gcol(online)}</div></div>
+        <div className="luma-col"><div className="luma-col-h">○ Non présents ({absent.length})</div><div className="luma-col-b">{gcol(absent)}</div></div>
+      </div>
+      <div className="luma-next">Aperçu <b>lecture seule</b> — rien n’est encore en base. L’import (dédup + historique) arrive à l’étape suivante.</div>
+    </div>)}
+  </div>);
+}
 function ImportScreen({ toast, onOpenLead, setSyncBusy, reloadLeads, closers }){
   const [step,setStep]=React.useState(0);
   const [parsed,setParsed]=React.useState(null);
@@ -7465,6 +7569,7 @@ function ImportScreen({ toast, onOpenLead, setSyncBusy, reloadLeads, closers }){
   const [busy,setBusy]=React.useState(false);
   const [report,setReport]=React.useState(null);
   const [history,setHistory]=React.useState([]);
+  const [src,setSrc]=React.useState('csv'); // sous-onglet : 'csv' (wizard existant) | 'luma' (pull API)
   const fileRef=React.useRef(null);
 
   const loadHistory=React.useCallback(()=>{ SB.from('import_batches').select('*').order('created_at',{ascending:false}).limit(20).then(({data})=>setHistory(data||[])); },[]);
@@ -7545,21 +7650,27 @@ function ImportScreen({ toast, onOpenLead, setSyncBusy, reloadLeads, closers }){
 
   if(step===0) return (
     <div className="mgr-pad">
-      <div className="screen-head">{head('Import CSV','Importer une liste de leads (webinaire, export) — dédupliquée, prête pour la synchro HubSpot.')}
-        <button className="btn btn-accent" onClick={()=>{ setParsed(null); setItems(null); setReport(null); setStep(1); }}>{I.plus({style:{width:15,height:15}})} Nouvel import</button></div>
-      <div className="mgr-sec"><span className="eyebrow">Historique des imports</span><span className="mgr-count">{history.length}</span></div>
-      <div className="lb-list"><div className="lb-card"><div className="lb-body" style={{borderTop:'none'}}>
-        {history.length===0 ? <div className="lb-empty">Aucun import pour l’instant.</div>
-          : history.map(b=>{ const c=b.counts||{}; const un=b.status==='undone';
-            return (<div key={b.id} className="cl-lead" style={{cursor:'default',opacity:un?.55:1}}>
-              <span style={{flex:1,fontWeight:600}}>{b.source_file_name||'import'}<em style={{color:'var(--t3)',fontWeight:500}}> · {String(b.created_at||'').slice(0,10)}</em></span>
-              <span className="imp-badge ok">{c.created||0} créés</span>
-              {c.enriched?<span className="imp-badge">{c.enriched} enrichis</span>:null}
-              {c.errors?<span className="imp-badge warn">{c.errors} err.</span>:null}
-              {un ? <span className="role-badge">Annulé</span>
-                  : <button className="rr-ico" title="Annuler cet import" onClick={()=>undo(b)}>{I.trash({})}</button>}
-            </div>); })}
-      </div></div></div>
+      <div className="screen-head">{head('Import','Importer des leads — CSV ou directement depuis Luma. Dédupliqué, prêt pour la synchro HubSpot.')}
+        {src==='csv' && <button className="btn btn-accent" onClick={()=>{ setParsed(null); setItems(null); setReport(null); setStep(1); }}>{I.plus({style:{width:15,height:15}})} Nouvel import</button>}</div>
+      <div className="imp-subtabs">
+        <button className={src==='csv'?'on':''} onClick={()=>setSrc('csv')}>Fichier CSV</button>
+        <button className={src==='luma'?'on':''} onClick={()=>setSrc('luma')}>Depuis Luma</button>
+      </div>
+      {src==='luma' ? <LumaImportPanel toast={toast}/> : (<>
+        <div className="mgr-sec"><span className="eyebrow">Historique des imports</span><span className="mgr-count">{history.length}</span></div>
+        <div className="lb-list"><div className="lb-card"><div className="lb-body" style={{borderTop:'none'}}>
+          {history.length===0 ? <div className="lb-empty">Aucun import pour l’instant.</div>
+            : history.map(b=>{ const c=b.counts||{}; const un=b.status==='undone';
+              return (<div key={b.id} className="cl-lead" style={{cursor:'default',opacity:un?.55:1}}>
+                <span style={{flex:1,fontWeight:600}}>{b.source_file_name||'import'}<em style={{color:'var(--t3)',fontWeight:500}}> · {String(b.created_at||'').slice(0,10)}</em></span>
+                <span className="imp-badge ok">{c.created||0} créés</span>
+                {c.enriched?<span className="imp-badge">{c.enriched} enrichis</span>:null}
+                {c.errors?<span className="imp-badge warn">{c.errors} err.</span>:null}
+                {un ? <span className="role-badge">Annulé</span>
+                    : <button className="rr-ico" title="Annuler cet import" onClick={()=>undo(b)}>{I.trash({})}</button>}
+              </div>); })}
+        </div></div></div>
+      </>)}
     </div>
   );
 
