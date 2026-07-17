@@ -932,7 +932,9 @@ input,textarea{font-family:inherit; color:inherit}
 .luma-g b{font-weight:650; color:var(--t1)}
 .luma-mail{font-size:12px; color:var(--t3)}
 .luma-tel{font-size:11.5px; color:var(--t4); font-variant-numeric:tabular-nums}
-.luma-next{padding:11px 16px; font-size:12.5px; color:var(--t3); background:var(--bg); border-top:1px solid var(--b1)}
+.luma-foot{padding:14px 16px; background:var(--bg); border-top:1px solid var(--b1); display:flex; justify-content:flex-end; align-items:center}
+.luma-done{font-size:13px; color:var(--t1); font-weight:600; margin-right:auto}
+.luma-dim{color:var(--t3); font-weight:400}
 @media(max-width:720px){ .luma-cols{grid-template-columns:1fr} .luma-col:first-child{border-right:none; border-bottom:1px solid var(--b1)} }
 .imp-decsel{min-width:150px; padding:5px 9px}
 .cl-lead{display:flex; align-items:center; gap:10px; row-gap:4px; flex-wrap:wrap; width:100%; text-align:left; padding:9px 34px 9px 10px; border-radius:9px; cursor:pointer; position:relative; transition:background var(--speed) var(--ease)}
@@ -7487,7 +7489,7 @@ function SettingScreen({ leads, closers, toast, userId, isAdmin, isSetter, onCal
 // Sous-onglet « Depuis Luma » : liste les events du calendar (edge luma-pull), l'utilisateur CHOISIT un webi
 // + confirme (nom+date), puis pull des guests en LECTURE SEULE — séparés en ligne / non présents. Aucune écriture.
 const LUMA_WEBI_RE=/webinaire|webinar|workshop|sans coder|vibe ?cod|d[ée]veloppe ton app/i;
-function LumaImportPanel({ toast }){
+function LumaImportPanel({ toast, reloadLeads }){
   const [events,setEvents]=React.useState(null);
   const [loading,setLoading]=React.useState(true);
   const [err,setErr]=React.useState(null);
@@ -7495,6 +7497,8 @@ function LumaImportPanel({ toast }){
   const [sel,setSel]=React.useState('');
   const [pulling,setPulling]=React.useState(false);
   const [result,setResult]=React.useState(null);
+  const [importing,setImporting]=React.useState(false);
+  const [report,setReport]=React.useState(null);
 
   React.useEffect(()=>{ let live=true; (async()=>{
     setLoading(true); setErr(null);
@@ -7510,10 +7514,60 @@ function LumaImportPanel({ toast }){
   const pull=async()=>{
     if(!selEvent) return;
     if(!window.confirm('Pull les inscrits de « '+selEvent.name+' » du '+fmtDate(selEvent.start_at)+' ?\n\nLecture seule — rien n’est importé à ce stade.')) return;
-    setPulling(true); setResult(null);
+    setPulling(true); setResult(null); setReport(null);
     try{ const d=await callFn('luma-pull',{action:'guests',event_id:selEvent.id}); setResult({ event:selEvent, counts:d.counts||{}, guests:d.guests||[] }); }
     catch(e){ toast('Pull Luma échoué', e.message||'','info'); }
     finally{ setPulling(false); }
+  };
+
+  // dédup + import RÉEL : réutilise importDryRun + import_commit (mêmes garanties que l'import CSV). Ambigus/supprimés EXCLUS. 0 HubSpot.
+  const buildLeadIdx=async()=>{
+    const { data } = await SB.from('leads').select('id,prenom,nom,email,telephone,source,colonne,webi_engagement,deleted_at');
+    const byEmail={}, byPhone={};
+    (data||[]).forEach(l=>{ const ec=importEmailCanon(l.email); if(ec && !(byEmail[ec] && !byEmail[ec].deleted_at)) byEmail[ec]=l;
+      const p9=importPhone9(l.telephone); if(p9){ (byPhone[p9]=byPhone[p9]||[]).push(l); } });
+    Object.keys(byPhone).forEach(k=>byPhone[k].sort((a,b)=>(a.deleted_at?1:0)-(b.deleted_at?1:0)));
+    return { byEmail, byPhone };
+  };
+  const doImport=async()=>{
+    if(!result) return; const ev=result.event;
+    const preset=IMPORT_PRESETS.find(p=>p.key==='luma');
+    let eventDate; try{ eventDate=new Date(ev.start_at).toLocaleDateString('sv-SE',{timeZone:'Europe/Paris'}); }catch(e){ eventDate=new Date().toISOString().slice(0,10); }
+    const rows=result.guests.map((g,i)=>({ email:g.email||'', phone_number:g.phone||'', first_name:g.first_name||'', last_name:g.last_name||'', name:g.name||'', has_joined_event:(g.has_joined_event==='yes'?'yes':'no'), utm_source:g.utm_source||'', __i:i+1 }));
+    let h=5381; const eid=String(ev.id||''); for(let k=0;k<eid.length;k++){ h=((h<<5)+h+eid.charCodeAt(k))>>>0; }
+    const parsed={ rows, headers:['email','phone_number','first_name','last_name','name','has_joined_event','utm_source'], fileName:'Luma · '+(ev.name||eid), fileHash:String(h) };
+    const map=preset.map;
+    const params=Object.assign({}, preset.params, { attributionOn:true, eventDate, owner:'', cockpit:'vivant' });
+    setImporting(true);
+    try{
+      const idx=await buildLeadIdx();
+      const items=importDryRun(parsed, map, params, idx);
+      const nNew=items.filter(it=>it.bucket==='nouveau').length;
+      const nExist=items.filter(it=>it.bucket==='existant').length;
+      const nUpg=items.filter(it=>it.engTo==='participe').length;
+      const nExcl=items.filter(it=>it.bucket==='ambigu'||it.bucket==='revive').length;
+      const msg='Importer « '+(ev.name||'')+' » du '+eventDate+' dans le CRM ?\n\n• '+nNew+' nouveaux (dans le pool)\n• '+nExist+' existants mis à jour'+(nUpg?(' (dont '+nUpg+' passés « participé »)'):'')+(nExcl?('\n• '+nExcl+' ambigus/supprimés EXCLUS (à traiter à la main)'):'')+'\n\nAucune écriture HubSpot. Annulable après coup.';
+      if(!window.confirm(msg)){ setImporting(false); return; }
+      const importRef='imp:webinaire:'+eventDate+':'+String(parsed.fileHash).slice(0,8);
+      const today=new Date().toISOString().slice(0,10);
+      const outRows=items.filter(it=>it.bucket==='nouveau'||it.bucket==='existant').map(it=>{ const c=it.cand; const action=it.action; const lead_id=it.match?it.match.id:null;
+        const note=(params.attributionOn && c.angles && c.angles.length)?("Angle d'acquisition : "+c.angles.join(', ')+'. Import Luma '+eventDate+'. · ref:'+importRef):'';
+        const noteTitre='Webinaire '+eventDate+' — '+(c.eng||'participé');
+        const tel=importStoreTel(c.tel);
+        return { line_no:c.line_no, action, lead_id,
+          raw:c.row, normalized:{ email:c.email, phone9:c.ph9, prenom:c.prenom, nom:c.nom },
+          fields: action==='create'?{ prenom:c.prenom||'', nom:c.nom||'', email:c.email||'', telephone:tel, source:'webinaire', webi_engagement:c.eng||'', webi_date:eventDate, colonne:'contacter', date_creation:eventDate||today, cockpit_state:'vivant', owner_closer_id:'' }:null,
+          enrich:(action==='enrich')?{ engagement_to:it.engTo||'', webi_date:eventDate, fill:{ prenom:c.prenom||'', nom:c.nom||'', email:c.email||'', telephone:tel } }:null,
+          note, note_titre:noteTitre, bucket:it.bucket, idem_key:importRef+':'+(c.ecanon||c.ph9||c.line_no) };
+      });
+      const payload={ file_name:parsed.fileName, file_hash:parsed.fileHash, row_count:parsed.rows.length, event_date:eventDate, import_ref:importRef, mapping:map, params, rows:outRows };
+      const { data, error }=await SB.rpc('import_commit',{ p:payload });
+      if(error) throw error;
+      setReport(Object.assign({}, data||{}, { excluded:nExcl }));
+      toast('Webi importé', ((data&&data.created)||0)+' créés · '+((data&&data.enriched)||0)+' enrichis','ok');
+      if(reloadLeads) reloadLeads();
+    }catch(e){ toast('Import échoué', e.message||String(e),'info'); }
+    finally{ setImporting(false); }
   };
 
   if(loading) return <div className="empty-screen"><div className="spin"/><p>Lecture des events Luma…</p></div>;
@@ -7551,7 +7605,13 @@ function LumaImportPanel({ toast }){
         <div className="luma-col"><div className="luma-col-h ok">● En ligne ({online.length})</div><div className="luma-col-b">{gcol(online)}</div></div>
         <div className="luma-col"><div className="luma-col-h">○ Non présents ({absent.length})</div><div className="luma-col-b">{gcol(absent)}</div></div>
       </div>
-      <div className="luma-next">Aperçu <b>lecture seule</b> — rien n’est encore en base. L’import (dédup + historique) arrive à l’étape suivante.</div>
+      <div className="luma-foot">
+        {report ? (
+          <div className="luma-done">✓ Importé — <b>{report.created||0}</b> créés dans le pool · <b>{report.enriched||0}</b> enrichis{report.excluded?<span className="luma-dim"> · {report.excluded} exclus (ambigus)</span>:null}<span className="luma-dim"> · annulable dans « Fichier CSV » → Historique</span></div>
+        ) : (
+          <button className="btn btn-accent" disabled={importing} onClick={doImport}>{importing?'Import en cours…':'Valider l’import dans le CRM'}</button>
+        )}
+      </div>
     </div>)}
   </div>);
 }
@@ -7656,7 +7716,7 @@ function ImportScreen({ toast, onOpenLead, setSyncBusy, reloadLeads, closers }){
         <button className={src==='csv'?'on':''} onClick={()=>setSrc('csv')}>Fichier CSV</button>
         <button className={src==='luma'?'on':''} onClick={()=>setSrc('luma')}>Depuis Luma</button>
       </div>
-      {src==='luma' ? <LumaImportPanel toast={toast}/> : (<>
+      {src==='luma' ? <LumaImportPanel toast={toast} reloadLeads={reloadLeads}/> : (<>
         <div className="mgr-sec"><span className="eyebrow">Historique des imports</span><span className="mgr-count">{history.length}</span></div>
         <div className="lb-list"><div className="lb-card"><div className="lb-body" style={{borderTop:'none'}}>
           {history.length===0 ? <div className="lb-empty">Aucun import pour l’instant.</div>
