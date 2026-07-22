@@ -2239,19 +2239,27 @@ async function saveLeadRdvMeta(id, map){
 
 // crée un lead manuellement (retourne l'objet UI) — RLS authenticated requise (connecté)
 async function createLead(fields){
-  const row = {
-    prenom: (fields.prenom||'').trim()||null,
-    nom: (fields.nom||'').trim()||null,
-    email: (fields.email||'').trim()||null,
-    telephone: (fields.telephone||'').trim()||null,
-    source: (fields.source||'').trim()||'manuel',
-    webi_engagement: (fields.source==='webinaire' && fields.webiEngagement) ? fields.webiEngagement : null,
-    colonne: COL_UI2DB(fields.column||'contacter'),
-    date_creation: new Date().toISOString().slice(0,10),
-  };
-  const { data, error } = await SB.from('leads').insert(row).select().single();
+  // AJOUT MANUEL via le point de passage unique : match par EMAIL -> jamais de doublon (complète l'existant).
+  const src=(fields.source||'').trim()||'manuel';
+  const col=COL_UI2DB(fields.column||'contacter');
+  const { data:res, error } = await SB.rpc('resolve_or_create_lead', {
+    p_source: src,
+    p_email: (fields.email||'').trim()||null,
+    p_phone: (fields.telephone||'').trim()||null,
+    p_prenom: (fields.prenom||'').trim()||null,
+    p_nom: (fields.nom||'').trim()||null,
+    p_extra: {}, p_external_id: null, p_want_owner: null, p_want_column: col,
+  });
   if(error) throw new Error(error.message||'Création échouée');
-  return dbToLead(data, []);
+  const existed = !!(res && res.action==='updated');
+  // webi_engagement (hors périmètre du moteur) : uniquement sur une VRAIE création
+  if(!existed && src==='webinaire' && fields.webiEngagement){
+    try{ await SB.from('leads').update({ webi_engagement: fields.webiEngagement }).eq('id', res.lead_id); }catch(e){ console.warn('webi_eng',e); }
+  }
+  const { data:row } = await SB.from('leads').select('*').eq('id', res.lead_id).single();
+  const out = dbToLead(row, []);
+  out._existed = existed;
+  return out;
 }
 
 // ajoute une ligne d'historique (note/appel/rdv/mail/paiement)
@@ -6147,8 +6155,14 @@ function App({session, onLogout}){
 
   // ajout manuel d'un lead — annulable (Ctrl+Z / Annuler → corbeille douce)
   const addLead=async(fields)=>{
-    const lead=await createLead(fields); setLeads(ls=>[lead,...ls]); setAddTarget(null);
+    const lead=await createLead(fields); setAddTarget(null);
     const name=(lead.prenom||lead.nom||lead.email||'').toString().trim();
+    if(lead._existed){ // même email déjà en base -> pas de doublon, fiche complétée
+      setLeads(ls=> ls.some(x=>x.id===lead.id) ? ls.map(x=>x.id===lead.id?lead:x) : [lead,...ls]);
+      toast('Contact déjà présent', name+' — fiche mise à jour (pas de doublon)', 'ok', {label:'Ouvrir', fn:()=>openLead(lead.id)});
+      return;
+    }
+    setLeads(ls=>[lead,...ls]);
     const entry=pushUndo(`Ajout · ${name}`, async()=>{ setLeads(ls=>ls.filter(x=>x.id!==lead.id)); await SB.from('leads').update({deleted_at:new Date().toISOString()}).eq('id',lead.id); }, lead.id);
     toast('Lead ajouté', name, 'ok', {label:'Annuler', fn:()=>runUndo(entry)});
   };
