@@ -7593,7 +7593,7 @@ function LumaImportPanel({ toast, reloadLeads, onOpenLead }){
     let h=5381; const eid=String(ev.id||''); for(let k=0;k<eid.length;k++){ h=((h<<5)+h+eid.charCodeAt(k))>>>0; }
     const parsed={ rows, headers:['email','phone_number','first_name','last_name','name','has_joined_event','utm_source'], fileName:'Luma · '+(ev.name||eid), fileHash:String(h) };
     const map=preset.map;
-    const params=Object.assign({}, preset.params, { attributionOn:true, eventDate, owner:'', cockpit:'vivant' });
+    const params=Object.assign({}, preset.params, { attributionOn:false, eventDate, owner:'', cockpit:'vivant' });
     setImporting(true);
     try{
       const idx=await buildLeadIdx();
@@ -7607,7 +7607,7 @@ function LumaImportPanel({ toast, reloadLeads, onOpenLead }){
       const importRef='imp:webinaire:'+eventDate+':'+String(parsed.fileHash).slice(0,8);
       const today=new Date().toISOString().slice(0,10);
       const outRows=items.filter(it=>it.bucket==='nouveau'||it.bucket==='existant').map(it=>{ const c=it.cand; const action=it.action; const lead_id=it.match?it.match.id:null;
-        const note=(params.attributionOn && c.angles && c.angles.length)?("Angle d'acquisition : "+c.angles.join(', ')+'. Import Luma '+eventDate+'. · ref:'+importRef):'';
+        const note='Importé depuis Luma · '+(ev.name||'webinaire')+' · '+eventDate+' · ref:'+importRef;
         const noteTitre='Webinaire '+eventDate+' — '+(c.eng||'participé');
         const tel=importStoreTel(c.tel);
         return { line_no:c.line_no, action, lead_id,
