@@ -2317,7 +2317,7 @@ const initials = (l)=>{
 };
 /* TAXONOMIE (2026-07) : source = le CANAL (une valeur canonique) ; webi_engagement = l'axe orthogonal
    'participe'/'inscrit'/null (null = legacy, présence inconnue). Plus JAMAIS d'engagement encodé dans la source. */
-const srcLabel = {webinaire:'Webinaire',calendiq:'RDV direct','pub insta':'Pub Insta','référé':'Référé',brochure:'Brochure'};
+const srcLabel = {webinaire:'Webinaire',calendiq:'RDV direct','pub insta':'Pub Insta','référé':'Référé',brochure:'Brochure',inscription:'Inscription',contact:'Contact'};
 const WEBI_ENG = { participe:'Participé', inscrit:'Inscrit' }; // libellés de l'engagement webi
 // libellé complet d'un lead : canal (+ engagement si webinaire) — utilisé par les badges de carte
 function srcFullLabel(source, eng){
@@ -2332,6 +2332,8 @@ const SOURCE_INFO = {
   calendiq:  {label:'RDV direct', via:'A réservé un RDV directement (CalendIQ)', angle:'Intention maximale : il a déjà pris RDV → préparer le call, pas de re-qualification lourde.'},
   manuel:    {label:'Ajout manuel', via:'Ajouté à la main dans le CRM', angle:'Qualifier l’intention pendant l’appel.'},
   brochure:  {label:'Brochure téléchargée', via:'A opt-in pour télécharger la brochure', angle:'Intéressé mais tiède → diagnostiquer son projet avant de pitcher.'},
+  inscription: {label:'Inscription bootcamp', via:'A rempli le formulaire d’inscription au bootcamp sur le site', angle:'Intention MAX : il veut s’inscrire → confirmer le fit et caler le RDV/closing vite.'},
+  contact:   {label:'Contact site', via:'A rempli un formulaire de contact / candidature sur le site', angle:'Intéressé, à qualifier : comprendre le besoin puis présenter IQ.'},
   ressource: {label:'Ressource téléchargée', via:'A opt-in pour une ressource gratuite', angle:'Lead froid en découverte → qualifier l’intention, présenter IQ.'},
   'pub insta': {label:'Pub Insta', via:'A opt-in via une pub Instagram', angle:'Lead froid social → qualifier l’intention, créer le manque.'},
   'référé':   {label:'Référé', via:'Recommandé par un ancien élève', angle:'Confiance pré-établie → capitaliser sur la recommandation.'},
@@ -2357,6 +2359,8 @@ const LEAD_SOURCES = [
   {k:'mff',       label:'MFF'},
   {k:'calendiq',  label:'RDV direct'},
   {k:'brochure',  label:'Brochure'},
+  {k:'inscription', label:'Inscription'},
+  {k:'contact',   label:'Contact'},
 ];
 
 // Colonnes = miroir du pipe HubSpot IQ Project (les stages d'entrée Lead gen/Webinaire/MFF
@@ -7959,11 +7963,19 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
   const [noteEdits,setNoteEdits]=React.useState({}); // leadId -> texte de note édité inline (avant envoi)
   const [noteOpen,setNoteOpen]=React.useState({}); // leadId -> mode édition ouvert (sinon aperçu formaté)
   const [fails,setFails]=React.useState({});     // key -> { stage, error, stale } du dernier échec
+  const [crmConf,setCrmConf]=React.useState([]); // conflits d'ingestion webhook (table crm_conflicts) — distincts des conflits push HubSpot
 
   // abonnement : toute mutation du cache (notify) re-rend cette instance. Désabo au démontage (pas de setState fantôme).
   React.useEffect(()=>{ CONSOLE_CACHE.subs.add(bump); return ()=>{ CONSOLE_CACHE.subs.delete(bump); }; },[]);
   // 1er montage : charge SI pas déjà chargé ni en cours. Sinon no-op -> réaffiche le cache, zéro rechargement au retour.
   React.useEffect(()=>{ consoleLoad(false); },[]);
+  // CONFLITS CRM : une entrée site (formulaire/RDV) apporte un nom/tél différent d'une fiche déjà connue (même email).
+  // Lecture directe Supabase (≠ diff HubSpot). L'utilisateur tranche : prendre la nouvelle valeur ou garder l'actuelle.
+  const FCONF={prenom:'Prénom',nom:'Nom',telephone:'Téléphone',email:'Email'};
+  const loadCrmConf=React.useCallback(async()=>{ try{ const { data }=await SB.from('crm_conflicts').select('*, lead:leads(prenom,nom,email)').eq('status','open').order('created_at',{ascending:false}); setCrmConf(data||[]); }catch(e){ console.warn('crm_conflicts',e); } },[]);
+  React.useEffect(()=>{ loadCrmConf(); },[loadCrmConf]);
+  React.useEffect(()=>{ const d=CONSOLE_CACHE.data; const ht=d?((d.sortants||[]).length+(d.acreer||[]).length+(d.taches||[]).length+(d.entrants||[]).length+(d.conflits||[]).length+(d.disparus||[]).length):0; if(ht===0 && crmConf.length>0) setTab('conflitscrm'); },[crmConf]);
+  const resolveConf=async(c,take)=>{ try{ if(take && c.new_value!=null){ const { error }=await SB.from('leads').update({ [c.field]:c.new_value }).eq('id',c.lead_id); if(error) throw error; } await SB.from('crm_conflicts').update({ status:'resolved', resolved_at:new Date().toISOString() }).eq('id',c.id); setCrmConf(l=>l.filter(x=>x.id!==c.id)); toast(take?'Nouvelle valeur appliquée à la fiche':'Conflit résolu (valeur actuelle gardée)'); if(take && reloadLeads) reloadLeads(); }catch(e){ toast('Erreur : '+((e&&e.message)||e)); } };
   // si l'onglet courant est vide mais qu'un autre a des items -> on bascule auto (évite de tomber sur un onglet vide à l'ouverture)
   React.useEffect(()=>{ if(!CONSOLE_CACHE.data) return; const d=CONSOLE_CACHE.data; const c={sortants:(d.sortants||[]).length,acreer:(d.acreer||[]).length,taches:(d.taches||[]).length,entrants:(d.entrants||[]).length,conflits:(d.conflits||[]).length,disparus:(d.disparus||[]).length}; if(c[tab]===0){ const first=['sortants','acreer','taches','entrants','conflits','disparus'].find(t=>c[t]>0); if(first) setTab(first); } },[CONSOLE_CACHE.data]);
 
@@ -8120,8 +8132,29 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     </div>
   );
 
-  if(loading && !data) return <div className="mgr-pad">{head}<div className="empty-screen"><div className="spin"/><p>Lecture de HubSpot…</p></div></div>;
-  if(error) return <div className="mgr-pad">{head}<div className="sync-banner"><h3>Connexion HubSpot impossible</h3><p>{error}</p><button className="btn btn-accent" onClick={()=>load()}>Réessayer</button></div></div>;
+  // Bloc Conflits CRM — INDÉPENDANT de HubSpot : visible même si la synchro HubSpot est en erreur/chargement.
+  const crmConfBlock = crmConf.length===0
+    ? <div className="lb-empty">Aucun conflit. Quand une entrée du site (formulaire ou RDV) apporte un nom ou un numéro différent d’une fiche déjà connue (même email), il s’affiche ici pour que tu tranches — la fiche n’est jamais écrasée en silence.</div>
+    : (<div className="sync-list">
+        {crmConf.map(c=>{ const nm=(((c.lead&&c.lead.prenom)||'')+' '+((c.lead&&c.lead.nom)||'')).trim()||(c.lead&&c.lead.email)||'Lead'; return (
+          <div key={c.id} className="syncrow" style={{display:'flex',alignItems:'flex-start',gap:14}}>
+            <div className="sync-main" style={{cursor:'pointer'}} onClick={()=>onOpenLead(c.lead_id)}>
+              <b>{nm}</b>
+              <div className="sync-chg"><span><span className="k">{FCONF[c.field]||c.field} :</span> {c.old_value||'—'}<span className="ar">→</span>{c.new_value||'—'}</span></div>
+              <div className="sync-reasons"><span className="sync-chip">via {c.source}</span></div>
+            </div>
+            <div className="sync-act" style={{flexShrink:0}}>
+              <button className="btn btn-ghost" onClick={()=>onOpenLead(c.lead_id)}>Fiche</button>
+              <button className="btn btn-soft" onClick={()=>resolveConf(c,false)}>Garder l’actuelle</button>
+              <button className="btn btn-accent" onClick={()=>resolveConf(c,true)}>Prendre la nouvelle</button>
+            </div>
+          </div>
+        ); })}
+      </div>);
+  const crmConfStandalone = crmConf.length>0 ? <div style={{marginTop:18}}><div className="sync-tabs"><button className="sync-tab warn on">Conflits CRM<span className="ct">{crmConf.length}</span></button></div>{crmConfBlock}</div> : null;
+
+  if(loading && !data) return <div className="mgr-pad">{head}<div className="empty-screen"><div className="spin"/><p>Lecture de HubSpot…</p></div>{crmConfStandalone}</div>;
+  if(error) return <div className="mgr-pad">{head}<div className="sync-banner"><h3>Connexion HubSpot impossible</h3><p>{error}</p><button className="btn btn-accent" onClick={()=>load()}>Réessayer</button></div>{crmConfStandalone}</div>;
 
   if(data && data.needInit) return (
     <div className="mgr-pad">{head}
@@ -8144,11 +8177,12 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
     {id:'entrants', label:'Reçus de HubSpot', n:entrants.length},
     {id:'conflits', label:'Conflits', n:conflits.length, warn:true},
     {id:'disparus', label:'Supprimés de HubSpot', n:disparus.length, warn:true},
+    {id:'conflitscrm', label:'Conflits CRM', n:crmConf.length, warn:true},
   ];
 
   return (
     <div className="mgr-pad">{head}
-      {total===0 ? (
+      {(total===0 && crmConf.length===0) ? (
         <div className="sync-ok">{I.check({})}<div><b style={{fontSize:16,color:'var(--t1)'}}>Tout est synchronisé</b><div style={{fontSize:13,marginTop:4}}>CRM et HubSpot sont alignés. Cette page s’animera dès qu’un lead change.</div></div></div>
       ) : (<>
         <div className="sync-tabs">
@@ -8159,6 +8193,8 @@ function Console({ toast, onOpenLead, setSyncBusy, reloadLeads }){
           ))}
         </div>
         {bulk && <div className="sync-toolbar"><div className="spin"/><span className="sync-prog">Envoi… {bulk.done}/{bulk.total}</span></div>}
+
+        {tab==='conflitscrm' && crmConfBlock}
 
         {tab==='sortants' && (
           sortants.length===0 ? <div className="lb-empty">Aucun changement à envoyer.</div> : <>
