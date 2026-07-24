@@ -2158,7 +2158,7 @@ function dbToLead(r, acts){
     setterId:r.setter_id||null, claimedBy:r.claimed_by||null, claimedAt:r.claimed_at||null, badPhone:!!r.bad_phone,
     offer:(r.montant==null||r.montant==='')?0:(Number(r.montant)||0), aPayer:(r.montant_a_payer==null?'':r.montant_a_payer), quiPaie:r.qui_paie||'', paid:r.statut_paiement==='paye', statut_paiement:r.statut_paiement||'aucun',
     cpf:(Number(r.cpf_dispo)||0), metier:r.metier||'', veut:r.objectif||'', budget:r.budget||'', saison:r.saison||null,
-    rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, rdvMeetLink:r.rdv_meet_link||null, rdvMeta, hubspot_deal_id:r.hubspot_deal_id||null, date_creation:r.date_creation||null, hsImport:r.hs_import||null, starred:!!r.starred,
+    rdv_at:r.rdv_at||null, rdvType:r.rdv_type||null, rdvMeetLink:r.rdv_meet_link||null, rdvMeta, hubspot_deal_id:r.hubspot_deal_id||null, date_creation:r.date_creation||null, hsImport:r.hs_import||null, starred:!!r.starred, noNurture:!!r.no_nurture,
     statusOverride:r.status_override||null, statusOverrideDue:r.status_override_due||null,
     hsAll:(r.hs_sync && r.hs_sync.allProps && typeof r.hs_sync.allProps==='object')?r.hs_sync.allProps:null,
     timeline:actsToTimeline(acts2)
@@ -2199,6 +2199,7 @@ async function saveLead(id, uiPatch){
   if('extraActions' in uiPatch) m.extra_actions=uiPatch.extraActions;
   if('hiddenActions' in uiPatch) m.hidden_actions=Array.isArray(uiPatch.hiddenActions)?uiPatch.hiddenActions:[];
   if('starred' in uiPatch) m.starred=uiPatch.starred;
+  if('noNurture' in uiPatch) m.no_nurture=!!uiPatch.noNurture;
   if('heat' in uiPatch) m.heat=uiPatch.heat;
   if('offer' in uiPatch) m.montant=uiPatch.offer;
   if('aPayer' in uiPatch) m.montant_a_payer=(uiPatch.aPayer===''||uiPatch.aPayer==null)?null:Number(uiPatch.aPayer);
@@ -3912,6 +3913,13 @@ function Fiche({lead, onBack, backLabel, onCall, onPay, onMove, onEditNote, onDe
                     <input type="date" className="addlead-sel src-sel" style={{flex:1}} value={lead.webiDate||''} onChange={e=>onEditField('webiDate','webiDate', e.target.value||null)}/>
                   </div>
                 </>)}
+              </div>
+              <div className="field">
+                <span className="eyebrow">Emails nurturing</span>
+                <div className="srceng">
+                  <button className={'srceng-chip'+(!lead.noNurture?' on':'')} title="Ce lead peut recevoir les emails automatiques (s'il est éligible)" onClick={()=>onEditField('noNurture','noNurture', false)}>Actifs</button>
+                  <button className={'srceng-chip'+(lead.noNurture?' on':'')} title="Coupe TOUS les emails automatiques pour ce lead (urgence closer / demande du lead)" onClick={()=>onEditField('noNurture','noNurture', true)}>Coupés</button>
+                </div>
               </div>
               <ManualRdvField lead={lead} calendiqRdvs={lead.rdvs||[]}
                 onCalModify={calendiqReady?openEditRdv:null}
